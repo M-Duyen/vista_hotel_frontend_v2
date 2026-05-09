@@ -223,15 +223,14 @@ const Register: React.FC = () => {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = `${
-      import.meta.env.VITE_API_GATEWAY_URL
-    }/oauth2/authorization/google`;
+    // Trỏ thẳng tới service-auth (8001) bypass gateway
+    const authUrl = import.meta.env.VITE_AUTH_SERVICE_URL || "http://localhost:8001";
+    window.location.href = `${authUrl}/oauth2/authorization/google`;
   };
 
   const handleFacebookLogin = () => {
-    window.location.href = `${
-      import.meta.env.VITE_API_GATEWAY_URL
-    }/oauth2/authorization/facebook`;
+    const authUrl = import.meta.env.VITE_AUTH_SERVICE_URL || "http://localhost:8001";
+    window.location.href = `${authUrl}/oauth2/authorization/facebook`;
   };
 
   return (

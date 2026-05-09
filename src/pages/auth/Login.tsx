@@ -161,15 +161,15 @@ const Login: React.FC = () => {
   const handleRegister = () => navigate("/auth/register");
 
   const handleGoogleLogin = () => {
-    window.location.href = `${
-      import.meta.env.VITE_API_GATEWAY_URL
-    }/oauth2/authorization/google`;
+    // Trỏ thẳng đến service-auth (bypass gateway)
+    // vì OAuth2 cần session state - không thể proxy qua reactive gateway
+    const authUrl = import.meta.env.VITE_AUTH_SERVICE_URL || import.meta.env.VITE_API_GATEWAY_URL;
+    window.location.href = `${authUrl}/oauth2/authorization/google`;
   };
 
   const handleFacebookLogin = () => {
-    window.location.href = `${
-      import.meta.env.VITE_API_GATEWAY_URL
-    }/oauth2/authorization/facebook`;
+    const authUrl = import.meta.env.VITE_AUTH_SERVICE_URL || import.meta.env.VITE_API_GATEWAY_URL;
+    window.location.href = `${authUrl}/oauth2/authorization/facebook`;
   };
 
   return (

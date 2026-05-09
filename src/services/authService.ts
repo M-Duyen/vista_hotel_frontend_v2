@@ -401,7 +401,7 @@ export const resetPassword = async (
 
 export const sendOtpEmail = async (
   identifier: string,
-): Promise<{ success: boolean; message: string }> => {
+): Promise<{ success: boolean; message: string; otp?: string }> => {
   try {
     const { data } = await authApi.post("/send-otp", {
       email: identifier,
@@ -414,7 +414,7 @@ export const sendOtpEmail = async (
       };
     }
 
-    const otp = data.otp;
+    const otp = data.otp as string;
 
     await sendEmail({
       to: identifier,
@@ -425,6 +425,7 @@ export const sendOtpEmail = async (
     return {
       success: true,
       message: "OTP email sent successfully.",
+      otp,
     };
   } catch (error) {
     console.error("Error sending OTP email:", error);
