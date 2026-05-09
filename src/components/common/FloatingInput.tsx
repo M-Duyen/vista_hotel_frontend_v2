@@ -17,6 +17,7 @@ interface FloatingInputProps {
   focusLabelColor?: string;
   textColor?: string;
   iconColor?: string;
+  eyeIconColor?: string;
   iconLeft?: IconDefinition;
   disabled?: boolean;
   className?: string;
@@ -34,8 +35,9 @@ const FloatingInput: React.FC<FloatingInputProps> = ({
   focusBorderColor = "focus:border-blue-600",
   labelColor = "text-gray-500",
   focusLabelColor = "text-blue-600",
-  textColor = "text-gray-900",
+  textColor = "text-gray-100",
   iconColor = "text-gray-600",
+  eyeIconColor = "text-gray-100",
   iconLeft,
   disabled = false,
   className = "",
@@ -78,7 +80,7 @@ const FloatingInput: React.FC<FloatingInputProps> = ({
         onBlur={() => setFocused(false)}
         className={`peer w-full bg-transparent border-0 border-b ${borderColor} ${focusBorderColor}
                     outline-none transition-colors duration-200 ${sizePad} ${leftPadding} ${rightPadding}
-                    ${textColor} placeholder-gray-400
+                    ${textColor} placeholder-gray-100
                     ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
         aria-labelledby={`${inputId}-label`}
         autoComplete="off"
@@ -96,7 +98,7 @@ const FloatingInput: React.FC<FloatingInputProps> = ({
         <button
           type="button"
           onClick={() => setShowPassword(!showPassword)}
-          className={`absolute right-0 top-1/2 -translate-y-1/2 ${iconColor} hover:text-gray-900 transition-colors cursor-pointer p-1`}
+          className={`absolute right-0 top-1/2 -translate-y-1/2 ${eyeIconColor} hover:text-gray-900 transition-colors cursor-pointer p-1`}
           aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
           tabIndex={-1}
         >

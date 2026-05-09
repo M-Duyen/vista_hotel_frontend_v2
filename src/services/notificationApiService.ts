@@ -1,6 +1,7 @@
 /*eslint-disable */
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+import { API_CONFIG } from "@/config/api.config";
+
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 interface ApiResponse<T = unknown> {
   success: boolean;
@@ -52,7 +53,7 @@ interface BackendNotification {
 
 class NotificationApiService {
   private getAuthHeaders() {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem(API_CONFIG.STORAGE_KEYS.TOKEN);
     return {
       "Content-Type": "application/json",
       Authorization: token ? `Bearer ${token}` : "",
@@ -62,10 +63,10 @@ class NotificationApiService {
   // Lấy danh sách notifications cho customer và employee
   async getMyNotifications(
     page = 0,
-    size = 20
+    size = 20,
   ): Promise<ApiResponse<{ content: BackendNotification[] }>> {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem(API_CONFIG.STORAGE_KEYS.TOKEN);
       if (!token) {
         console.error("❌ [API] No token found");
         return {
@@ -80,7 +81,7 @@ class NotificationApiService {
         {
           method: "GET",
           headers: this.getAuthHeaders(),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -114,7 +115,7 @@ class NotificationApiService {
   // Lấy notifications chưa đọc cho customer và employee
   async getUnreadNotifications(): Promise<ApiResponse<BackendNotification[]>> {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem(API_CONFIG.STORAGE_KEYS.TOKEN);
       if (!token) {
         console.error("[API] No token for unread notifications");
         return {
@@ -159,7 +160,7 @@ class NotificationApiService {
         {
           method: "GET",
           headers: this.getAuthHeaders(),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -175,7 +176,7 @@ class NotificationApiService {
 
   // Đánh dấu đã đọc
   async markAsRead(
-    notificationId: string
+    notificationId: string,
   ): Promise<ApiResponse<BackendNotification>> {
     try {
       const response = await fetch(
@@ -183,7 +184,7 @@ class NotificationApiService {
         {
           method: "PUT",
           headers: this.getAuthHeaders(),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -224,7 +225,7 @@ class NotificationApiService {
         {
           method: "DELETE",
           headers: this.getAuthHeaders(),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -240,7 +241,7 @@ class NotificationApiService {
 
   // Tạo notification mới
   async createNotification(
-    notification: Partial<BackendNotification>
+    notification: Partial<BackendNotification>,
   ): Promise<ApiResponse<BackendNotification>> {
     try {
       const response = await fetch(`${API_BASE_URL}/notifications`, {
@@ -252,13 +253,13 @@ class NotificationApiService {
       console.log(
         "📡 API Response status:",
         response.status,
-        response.statusText
+        response.statusText,
       );
 
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(
-          `Failed to create notification: ${response.status} ${errorText}`
+          `Failed to create notification: ${response.status} ${errorText}`,
         );
       }
 
@@ -285,7 +286,7 @@ class NotificationApiService {
   }
 
   private mapTypeToFrontend(
-    type: string
+    type: string,
   ): "info" | "success" | "warning" | "error" {
     switch (type) {
       case "REQUEST":

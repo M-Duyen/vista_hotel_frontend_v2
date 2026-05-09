@@ -1,59 +1,67 @@
 import axios from "axios";
-import { refreshToken } from "./authService";
+import type { AxiosInstance, AxiosError } from "axios";
+import { API_CONFIG } from "@/config/api.config";
 
-export const api = axios.create({
-  baseURL: "http://localhost:8080",
-  withCredentials: false,
-  headers: { "Content-Type": "application/json" },
-});
+const createApiClient = (baseURL: string): AxiosInstance => {
+    const client = axios.create({
+        baseURL,
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
 
-// Request interceptor - Tự động thêm JWT token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`; 
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
+    // Request interceptor - add token
+    client.interceptors.request.use(
+        (config) => {
+            const token = localStorage.getItem(API_CONFIG.STORAGE_KEYS.TOKEN);
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+            return config;
+        },
+        (error) => Promise.reject(error),
+    );
+
+    // Response interceptor - common error handling
+    client.interceptors.response.use(
+        (response) => response,
+        (error: AxiosError) => {
+            const status = error.response?.status;
+            const endpoint = error.config?.url;
+            const errorMessage =
+                (error.response?.data as Record<string, unknown>)?.message ||
+                error.message;
+
+            if (status === 401) {
+                localStorage.removeItem(API_CONFIG.STORAGE_KEYS.TOKEN);
+                localStorage.removeItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
+                localStorage.removeItem(API_CONFIG.STORAGE_KEYS.USER);
+                console.error(`[401] Unauthorized at ${endpoint}:`, errorMessage);
+            }
+
+            if (status === 403) {
+                console.error(`[403] Forbidden at ${endpoint}:`, errorMessage);
+                console.warn("Ban khong co quyen truy cap tai nguyen nay.");
+            }
+
+            if (status && status >= 500) {
+                console.error(`[${status}] Server error at ${endpoint}:`, errorMessage);
+            }
+
+            return Promise.reject(error);
+        },
+    );
+
+    return client;
+};
+
+export const api = createApiClient(API_CONFIG.BASE_URL);
+export const authApi = createApiClient(
+    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH}`,
 );
-
-// Response interceptor - Auto refresh token khi hết hạn
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    // Nếu token hết hạn (401) và chưa retry
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true; // Đánh dấu đã retry
-
-      try {
-        const result = await refreshToken(); // Gọi API refresh token
-
-        if (result.success && result.token) {
-          // Refresh thành công → Cập nhật token mới
-          originalRequest.headers.Authorization = `Bearer ${result.token}`;
-          return api(originalRequest); // Retry request gốc với token mới
-        } else {
-          // Refresh thất bại, logout
-          localStorage.removeItem("token");
-          localStorage.removeItem("refreshToken");
-          localStorage.removeItem("user");
-          window.location.href = "/auth/login";
-        }
-      } catch (refreshError) {
-        // Lỗi khi refresh → Logout
-        localStorage.removeItem("token");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("user");
-        window.location.href = "/auth/login";
-        return Promise.reject(refreshError);
-      }
-    }
-    return Promise.reject(error);
-  }
-)
+export const usersApi = createApiClient(
+    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}`,
+);
+export const bookingsApi = createApiClient(
+    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.BOOKINGS}`,
+);

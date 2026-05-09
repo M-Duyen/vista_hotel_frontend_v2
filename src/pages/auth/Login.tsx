@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { faEnvelope, faLock } from "@fortawesome/free-solid-svg-icons";
 import logoImage from "../../assets/images/logoWhite.png";
@@ -6,7 +6,8 @@ import googleLogo from "../../assets/images/google-logo.svg";
 import Button from "../../components/common/Button";
 import FloatingInput from "../../components/common/FloatingInput";
 import CustomCaptcha from "../../components/common/CustomCaptcha";
-import { handleLogin } from "../../services/authService";
+import type { CustomCaptchaRef } from "../../components/common/CustomCaptcha";
+import { useAuth } from "../../hooks/useAuth";
 import {
   validateEmailOrPhoneOrUsername,
   validatePasswordCombined,
@@ -15,6 +16,7 @@ import {
 import { useToastContext } from "../../hooks/useToastContext";
 
 const Login: React.FC = () => {
+  const { login } = useAuth();
   const [identifier, setIdentifier] = useState(""); // Email hoặc phone
   const [password, setPassword] = useState("");
   const [identifierError, setIdentifierError] = useState("");
@@ -25,6 +27,7 @@ const Login: React.FC = () => {
   const [shakeKey, setShakeKey] = useState(0);
   const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
   const [captchaError, setCaptchaError] = useState("");
+  const captchaRef = useRef<CustomCaptchaRef>(null);
   const navigate = useNavigate();
   const toast = useToastContext();
 
@@ -102,34 +105,52 @@ const Login: React.FC = () => {
       loginPayload.userName = identifier.trim();
     }
 
-    const res = await handleLogin(loginPayload);
+    const res = await login(loginPayload);
     setLoading(false);
 
     if (res.success) {
-      if (res.token) localStorage.setItem("token", res.token);
-      if (res.data) localStorage.setItem("user", JSON.stringify(res.data));
-
       toast.success("Login successful!", { duration: 2000 });
 
       setTimeout(() => {
-        // Navigate based on user role
-        const userData = res.data as any;
-        const userRole = userData?.userRole;
-        if (userRole === "ADMIN") {
-          navigate("/admin");
-        } else if (userRole === "EMPLOYEE") {
-          navigate("/employee/daily");
-        } else {
-          navigate("/");
-        }
+        navigate("/");
       }, 1000);
     } else {
-      setPasswordError(res.message);
-      setPasswordSuccess(false);
-      toast.error(res.message, { duration: 3000 });
+      // Phân biệt các loại lỗi dựa vào error message từ backend
+      const errorMessage = res.message.toLowerCase();
+      
+      if (errorMessage.includes("account not found")) {
+        // Lỗi tài khoản không tồn tại
+        setIdentifierError("Account not found");
+        setIdentifierSuccess(false);
+        setPasswordError("");
+        setPasswordSuccess(false);
+        toast.error("Account not found. Please check your email, phone or username.", { duration: 3000 });
+      } else if (errorMessage.includes("password is incorrect")) {
+        // Lỗi mật khẩu sai
+        setPasswordError("Password is incorrect");
+        setPasswordSuccess(false);
+        setIdentifierError("");
+        setIdentifierSuccess(true);
+        toast.error("Password is incorrect. Please try again.", { duration: 3000 });
+      } else if (errorMessage.includes("invalid credentials") || errorMessage.includes("check your credentials")) {
+        // Lỗi không rõ (có thể sai cả tài khoản và mật khẩu)
+        setIdentifierError("Invalid credentials");
+        setPasswordError("Invalid credentials");
+        setIdentifierSuccess(false);
+        setPasswordSuccess(false);
+        toast.error("Invalid email, phone, username or password.", { duration: 3000 });
+      } else {
+        // Lỗi khác
+        setPasswordError(res.message);
+        setPasswordSuccess(false);
+        setIdentifierError("");
+        setIdentifierSuccess(false);
+        toast.error(res.message, { duration: 3000 });
+      }
+      
       setIsCaptchaVerified(false);
-      // Reset captcha by incrementing shakeKey to force re-render
-      setShakeKey((prev) => prev + 1);
+      // Tự động refresh captcha khi đăng nhập thất bại
+      captchaRef.current?.refresh();
     }
   };
 
@@ -141,13 +162,13 @@ const Login: React.FC = () => {
 
   const handleGoogleLogin = () => {
     window.location.href = `${
-      import.meta.env.VITE_API_BASE_URL
+      import.meta.env.VITE_API_GATEWAY_URL
     }/oauth2/authorization/google`;
   };
 
   const handleFacebookLogin = () => {
     window.location.href = `${
-      import.meta.env.VITE_API_BASE_URL
+      import.meta.env.VITE_API_GATEWAY_URL
     }/oauth2/authorization/facebook`;
   };
 
@@ -181,44 +202,45 @@ const Login: React.FC = () => {
               identifierError
                 ? "border-red-500"
                 : identifierSuccess
-                ? "border-green-500"
-                : "border-white/40"
+                  ? "border-green-500"
+                  : "border-white/40"
             }
             focusBorderColor={
               identifierError
                 ? "focus:border-red-500"
                 : identifierSuccess
-                ? "focus:border-green-500"
-                : "focus:border-[#c3923c]"
+                  ? "focus:border-green-500"
+                  : "focus:border-[#c3923c]"
             }
             labelColor={
               identifierError
                 ? "text-red-500"
                 : identifierSuccess
-                ? "text-green-500"
-                : "text-white/80"
+                  ? "text-green-500"
+                  : "text-white/80"
             }
             focusLabelColor={
               identifierError
                 ? "text-red-500"
                 : identifierSuccess
-                ? "text-green-500"
-                : "text-[#c3923c]"
+                  ? "text-green-500"
+                  : "text-[#c3923c]"
             }
-            textColor="text-white"
-            iconColor="text-white/80"
-            className="bg-transparent"
+            iconColor="text-white"
+            eyeIconColor="text-white"
+            className="bg-transparent text-white"
           />
           {identifierError && (
             <p className="text-red-500 text-xs mt-1">{identifierError}</p>
           )}
           {identifierSuccess && !identifierError && (
             <p className="text-green-500 text-xs mt-1">
+              ✓{" "}
               {detectInputType(identifier) === "email"
                 ? "Email"
                 : detectInputType(identifier) === "phone"
-                ? "Phone"
-                : "Username"}{" "}
+                  ? "Phone"
+                  : "Username"}{" "}
               is valid
             </p>
           )}
@@ -242,39 +264,39 @@ const Login: React.FC = () => {
               passwordError
                 ? "border-red-500"
                 : passwordSuccess
-                ? "border-green-500"
-                : "border-white/40"
+                  ? "border-green-500"
+                  : "border-white/40"
             }
             focusBorderColor={
               passwordError
                 ? "focus:border-red-500"
                 : passwordSuccess
-                ? "focus:border-green-500"
-                : "focus:border-[#c3923c]"
+                  ? "focus:border-green-500"
+                  : "focus:border-[#c3923c]"
             }
             labelColor={
               passwordError
                 ? "text-red-500"
                 : passwordSuccess
-                ? "text-green-500"
-                : "text-white/80"
+                  ? "text-green-500"
+                  : "text-white/80"
             }
             focusLabelColor={
               passwordError
                 ? "text-red-500"
                 : passwordSuccess
-                ? "text-green-500"
-                : "text-[#c3923c]"
+                  ? "text-green-500"
+                  : "text-[#c3923c]"
             }
-            textColor="text-white"
-            iconColor="text-white/80"
-            className="bg-transparent"
+            iconColor="text-white"
+            eyeIconColor="text-white"
+            className="bg-transparent text-white"
           />
           {passwordError && (
             <p className="text-red-500 text-xs mt-1">{passwordError}</p>
           )}
           {passwordSuccess && !passwordError && (
-            <p className="text-green-500 text-xs mt-1">Password is valid</p>
+            <p className="text-green-500 text-xs mt-1">✓ Password is valid</p>
           )}
         </div>
 
@@ -286,10 +308,12 @@ const Login: React.FC = () => {
           }`}
         >
           <CustomCaptcha
+            ref={captchaRef}
             onVerify={(isValid) => {
               setIsCaptchaVerified(isValid);
               if (isValid) setCaptchaError("");
             }}
+            autoRefreshMinutes={2}
             className="my-2"
           />
           {captchaError && (
