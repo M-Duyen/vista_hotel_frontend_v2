@@ -6,7 +6,7 @@ import {
     CardHeader,
     CardTitle,
     CardDescription,
-} from '../../../../../../frontend/src/components/my-card/components/ui/card';
+} from '@/components/my-card/components/ui/card';
 import {
     Table,
     TableBody,
@@ -14,17 +14,17 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from '../../../../../../frontend/src/components/Table';
-import { Button } from '../../../../components/my-button/components/ui/button';
-import { Input } from '../../../../components/my-input/components/ui/input';
+} from '@/components/Table';
+import { Button } from '@/components/my-button/components/ui/button';
+import { Input } from '@/components/my-input/components/ui/input';
 import {
     getAllPolicyBaseRates,
     saveHourlyRatePolicy,
-} from '../../../../services/hourlyRatePolicyService';
+} from '@/services/HourlyRatePolicyService';
 import { CiEdit } from 'react-icons/ci';
-import { FiClock, FiPlus, FiTrash2 } from 'react-icons/fi';
-import type { HourlyRatePolicy } from '../../../../types/HourlyRatePolicy';
-import ConfirmDialog from '../../../../components/dialog/ConfirmDialog';
+import {  FiPlus, FiTrash2 } from 'react-icons/fi';
+import type { HourlyRatePolicy, BaseRateItem } from '@/types/HourlyRatePolicy';
+import ConfirmDialog from '@/components/dialog/ConfirmDialog';
 
 export default function ByHourTab() {
     // notification dialog state
@@ -204,8 +204,9 @@ export default function ByHourTab() {
     ) {
         setFormData((prev) => ({
             ...prev,
-            baseRates: (prev.baseRates || []).map((row, i) =>
-                i === index ? { ...row, [field]: value } : row,
+            baseRates: (Array.isArray(prev.baseRates) ? prev.baseRates : []).map(
+                (row: BaseRateItem, i: number) =>
+                    i === index ? { ...row, [field]: value } : row,
             ),
         }));
     }
@@ -697,8 +698,10 @@ export default function ByHourTab() {
                                         </Button>
                                     </div>
                                     <div className="space-y-2">
-                                        {(formData.baseRates || []).map(
-                                            (rate, idx) => (
+                                        {(Array.isArray(formData.baseRates)
+                                            ? formData.baseRates
+                                            : []
+                                        ).map((rate: BaseRateItem, idx: number) => (
                                                 <div
                                                     key={idx}
                                                     className="flex items-center gap-3"

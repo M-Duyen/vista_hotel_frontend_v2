@@ -6,7 +6,7 @@ import {
     CardHeader,
     CardTitle,
     CardDescription,
-} from '../../../../../../frontend/src/components/my-card/components/ui/card';
+} from '@/components/my-card/components/ui/card';
 import {
     Table,
     TableBody,
@@ -14,20 +14,20 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from '../../../../../../frontend/src/components/Table';
-import { Button } from '../../../../components/my-button/components/ui/button';
-import { Input } from '../../../../components/my-input/components/ui/input';
+} from '@/components/Table';
+import { Button } from '@/components/my-button/components/ui/button';
+import { Input } from '@/components/my-input/components/ui/input';
 import {
     getAllRules,
     saveRule,
-} from '../../../../services/checkInCheckOutPolicyRuleService';
+} from '@/services/CheckInCheckOutPolicyRuleService';
 import type {
     CheckInCheckOutPolicyRule,
     RuleType,
-} from '../../../../types/CheckInCheckOutPolicyRule';
+} from '@/types/CheckInCheckOutPolicyRule';
 import { CiEdit } from 'react-icons/ci';
 import { FiPlus, FiFilter } from 'react-icons/fi';
-import ConfirmDialog from '../../../../components/dialog/ConfirmDialog';
+import ConfirmDialog from '@/components/dialog/ConfirmDialog';
 
 export default function ExtraFeesTab() {
     const [rules, setRules] = useState<CheckInCheckOutPolicyRule[]>([]);

@@ -1,15 +1,15 @@
 import React, { useState, useMemo, type FC } from 'react';
-import type { SeasonPrice } from '../../../../types/SeasonPrice';
-import type { RoomType } from '../../../../types/RoomType';
+import type { SeasonPrice } from '@/types/SeasonPrice';
+import type { RoomType } from '@/types/RoomType';
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
     CardDescription,
-} from '../../../../../../frontend/src/components/my-card/components/ui/card';
-import { Button } from '../../../../components/my-button/components/ui/button';
-import { Input } from '../../../../components/my-input/components/ui/input';
+} from '@/components/my-card/components/ui/card';
+import { Button } from '@/components/my-button/components/ui/button';
+import { Input } from '@/components/my-input/components/ui/input';
 import {
     Table,
     TableBody,
@@ -17,11 +17,11 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from '../../../../../../frontend/src/components/Table';
+} from '@/components/Table';
 import type { JSX } from 'react/jsx-runtime';
 import { CiEdit } from 'react-icons/ci';
-import Dropdown from '../../../../components/Dropdown';
-import ModernCalendar from '../../../../components/common/ModernCalendar';
+import Dropdown from '@/components/Dropdown';
+import ModernCalendar from '@/components/common/ModernCalendar';
 import { Calendar } from 'lucide-react';
 
 type Props = {

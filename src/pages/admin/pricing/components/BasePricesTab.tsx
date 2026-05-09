@@ -1,12 +1,12 @@
-import type { RoomType } from '../../../../types/RoomType';
+import type { RoomType } from '@/types/RoomType';
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
     CardDescription,
-} from '../../../../../../frontend/src/components/my-card/components/ui/card';
-import { Input } from '../../../../../../frontend/src/components/my-input/components/ui/input';
+} from '@/components/my-card/components/ui/card';
+import { Input } from '@/components/my-input/components/ui/input';
 import {
     Table,
     TableBody,
@@ -14,7 +14,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from '../../../../../../frontend/src/components/Table';
+} from '@/components/Table';
 import type { FC } from 'react';
 import { CiEdit } from 'react-icons/ci';
 
