@@ -1,0 +1,172 @@
+/* Room Comparison Feature - Custom Styles */
+
+/* 
+  Các styles bổ sung cho chức năng so sánh phòng
+  Import file này nếu cần override hoặc customize
+*/
+
+/* Compare Button on Room Card */
+.room-card-compare-btn {
+    @apply absolute top-3 right-3 p-2 rounded-full shadow-lg transition-all duration-200;
+}
+
+.room-card-compare-btn.active {
+    @apply bg-[#CCBDA3] text-white scale-100;
+}
+
+.room-card-compare-btn.inactive {
+    @apply bg-white text-gray-700 opacity-0 group-hover:opacity-100 hover:scale-110;
+}
+
+/* Compare Bar */
+.compare-bar {
+    @apply fixed bottom-0 left-0 right-0 z-40 bg-white border-t-2 border-[#CCBDA3] shadow-2xl;
+}
+
+.compare-bar-container {
+    @apply container mx-auto px-6 py-4;
+}
+
+.compare-room-thumbnail {
+    @apply w-20 h-20 rounded-lg overflow-hidden border-2 border-[#CCBDA3] shadow-md;
+}
+
+.compare-empty-slot {
+    @apply w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center;
+}
+
+/* Compare Modal */
+.compare-modal-overlay {
+    @apply fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-sm;
+}
+
+.compare-modal-content {
+    @apply relative w-full max-w-7xl max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden;
+}
+
+.compare-table {
+    @apply w-full border-collapse;
+}
+
+.compare-table thead {
+    @apply sticky top-0 bg-gray-50 z-10;
+}
+
+.compare-table th {
+    @apply px-6 py-4 text-left text-sm font-semibold text-gray-700 border-b border-gray-200;
+}
+
+.compare-table td {
+    @apply px-6 py-4 text-center text-sm text-gray-600 border-b border-l border-gray-200;
+}
+
+.compare-table tr:nth-child(even) {
+    @apply bg-gray-50;
+}
+
+.compare-table tr:nth-child(odd) {
+    @apply bg-white;
+}
+
+/* Remove Button */
+.compare-remove-btn {
+    @apply p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg;
+}
+
+/* Primary Action Button */
+.compare-primary-btn {
+    @apply px-6 py-2.5 text-sm font-medium text-white bg-[#CCBDA3] rounded-lg hover:bg-[#b8a88a] transition-colors shadow-md;
+}
+
+.compare-primary-btn:disabled {
+    @apply bg-gray-300 cursor-not-allowed;
+}
+
+/* Secondary Action Button */
+.compare-secondary-btn {
+    @apply px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors;
+}
+
+/* Badge */
+.compare-badge {
+    @apply px-2 py-0.5 text-xs font-medium text-white bg-[#CCBDA3] rounded-full;
+}
+
+/* Animations */
+@keyframes slideUpFadeIn {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.compare-bar {
+    animation: slideUpFadeIn 0.3s ease-out;
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.compare-modal-content {
+    animation: scaleIn 0.2s ease-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .compare-bar-container {
+        @apply px-4 py-3;
+    }
+
+    .compare-room-thumbnail,
+    .compare-empty-slot {
+        @apply w-16 h-16;
+    }
+
+    .compare-table th,
+    .compare-table td {
+        @apply px-3 py-3 text-xs;
+    }
+
+    .compare-modal-content {
+        @apply max-w-full m-2;
+    }
+}
+
+/* Dark mode support (optional) */
+@media (prefers-color-scheme: dark) {
+    .compare-bar {
+        @apply bg-gray-900 border-[#CCBDA3];
+    }
+
+    .compare-modal-content {
+        @apply bg-gray-900;
+    }
+
+    .compare-table th {
+        @apply bg-gray-800 text-gray-200;
+    }
+
+    .compare-table td {
+        @apply text-gray-300;
+    }
+
+    .compare-table tr:nth-child(even) {
+        @apply bg-gray-800;
+    }
+
+    .compare-table tr:nth-child(odd) {
+        @apply bg-gray-900;
+    }
+}
