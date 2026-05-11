@@ -5,20 +5,69 @@ import type { BookingDetail } from "../types/BookingDetail";
 
 const ENDPOINT = "/bookings";
 
+const mappingBookings = async (res: any) => {
+  const [
+    customerRes,
+    employeeRes,
+    earlyCheckinRes,
+    lateCheckoutRes,
+    cancellationRes,
+    bookingDetails,
+  ] = await Promise.all([
+    api.get(`/customers/${res.customerID}`),
+    api.get(`/employees/${res.employeeID}`),
+    api.get(`/early-checkins/booking/${res.bookingID}`),
+    api.get(`/late-checkouts/booking/${res.bookingID}`),
+    api.get(`/booking-cancellations/booking/${res.bookingID}`),
+    Promise.all(
+      res.bookingDetails.map((detail: any) => mappingBookingDetails(detail)),
+    ),
+  ]);
+
+  return {
+    ...res,
+    customer: customerRes.data,
+    employee: employeeRes,
+    bookingDetails,
+    earlyCheckin: earlyCheckinRes,
+    lateCheckout: lateCheckoutRes,
+    cancellation: cancellationRes,
+  };
+};
+
+const mappingBookingDetails = async (res: any) => {
+  const [roomRes, reviewRes] = await Promise.all([
+    api.get(`/rooms/${res.roomNumber}`),
+    api.get(`/reviews/booking/${res.bookingID}/room/${res.roomNumber}`),
+  ]);
+
+  return {
+    ...res,
+    room: roomRes.data || null,
+    review: reviewRes.data || null,
+  };
+};
+
 export const getAll = async (): Promise<Booking[]> => {
   try {
     const response = await api.get(ENDPOINT);
-    return Array.isArray(response.data) ? response.data : [];
+    if (!Array.isArray(response.data)) {
+      return [];
+    }
+
+    return await Promise.all(
+      response.data.map((res: any) => mappingBookings(res)),
+    );
   } catch (error) {
     console.error("Error fetching booking:", error);
-    return []; // Return empty array instead of throwing
+    return [];
   }
 };
 
 export const getBookingById = async (id: string): Promise<Booking> => {
   try {
     const response = await api.get(`${ENDPOINT}/${id}`);
-    return response.data;
+    return await mappingBookings(response.data);
   } catch (error) {
     console.error(`Error fetching booking ${id}:`, error);
     throw error;
@@ -26,11 +75,13 @@ export const getBookingById = async (id: string): Promise<Booking> => {
 };
 
 export const getBookingDetailsById = async (
-  id: string
+  id: string,
 ): Promise<BookingDetail[]> => {
   try {
     const response = await api.get(`${ENDPOINT}/details/${id}`);
-    return response.data;
+    return await Promise.all(
+      response.data.map((item: any) => mappingBookingDetails(item)),
+    );
   } catch (error) {
     console.error(`Error fetching booking details ${id}:`, error);
     throw error;
@@ -40,7 +91,7 @@ export const getBookingDetailsById = async (
 export const createBooking = async (booking: object): Promise<Booking> => {
   try {
     const response = await api.post(`${ENDPOINT}/save`, booking);
-    return response.data;
+    return await mappingBookings(response.data);
   } catch (error) {
     console.error("Error creating booking:", error);
     throw error;
@@ -50,7 +101,7 @@ export const createBooking = async (booking: object): Promise<Booking> => {
 export const saveBookingWithDetails = async (
   booking: object,
   bookingDetails: object[],
-  bookingServices: object[]
+  bookingServices: object[],
 ): Promise<boolean> => {
   try {
     const response = await api.post(`${ENDPOINT}/save-booking`, {
@@ -67,11 +118,11 @@ export const saveBookingWithDetails = async (
 
 export const updateBooking = async (
   id: string,
-  booking: object
+  booking: object,
 ): Promise<Booking> => {
   try {
     const response = await api.put(`${ENDPOINT}/edit/${id}`, booking);
-    return response.data;
+    return await mappingBookings(response.data);
   } catch (error) {
     console.error(`Error updating booking ${id}:`, error);
     throw error;
@@ -79,12 +130,13 @@ export const updateBooking = async (
 };
 
 export const getBookingsByCustomerId = async (
-  customerId: string
+  customerId: string,
 ): Promise<Booking[]> => {
   try {
     const response = await api.get(`${ENDPOINT}/customer/${customerId}`);
-    console.log(`Bookings for customer ${customerId}:`, response.data);
-    return response.data;
+    return await Promise.all(
+      response.data.map((res: any) => mappingBookings(res)),
+    );
   } catch (error) {
     console.error(`Error fetching bookings for customer ${customerId}:`, error);
     throw error;
@@ -92,11 +144,11 @@ export const getBookingsByCustomerId = async (
 };
 
 export const cancelBookingPayment = async (
-  bookingId: string
+  bookingId: string,
 ): Promise<Booking> => {
   try {
     const response = await api.put(`${ENDPOINT}/cancel-payment/${bookingId}`);
-    return response.data;
+    return await mappingBookings(response.data);
   } catch (error) {
     console.error(`Error cancelling booking payment ${bookingId}:`, error);
     throw error;
@@ -122,14 +174,14 @@ export const convertToRoomBooking = (booking: Booking): RoomBooking[] => {
       booking.status === "CHECKED_IN"
         ? "checked-in"
         : booking.status === "CHECKED_OUT"
-        ? "checked-out"
-        : booking.status === "PENDING"
-        ? "pending"
-        : booking.status === "WAITING"
-        ? "waiting"
-        : booking.status === "CANCELLED"
-        ? "cancelled"
-        : ("pending" as const),
+          ? "checked-out"
+          : booking.status === "PENDING"
+            ? "pending"
+            : booking.status === "WAITING"
+              ? "waiting"
+              : booking.status === "CANCELLED"
+                ? "cancelled"
+                : ("pending" as const),
     numberOfGuests: booking.numberOfGuests,
     totalAmount: booking.totalAmount,
   }));
@@ -160,19 +212,21 @@ export const getAllRoomBookings = async (): Promise<RoomBooking[]> => {
   return [];
 };
 
-export const searchBookings = async (keyword: string) => {
+export const searchBookings = async (
+  keyword: string,
+): Promise<RoomBooking[]> => {
   try {
     const response = await api.get(`${ENDPOINT}/search`, {
       params: { keyword },
     });
-    return response.data;
+    return mappingBookings(response.data);
   } catch (error) {
     console.error(`Error searching bookings with keyword "${keyword}":`, error);
     throw error;
   }
 };
 
-export const generateBookingID = async () => {
+export const generateBookingID = async (): Promise<string> => {
   try {
     const response = await api.get(`${ENDPOINT}/create-booking-id`);
     return response.data;
@@ -183,7 +237,7 @@ export const generateBookingID = async () => {
 };
 
 export const simulatePaymentCallback = async (
-  body: unknown
+  body: unknown,
 ): Promise<unknown> => {
   try {
     const res = await api.post(`${ENDPOINT}/pay-callback`, body);
@@ -196,7 +250,7 @@ export const simulatePaymentCallback = async (
 
 export const generateQRPayment = async (
   bookingId: string,
-  choice: number = 0
+  choice: number = 0,
 ) => {
   try {
     const response = await api.get(`${ENDPOINT}/payment-qr/${bookingId}`, {
@@ -210,7 +264,10 @@ export const generateQRPayment = async (
   }
 };
 
-export const overlapBookingExists = async (roomNumber: string) => {
+// Trả về List<LocalDateTime> -> Tìm list ngày đã đặt phòng
+export const overlapBookingExists = async (
+  roomNumber: string,
+): Promise<string> => {
   try {
     const res = await api.get(`${ENDPOINT}/overlapping-bookings/${roomNumber}`);
     return res.data;
@@ -231,55 +288,78 @@ export const overlapBookingExists = async (roomNumber: string) => {
 // };
 export const checkIn = async (bookingId: string): Promise<Booking> => {
   try {
-    const response = await api.put(
-      `${ENDPOINT}/${bookingId}/check-in`
-    );
-    return response.data;
+    const response = await api.put(`${ENDPOINT}/${bookingId}/check-in`);
+    return await mappingBookings(response.data);
   } catch (error) {
     console.error("Check-in error:", error);
     throw error;
   }
 };
 export const getBookingsByCheckInDate = async (
-  date: string
+  date: string,
 ): Promise<Booking[]> => {
-  const response = await api.get(
-    `/bookings/check-in-date?date=${date}`
-  );
-  return response.data;
+  try {
+    const response = await api.get(`/bookings/check-in-date?date=${date}`);
+    return await Promise.all(
+      response.data.map((res: any) => mappingBookings(res)),
+    );
+  } catch (error) {
+    console.error("Get bookings by CheckInDate error:", error);
+    throw error;
+  }
 };
 
 export const getBookingsByCheckInDateRange = async (
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<Booking[]> => {
-  const response = await api.get(
-    `/bookings/check-in-range?startDate=${startDate}&endDate=${endDate}`
-  );
-  return response.data;
+  try {
+    const response = await api.get(
+      `/bookings/check-in-range?startDate=${startDate}&endDate=${endDate}`,
+    );
+    return await Promise.all(
+      response.data.map((res: any) => mappingBookings(res)),
+    );
+  } catch (error) {
+    console.error("Get bookings by CheckInDate range error:", error);
+    throw error;
+  }
 };
+
 export const getBookingsByCheckOutDate = async (
-  date: string
+  date: string,
 ): Promise<Booking[]> => {
-  const response = await api.get(
-    `/bookings/check-out-date?date=${date}`
-  );
-  return response.data;
+  try {
+    const response = await api.get(`/bookings/check-out-date?date=${date}`);
+    return await Promise.all(
+      response.data.map((res: any) => mappingBookings(res)),
+    );
+  } catch (error) {
+    console.error("Get bookings by CheckOutDate error:", error);
+    throw error;
+  }
 };
 
 export const getBookingsByCheckOutDateRange = async (
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<Booking[]> => {
-  const response = await api.get(
-    `/bookings/check-out-range?startDate=${startDate}&endDate=${endDate}`
-  );
-  return response.data;
+  try {
+    const response = await api.get(
+      `/bookings/check-out-range?startDate=${startDate}&endDate=${endDate}`,
+    );
+    return await Promise.all(
+      response.data.map((res: any) => mappingBookings(res)),
+    );
+  } catch (error) {
+    console.error("Get bookings by CheckOutDateRange error:", error);
+    throw error;
+  }
 };
 
 export const processCheckout = async (
   bookingId: string,
-  paymentMethod: string
+  paymentMethod: string,
 ): Promise<any> => {
   const response = await api.post(`/bookings/${bookingId}/checkout`, {
     paymentMethod,
@@ -371,13 +451,13 @@ export const getCompletedCheckouts = async (): Promise<Booking[]> => {
 };
 
 export const getByRoom = async (roomNumber: string): Promise<Booking[]> => {
-    try {
-        const response = await api.get(`${ENDPOINT}/room/${roomNumber}`);
-        return Array.isArray(response.data) ? response.data : [];
-    } catch (error) {
-        console.error(`Error fetching bookings for room ${roomNumber}:`, error);
-        throw error;
-    }
+  try {
+    const response = await api.get(`${ENDPOINT}/room/${roomNumber}`);
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error(`Error fetching bookings for room ${roomNumber}:`, error);
+    throw error;
+  }
 };
 
 // ========== ADD SERVICES TO BOOKING ==========
@@ -390,7 +470,7 @@ export type BookingServiceCreateItem = {
 // Thêm nhiều dịch vụ cho 1 booking (nếu backend hỗ trợ bulk)
 export const addServicesToBooking = async (
   bookingId: string,
-  items: BookingServiceCreateItem[]
+  items: BookingServiceCreateItem[],
 ) => {
   const res = await api.post(`${ENDPOINT}/${bookingId}/services/bulk`, items);
   return res.data;
@@ -399,7 +479,7 @@ export const addServicesToBooking = async (
 // Thêm 1 dịch vụ cho 1 booking
 export const addServiceToBooking = async (
   bookingId: string,
-  item: BookingServiceCreateItem
+  item: BookingServiceCreateItem,
 ) => {
   const res = await api.post(`${ENDPOINT}/${bookingId}/services`, item);
   return res.data;
@@ -416,7 +496,7 @@ export const addServiceToBooking = async (
 export const checkRoomAvailability = async (
   roomNumber: string,
   checkInDate: string,
-  checkOutDate: string
+  checkOutDate: string,
 ): Promise<Booking[]> => {
   try {
     const response = await api.get(`${ENDPOINT}/check-availability`, {
@@ -437,7 +517,7 @@ export const cancelBooking = async (
   bookingId: string,
   cancelReason: string,
   cancelledBy: string,
-  refundMethod: any | null
+  refundMethod: any | null,
 ) => {
   try {
     const payload: any = {
@@ -472,34 +552,34 @@ export const getBookingServicesByBookingId = async (bookingId: string) => {
 };
 
 export const confirmPayAtCheckout = async (
-  bookingId: string
+  bookingId: string,
 ): Promise<Booking> => {
   try {
     const response = await api.put(
-      `${ENDPOINT}/${bookingId}/confirm-pay-at-checkout`
+      `${ENDPOINT}/${bookingId}/confirm-pay-at-checkout`,
     );
-    return response.data;
+    return mappingBookings(response.data);
   } catch (error) {
     console.error(
       `Error confirming pay at checkout for booking ${bookingId}:`,
-      error
+      error,
     );
     throw error;
   }
 };
 
 export const getRemainingTimeForPayment = async (
-  bookingId: string
+  bookingId: string,
 ): Promise<string> => {
   try {
     const response = await api.get(
-      `${ENDPOINT}/remaining-payment-time/${bookingId}`
+      `${ENDPOINT}/remaining-payment-time/${bookingId}`,
     );
     return response.data;
   } catch (error) {
     console.error(
       `Error getting remaining time for payment for booking ${bookingId}:`,
-      error
+      error,
     );
     throw error;
   }

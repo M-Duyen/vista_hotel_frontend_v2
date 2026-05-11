@@ -3,65 +3,65 @@ import type { AxiosInstance, AxiosError } from "axios";
 import { API_CONFIG } from "@/config/api.config";
 
 const createApiClient = (baseURL: string): AxiosInstance => {
-    const client = axios.create({
-        baseURL,
-        headers: {
-            "Content-Type": "application/json",
-        },
-    });
+  const client = axios.create({
+    baseURL,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 
-    // Request interceptor - add token
-    client.interceptors.request.use(
-        (config) => {
-            const token = localStorage.getItem(API_CONFIG.STORAGE_KEYS.TOKEN);
-            if (token) {
-                config.headers.Authorization = `Bearer ${token}`;
-            }
-            return config;
-        },
-        (error) => Promise.reject(error),
-    );
+  // Request interceptor - add token
+  client.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem(API_CONFIG.STORAGE_KEYS.TOKEN);
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => Promise.reject(error),
+  );
 
-    // Response interceptor - common error handling
-    client.interceptors.response.use(
-        (response) => response,
-        (error: AxiosError) => {
-            const status = error.response?.status;
-            const endpoint = error.config?.url;
-            const errorMessage =
-                (error.response?.data as Record<string, unknown>)?.message ||
-                error.message;
+  // Response interceptor - common error handling
+  client.interceptors.response.use(
+    (response) => response,
+    (error: AxiosError) => {
+      const status = error.response?.status;
+      const endpoint = error.config?.url;
+      const errorMessage =
+        (error.response?.data as Record<string, unknown>)?.message ||
+        error.message;
 
-            if (status === 401) {
-                localStorage.removeItem(API_CONFIG.STORAGE_KEYS.TOKEN);
-                localStorage.removeItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
-                localStorage.removeItem(API_CONFIG.STORAGE_KEYS.USER);
-                console.error(`[401] Unauthorized at ${endpoint}:`, errorMessage);
-            }
+      if (status === 401) {
+        localStorage.removeItem(API_CONFIG.STORAGE_KEYS.TOKEN);
+        localStorage.removeItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
+        localStorage.removeItem(API_CONFIG.STORAGE_KEYS.USER);
+        console.error(`[401] Unauthorized at ${endpoint}:`, errorMessage);
+      }
 
-            if (status === 403) {
-                console.error(`[403] Forbidden at ${endpoint}:`, errorMessage);
-                console.warn("Ban khong co quyen truy cap tai nguyen nay.");
-            }
+      if (status === 403) {
+        console.error(`[403] Forbidden at ${endpoint}:`, errorMessage);
+        console.warn("Ban khong co quyen truy cap tai nguyen nay.");
+      }
 
-            if (status && status >= 500) {
-                console.error(`[${status}] Server error at ${endpoint}:`, errorMessage);
-            }
+      if (status && status >= 500) {
+        console.error(`[${status}] Server error at ${endpoint}:`, errorMessage);
+      }
 
-            return Promise.reject(error);
-        },
-    );
+      return Promise.reject(error);
+    },
+  );
 
-    return client;
+  return client;
 };
 
 export const api = createApiClient(API_CONFIG.BASE_URL);
 export const authApi = createApiClient(
-    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH}`,
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH}`,
 );
 export const usersApi = createApiClient(
-    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}`,
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}`,
 );
 export const bookingsApi = createApiClient(
-    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.BOOKINGS}`,
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.BOOKINGS}`,
 );
