@@ -2,6 +2,8 @@ export interface Booking {
   bookingID: string;
   checkInDate: string;
   checkOutDate: string;
+  actualCheckInTime: string | null;
+  actualCheckOUtTime: string | null;
   numberOfGuests: number;
   status: "PENDING" | "WAITING" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED";
   specialRequests?: string;
@@ -29,7 +31,7 @@ export interface Booking {
   bookingDetails: BookingDetail[];
   earlyCheckin?: EarlyCheckin | null;
   lateCheckout?: LateCheckout | null;
-  cancellation: BookingCancellation;
+  cancellation: BookingCancellation | null;
 }
 
 export interface EarlyCheckin {

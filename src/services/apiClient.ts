@@ -1,9 +1,14 @@
 import axios from "axios";
 import { refreshToken } from "./authService";
 
+// Use environment variable or default to localhost
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+console.log("[API Client] Using base URL:", API_BASE_URL);
+
 export const api = axios.create({
-  baseURL: "http://localhost:8080",
-  withCredentials: false,
+  baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -12,13 +17,13 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`; 
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor - Auto refresh token khi hết hạn
@@ -55,5 +60,5 @@ api.interceptors.response.use(
       }
     }
     return Promise.reject(error);
-  }
-)
+  },
+);
