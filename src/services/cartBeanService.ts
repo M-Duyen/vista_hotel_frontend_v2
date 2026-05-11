@@ -8,19 +8,19 @@ export const getCartBeanByCustomerId = async (
 ): Promise<CartBean> => {
   try {
     const response = await api.get(`${ENDPOINT}/customer/${id}`);
-    const cartBean: CartBean = response.data.map((item) => {
-      return {
-        cartBeanId: item.cartBeanId,
-        customer: api
-          .get(`/customers/${item.customerId}`)
-          .then((res) => res.data),
-        items: [
-          ...item.items.map((roomNumber: string) =>
-            api.get(`/rooms/${roomNumber}`).then((res) => res.data),
-          ),
-        ],
-      };
-    });
+
+    const item = response.data;
+    const cartBean: CartBean = {
+      cartBeanId: item.cartBeanId,
+      customer: await api
+        .get(`/customers/${item.customerId}`)
+        .then((res) => res.data),
+      items: await Promise.all(
+        item.items.map((roomNumber: string) =>
+          api.get(`/rooms/${roomNumber}`).then((res) => res.data),
+        ),
+      ),
+    };
     return cartBean;
   } catch (error) {
     console.error(`Error fetching cart for customer ${id}:`, error);

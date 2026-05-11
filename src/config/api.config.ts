@@ -5,7 +5,7 @@
 
 export const API_CONFIG = {
   // Base URL do API Gateway
-  BASE_URL: import.meta.env.VITE_API_GATEWAY_URL || "http://localhost:8080",
+  BASE_URL: import.meta.env.VITE_API_GATEWAY_URL || "http://localhost:8080/api",
 
   // Service Endpoints
   ENDPOINTS: {

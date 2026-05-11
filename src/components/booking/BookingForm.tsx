@@ -597,7 +597,7 @@ export default function BookingForm({
         const roomTypeId = room.roomType?.roomTypeID;
         if (!roomTypeId) return sum;
 
-        const price = await calculateRoomPriceAfterApplyPromotion(roomTypeId);
+        const price = await calculateRoomPriceAfterApplyPromotion(roomTypeId) || 0;
         console.log("Price: " + price);
 
         return sum + price;

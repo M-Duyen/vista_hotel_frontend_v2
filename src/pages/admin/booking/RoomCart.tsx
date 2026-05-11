@@ -35,8 +35,12 @@ export default function RoomCart() {
       setError("User not logged in. Please log in to continue.");
     }
 
-    const cartBeans = await getCartBeanByCustomerId(customerId);
-    setRooms(cartBeans?.items || []);
+    try {
+      const cartBeans = await getCartBeanByCustomerId(customerId);
+      setRooms(cartBeans?.items || []);
+    } catch {
+      setRooms([]);
+    }
   };
 
   useEffect(() => {
