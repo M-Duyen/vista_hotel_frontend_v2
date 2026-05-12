@@ -483,16 +483,6 @@ const AIConcierge: React.FC = () => {
             <Header />
 
             <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 max-w-[1600px]">
-                {/* Page Title - Hidden on mobile */}
-                <div className="text-center mb-4 sm:mb-6 hidden sm:block">
-                    <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-2">
-                        AI Concierge Assistant
-                    </h1>
-                    <p className="text-sm sm:text-base text-gray-600">
-                        Your 24/7 intelligent hotel companion
-                    </p>
-                </div>
-
                 <div
                     className="bg-white rounded-lg sm:rounded-2xl shadow-xl overflow-hidden"
                     style={{
@@ -941,7 +931,7 @@ const AIConcierge: React.FC = () => {
                 </div>
 
                 {/* Features Section - Hidden on mobile */}
-                <div className="mt-8 sm:mt-12 hidden md:block">
+                {/* <div className="mt-8 sm:mt-12 hidden md:block">
                     <h2 className="text-3xl sm:text-4xl font-bold text-center mb-2 sm:mb-3 text-gray-800">
                         Why Choose Our AI Concierge?
                     </h2>
@@ -990,7 +980,7 @@ const AIConcierge: React.FC = () => {
                             </div>
                         ))}
                     </div>
-                </div>
+                </div> */}
             </div>
 
             <style>{`
