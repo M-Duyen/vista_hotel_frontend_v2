@@ -19,7 +19,7 @@ export const getAllPromotionTypes = async (): Promise<PromotionType[]> => {
 };
 
 export const getPromotionTypeById = async (
-  id: string
+  id: string,
 ): Promise<PromotionType> => {
   try {
     const response = await promotionTypesApi.get(`/${id}`);
@@ -31,7 +31,7 @@ export const getPromotionTypeById = async (
 };
 
 export const createPromotionType = async (
-  promotionTypeData: Partial<PromotionType>
+  promotionTypeData: Partial<PromotionType>,
 ): Promise<PromotionType> => {
   try {
     const payload = {
@@ -49,7 +49,7 @@ export const createPromotionType = async (
 
 export const updatePromotionType = async (
   id: string,
-  promotionTypeData: Partial<PromotionType>
+  promotionTypeData: Partial<PromotionType>,
 ): Promise<PromotionType> => {
   try {
     const payload = {

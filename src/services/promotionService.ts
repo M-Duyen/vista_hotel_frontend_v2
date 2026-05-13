@@ -58,7 +58,7 @@ export const createPromotion = async (
       startDate: string;
       endDate: string;
     }>;
-  }
+  },
 ) => {
   try {
     console.log("Sending promotion data to backend:", promotionData);
@@ -100,7 +100,7 @@ export const createPromotion = async (
       // Lấy tất cả các khuyến mãi và tìm khuyến mãi vừa tạo
       const allPromotions = await getAllPromotions();
       fullPromotion = allPromotions.find(
-        (p: Promotion) => p.promotionID === promotionData.promotionID
+        (p: Promotion) => p.promotionID === promotionData.promotionID,
       );
 
       if (!fullPromotion) {
@@ -141,11 +141,11 @@ export const savePromotion = createPromotion;
 // Cập nhật trạng thái kích hoạt của khuyến mãi
 export const updatePromotionStatus = async (
   promotionID: string,
-  active: boolean
+  active: boolean,
 ) => {
   try {
     const response = await promotionsApi.patch(
-      `/${promotionID}/status?active=${active}`
+      `/${promotionID}/status?active=${active}`,
     );
     return response.data;
   } catch (error) {

@@ -18,12 +18,12 @@ export const getAllRoomTypePromotions = async (): Promise<
 
 // Lấy khuyến mãi loại phòng theo ID khuyến mãi
 export const getRoomTypePromotionsByPromotionId = async (
-  promotionId: string
+  promotionId: string,
 ): Promise<RoomTypePromotion[]> => {
   try {
     const allRTP = await getAllRoomTypePromotions();
     return allRTP.filter(
-      (rtp: RoomTypePromotion) => rtp.promotion?.promotionID === promotionId
+      (rtp: RoomTypePromotion) => rtp.promotion?.promotionID === promotionId,
     );
   } catch (error) {
     console.error("Error fetching room type promotions:", error);
@@ -33,12 +33,12 @@ export const getRoomTypePromotionsByPromotionId = async (
 
 // Lấy khuyến mãi loại phòng theo ID loại phòng
 export const getRoomTypePromotionsByRoomTypeId = async (
-  roomTypeId: string
+  roomTypeId: string,
 ): Promise<RoomTypePromotion[]> => {
   try {
     const allRTP = await getAllRoomTypePromotions();
     return allRTP.filter(
-      (rtp: RoomTypePromotion) => rtp.roomType?.roomTypeID === roomTypeId
+      (rtp: RoomTypePromotion) => rtp.roomType?.roomTypeID === roomTypeId,
     );
   } catch (error) {
     console.error("Error fetching room type promotions:", error);
@@ -95,7 +95,7 @@ export const saveRoomTypePromotion = async (roomTypePromotionData: {
     if ((error as AxiosError).response?.data) {
       console.error(
         "  Full error:",
-        JSON.stringify((error as AxiosError).response?.data, null, 2)
+        JSON.stringify((error as AxiosError).response?.data, null, 2),
       );
     }
 
@@ -106,10 +106,10 @@ export const saveRoomTypePromotion = async (roomTypePromotionData: {
 // Delete room type promotion
 export const deleteRoomTypePromotion = async (
   promotionId: string,
-  roomTypeId: string
+  roomTypeId: string,
 ) => {
   const response = await roomTypePromotionsApi.delete(
-    `/delete?promotionId=${promotionId}&roomTypeId=${roomTypeId}`
+    `/delete?promotionId=${promotionId}&roomTypeId=${roomTypeId}`,
   );
   return response.data;
 };

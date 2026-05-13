@@ -24,7 +24,7 @@ const PromotionTableView: React.FC<PromotionTableViewProps> = ({
   onViewDetails,
 }) => {
   const getPromotionTypeName = (
-    promotionType: Promotion["promotionType"]
+    promotionType: Promotion["promotionType"],
   ): string => {
     if (typeof promotionType === "string") {
       return promotionType;

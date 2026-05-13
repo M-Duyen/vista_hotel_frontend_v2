@@ -2,17 +2,10 @@
  * API Configuration - Static constants and settings
  * Centralized configuration for all API calls
  */
-const gatewayUrl = (
-  import.meta.env.VITE_API_GATEWAY_URL || "http://localhost:8080"
-).replace(/\/+$/, "");
-
-const apiBaseUrl = gatewayUrl.endsWith("/api")
-  ? gatewayUrl
-  : `${gatewayUrl}/api`;
 
 export const API_CONFIG = {
   // Base URL do API Gateway
-  BASE_URL: apiBaseUrl,
+  BASE_URL: import.meta.env.VITE_API_GATEWAY_URL || "http://localhost:8080",
 
   // Service Endpoints
   ENDPOINTS: {

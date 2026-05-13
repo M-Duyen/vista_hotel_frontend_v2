@@ -39,12 +39,10 @@ const createApiClient = (baseURL: string): AxiosInstance => {
         console.error(`[401] Unauthorized at ${endpoint}:`, errorMessage);
       }
 
-            if (status === 403) {
-                console.error(`[403] Forbidden at ${endpoint}:`, errorMessage);
-                console.warn(
-                  "You do not have permission to access this resource.",
-                );
-            }
+      if (status === 403) {
+        console.error(`[403] Forbidden at ${endpoint}:`, errorMessage);
+        console.warn("You do not have permission to access this resource.");
+      }
 
       if (status && status >= 500) {
         console.error(`[${status}] Server error at ${endpoint}:`, errorMessage);
@@ -68,20 +66,20 @@ export const bookingsApi = createApiClient(
   `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.BOOKINGS}`,
 );
 export const emailApi = createApiClient(
-    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.EMAIL}`,
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.EMAIL}`,
 );
 export const roomsApi = createApiClient(
-    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ROOMS}`,
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ROOMS}`,
 );
 export const roomTypesApi = createApiClient(
   `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ROOMTYPES}`,
 );
 export const promotionsApi = createApiClient(
-    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS}`,
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS}`,
 );
 export const promotionTypesApi = createApiClient(
-    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS_TYPES}`,
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS_TYPES}`,
 );
 export const roomTypePromotionsApi = createApiClient(
-    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ROOM_TYPE_PROMOTIONS}`,
-)
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ROOM_TYPE_PROMOTIONS}`,
+);
