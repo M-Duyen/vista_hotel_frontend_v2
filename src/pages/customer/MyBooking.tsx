@@ -79,7 +79,7 @@ export default function MyBookingsPage() {
         // Validate and clean booking data to prevent runtime errors
         const validatedBookings = userBookings.filter((booking) => {
           if (!booking || !booking.bookingID) {
-            console.warn("⚠️ Invalid booking data:", booking);
+            console.warn("Invalid booking data:", booking);
             return false;
           }
           return true;
@@ -87,7 +87,7 @@ export default function MyBookingsPage() {
 
         setBookings(validatedBookings);
       } catch (err) {
-        console.error("❌ Error fetching bookings:", err);
+        console.error("Error fetching bookings:", err);
         setError("Không thể tải danh sách booking. Vui lòng thử lại sau.");
       } finally {
         setLoading(false);
@@ -96,8 +96,6 @@ export default function MyBookingsPage() {
 
     fetchUserBookings();
   }, []);
-
-  // Mock data removed - now using real API data from backend
 
   const statusConfig: Record<
     BookingStatus,
@@ -225,7 +223,7 @@ export default function MyBookingsPage() {
       activeFilter === "all" || booking.status === activeFilter.toUpperCase();
     const matchesSearch =
       booking.bookingID.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (booking.bookingDetails[0]?.room.roomType?.typeName || "")
+      (booking.bookingDetails[0]?.room?.roomType?.typeName || "")
         .toLowerCase()
         .includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
@@ -447,10 +445,10 @@ export default function MyBookingsPage() {
                                 </h3>
                                 <span
                                   className={`px-3 py-1 rounded-full text-xs font-semibold border ${getMembershipBadge(
-                                    booking.customer?.memberShipLevel
+                                    booking.customer?.memberShipLevel || "",
                                   )}`}
                                 >
-                                  {booking.customer.memberShipLevel}
+                                  {booking.customer?.memberShipLevel || ""}
                                 </span>
                               </div>
                               <p className="text-black/60 font-medium mb-1">
@@ -484,7 +482,7 @@ export default function MyBookingsPage() {
                                 <span>
                                   {
                                     getPaymentStatusConfig(
-                                      booking.paymentStatus
+                                      booking.paymentStatus,
                                     ).label
                                   }
                                 </span>
@@ -566,7 +564,7 @@ export default function MyBookingsPage() {
                                       >
                                         {amenity}
                                       </span>
-                                    )
+                                    ),
                                   )}
                                 </div>
                               </div>

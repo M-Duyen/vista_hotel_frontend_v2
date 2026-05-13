@@ -6,7 +6,7 @@ import {
   getBookingServicesByBookingId,
   processCheckout,
 } from "../../services/bookingService";
-import { getPaymentQRCode } from "../../services/paymentService";
+import { generateQRPayment } from "../../services/paymentService";
 
 interface BookingService {
   bookingServiceID: string;
@@ -41,7 +41,7 @@ export default function PaymentModal({
     method: string,
     amountTendered?: string,
     changeAmount?: string,
-    notes?: string
+    notes?: string,
   ) => void;
 }) {
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -82,7 +82,7 @@ export default function PaymentModal({
       setBooking(bookingData);
 
       setInitialPaymentStatus(
-        bookingData?.paymentStatus || paymentData.paymentStatus
+        bookingData?.paymentStatus || paymentData.paymentStatus,
       );
 
       if (bookingData?.bookingDetails) {
@@ -106,7 +106,7 @@ export default function PaymentModal({
   const calculateServiceCharges = () => {
     return bookingServices.reduce(
       (sum, service) => sum + service.totalAmount,
-      0
+      0,
     );
   };
 
@@ -199,7 +199,7 @@ export default function PaymentModal({
         const currentStatus = refreshed?.paymentStatus;
 
         console.log(
-          `[Attempt ${attempts + 1}] Current status: ${currentStatus}`
+          `[Attempt ${attempts + 1}] Current status: ${currentStatus}`,
         );
 
         const hasStatusChanged = currentStatus !== initialPaymentStatus;
@@ -263,7 +263,7 @@ export default function PaymentModal({
   };
 
   const handleAmountTenderedChange = (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     // Remove all non-digit characters
     const value = e.target.value.replace(/[^0-9]/g, "");
@@ -462,8 +462,8 @@ export default function PaymentModal({
                           {formatCurrency(
                             Math.abs(
                               booking.totalAmount -
-                                (roomCharges + serviceCharges)
-                            )
+                                (roomCharges + serviceCharges),
+                            ),
                           )}{" "}
                           VND
                         </td>
@@ -887,8 +887,8 @@ export default function PaymentModal({
           {isProcessingCheckout
             ? "Processing..."
             : paymentMethod === "vnpay" && paymentConfirmed
-            ? "Complete Check-out"
-            : "Complete Check-out"}
+              ? "Complete Check-out"
+              : "Complete Check-out"}
         </button>
       </div>
     </ModalContainer>

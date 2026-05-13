@@ -15,10 +15,10 @@ const mappingBookings = async (res: any) => {
     bookingDetails,
   ] = await Promise.all([
     api.get(`/customers/${res.customerID}`),
-    api.get(`/employees/${res.employeeID}`),
-    api.get(`/early-checkins/booking/${res.bookingID}`),
-    api.get(`/late-checkouts/booking/${res.bookingID}`),
-    api.get(`/booking-cancellations/booking/${res.bookingID}`),
+    api.get(`/employees/${res.employeeID}`).catch(() => null),
+    api.get(`/early-checkins/booking/${res.bookingID}`).catch(() => null),
+    api.get(`/late-checkouts/booking/${res.bookingID}`).catch(() => null),
+    api.get(`/booking-cancellations/booking/${res.bookingID}`).catch(() => null),
     Promise.all(
       res.bookingDetails.map((detail: any) => mappingBookingDetails(detail)),
     ),
@@ -27,24 +27,24 @@ const mappingBookings = async (res: any) => {
   return {
     ...res,
     customer: customerRes.data,
-    employee: employeeRes,
+    employee: employeeRes?.data || null,
     bookingDetails,
-    earlyCheckin: earlyCheckinRes,
-    lateCheckout: lateCheckoutRes,
-    cancellation: cancellationRes,
+    earlyCheckin: earlyCheckinRes?.data || null,
+    lateCheckout: lateCheckoutRes?.data || null,
+    cancellation: cancellationRes?.data || null,
   };
 };
 
 const mappingBookingDetails = async (res: any) => {
   const [roomRes, reviewRes] = await Promise.all([
     api.get(`/rooms/${res.roomNumber}`),
-    api.get(`/reviews/booking/${res.bookingID}/room/${res.roomNumber}`),
+    api.get(`/reviews/booking/${res.bookingID}/room/${res.roomNumber}`).catch(() => null),
   ]);
 
   return {
     ...res,
     room: roomRes.data || null,
-    review: reviewRes.data || null,
+    review: reviewRes?.data || null,
   };
 };
 
@@ -102,7 +102,7 @@ export const saveBookingWithDetails = async (
   booking: object,
   bookingDetails: object[],
   bookingServices: object[],
-): Promise<boolean> => {
+): Promise<Booking> => {
   try {
     const response = await api.post(`${ENDPOINT}/save-booking`, {
       booking,
@@ -170,7 +170,7 @@ export const convertToRoomBooking = (booking: Booking): RoomBooking[] => {
     guestName: booking.customer?.fullName ?? "",
     checkIn: new Date(booking.checkInDate),
     checkOut: new Date(booking.checkOutDate),
-    status:
+    status: (
       booking.status === "CHECKED_IN"
         ? "checked-in"
         : booking.status === "CHECKED_OUT"
@@ -181,7 +181,8 @@ export const convertToRoomBooking = (booking: Booking): RoomBooking[] => {
               ? "waiting"
               : booking.status === "CANCELLED"
                 ? "cancelled"
-                : ("pending" as const),
+                : "pending"
+    ) as RoomBooking["status"],
     numberOfGuests: booking.numberOfGuests,
     totalAmount: booking.totalAmount,
   }));
@@ -226,16 +227,6 @@ export const searchBookings = async (
   }
 };
 
-export const generateBookingID = async (): Promise<string> => {
-  try {
-    const response = await api.get(`${ENDPOINT}/create-booking-id`);
-    return response.data;
-  } catch (error) {
-    console.error("Error generating booking ID:", error);
-    throw error;
-  }
-};
-
 export const simulatePaymentCallback = async (
   body: unknown,
 ): Promise<unknown> => {
@@ -243,23 +234,7 @@ export const simulatePaymentCallback = async (
     const res = await api.post(`${ENDPOINT}/pay-callback`, body);
     return res.data;
   } catch (error) {
-    console.error("Error generating booking ID:", error);
-    throw error;
-  }
-};
-
-export const generateQRPayment = async (
-  bookingId: string,
-  choice: number = 0,
-) => {
-  try {
-    const response = await api.get(`${ENDPOINT}/payment-qr/${bookingId}`, {
-      params: { choice },
-      responseType: "blob",
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Error generating QR payment:", error);
+    console.error("Error simulate payment callback:", error);
     throw error;
   }
 };
@@ -553,12 +528,9 @@ export const getBookingServicesByBookingId = async (bookingId: string) => {
 
 export const confirmPayAtCheckout = async (
   bookingId: string,
-): Promise<Booking> => {
+): Promise<void> => {
   try {
-    const response = await api.put(
-      `${ENDPOINT}/${bookingId}/confirm-pay-at-checkout`,
-    );
-    return mappingBookings(response.data);
+    await api.put(`${ENDPOINT}/${bookingId}/confirm-pay-at-checkout`);
   } catch (error) {
     console.error(
       `Error confirming pay at checkout for booking ${bookingId}:`,
