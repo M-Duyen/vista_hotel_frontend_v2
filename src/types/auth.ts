@@ -4,10 +4,9 @@ export type UserType = "USER" | "CUSTOMER";
 export type RoleCode =
   | "SUPER_ADMIN"
   | "ADMIN"
-  | "MANAGER"
   | "EMPLOYEE"
-  | "STAFF"
-  | "CUSTOMER";
+  | "CUSTOMER"
+  | "GUEST";
 
 export type PermissionCode =
   | "BOOKING_VIEW"
@@ -15,10 +14,10 @@ export type PermissionCode =
   | "BOOKING_EDIT"
   | "BOOKING_DELETE"
   | "BOOKING_CANCEL"
-  | "STAFF_VIEW"
-  | "STAFF_CREATE"
-  | "STAFF_EDIT"
-  | "STAFF_DELETE"
+  | "EMPLOYEE_VIEW"
+  | "EMPLOYEE_CREATE"
+  | "EMPLOYEE_EDIT"
+  | "EMPLOYEE_DELETE"
   | "REPORT_VIEW"
   | "REPORT_CREATE"
   | "REPORT_DELETE"
