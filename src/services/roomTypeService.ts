@@ -1,11 +1,12 @@
 import type { RoomType } from "../types/RoomType";
-import { api } from "./apiClient";
+// import { api } from "./apiClient";
+import { roomTypesApi } from "./apiClient";
 
-const ENDPOINT = "/room-types";
+// const ENDPOINT = "/room-types";
 
 export const getAllRoomTypes = async () => {
   try {
-    const response = await api.get(ENDPOINT);
+    const response = await roomTypesApi.get('');
     return response.data;
   } catch (error) {
     console.error("Error fetching room types:", error);
@@ -18,7 +19,7 @@ export const getAllRoomTypes = async () => {
  */
 export const getRoomTypeById = async (id: string): Promise<RoomType> => {
   try {
-    const response = await api.get(`${ENDPOINT}/${id}`);
+    const response = await roomTypesApi.get(`/${id}`);
     return response.data;
   } catch (error) {
     console.error("Error fetching room type by ID:", error);
@@ -33,7 +34,7 @@ export const saveRoomType = async (
   roomTypeData: Partial<RoomType>
 ): Promise<RoomType> => {
   try {
-    const response = await api.post(`${ENDPOINT}/save`, roomTypeData);
+    const response = await roomTypesApi.post('/save', roomTypeData);
     return response.data;
   } catch (error) {
     console.error("Error saving room type:", error);
@@ -46,7 +47,7 @@ export const saveRoomType = async (
  */
 export const deleteRoomType = async (id: string): Promise<void> => {
   try {
-    await api.delete(`${ENDPOINT}/delete/${id}`);
+    await roomTypesApi.delete(`/${id}`);
   } catch (error) {
     console.error("Error deleting room type:", error);
     throw error;
@@ -58,8 +59,8 @@ export const calculateDiscountedPrice = async (
   bookingDate: string
 ): Promise<number> => {
   try {
-    const response = await api.get(
-      `${ENDPOINT}/discounted-price/${roomTypeId}`,
+    const response = await roomTypesApi.get(
+      `/discounted-price/${roomTypeId}`,
       { params: { bookingDate } }
     );
     return response.data;
