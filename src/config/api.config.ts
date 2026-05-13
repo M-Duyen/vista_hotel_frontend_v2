@@ -12,6 +12,7 @@ export const API_CONFIG = {
     AUTH: "/api/auth",
     USERS: "/api/users",
     BOOKINGS: "/api/bookings",
+    EMAIL: "/api/email",
   },
 
   // Timeouts (ms)

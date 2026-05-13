@@ -181,7 +181,8 @@ export const handleRegister = async (
     ) {
       return {
         success: false,
-        message: "Username, full name, password, email, and phone are required.",
+        message:
+          "Username, full name, password, email, and phone are required.",
       };
     }
 
@@ -276,36 +277,43 @@ export const isAuthenticated = (): boolean => {
 
 export const validateToken = async (): Promise<AuthResponse> => {
   try {
-    const { data } = await authApi.get("/validate");
-    return data;
+    const { data } = await authApi.get("/health");
+    return {
+      success: true,
+      message: data?.status ? `Auth service ${data.status}` : "Auth service OK",
+    };
   } catch (err: unknown) {
     return {
       success: false,
-      message: "Token is invalid or has expired",
+      message: "Auth service is unavailable",
     };
   }
 };
 
 export const refreshToken = async (): Promise<AuthResponse> => {
   try {
-    const token = getToken();
-    if (!token) {
+    const storedRefreshToken = localStorage.getItem(
+      API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN,
+    );
+    if (!storedRefreshToken) {
       return {
         success: false,
-        message: "Token not found",
+        message: "Refresh token not found",
       };
     }
 
-    const { data } = await authApi.post(
-      "/refresh-token",
-      {},
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
+    const { data } = await authApi.post("/refresh", {
+      refreshToken: storedRefreshToken,
+    });
 
-    if (data.success && data.token) {
-      localStorage.setItem("token", data.token);
+    if (data?.token) {
+      localStorage.setItem(API_CONFIG.STORAGE_KEYS.TOKEN, data.token);
+      if (data.refreshToken) {
+        localStorage.setItem(
+          API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN,
+          data.refreshToken,
+        );
+      }
     }
 
     return data;
@@ -315,6 +323,16 @@ export const refreshToken = async (): Promise<AuthResponse> => {
       message: "Unable to refresh token",
     };
   }
+};
+
+export const sendOtp = async (email: string) => {
+  const { data } = await authApi.post("/send-otp", { email });
+  return data;
+};
+
+export const verifyOtp = async (email: string, otp: string) => {
+  const { data } = await authApi.post("/verify-otp", { email, otp });
+  return data;
 };
 
 /**
@@ -369,8 +387,12 @@ export const resetPassword = async (
       newPassword,
     });
 
+    const normalizedSuccess =
+      data?.success === true ||
+      (data?.success !== false && /success/i.test(data?.message || ""));
+
     // Nếu reset thành công thì gửi email thông báo
-    if (data.success) {
+    if (normalizedSuccess) {
       const html = passwordChangedTemplate("Khách hàng");
 
       await sendEmail({
@@ -381,10 +403,10 @@ export const resetPassword = async (
     }
 
     return {
-      success: data.success,
+      success: normalizedSuccess,
       message:
         data.message ||
-        (data.success
+        (normalizedSuccess
           ? "Password reset successfully!"
           : "Password reset failed"),
     };

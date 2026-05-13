@@ -1,4 +1,4 @@
-import {api} from "./apiClient";
+import { emailApi } from "./apiClient";
 
 export interface EmailPayload {
   to: string;
@@ -8,7 +8,7 @@ export interface EmailPayload {
 
 export const sendEmail = async (payload: EmailPayload) => {
     try {
-        const response = await api.post('/email/send', payload);
+        const response = await emailApi.post('/send', payload);
         return response.data;
     } catch (error) {
         console.error("Error sending email:", error);

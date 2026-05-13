@@ -65,3 +65,6 @@ export const usersApi = createApiClient(
 export const bookingsApi = createApiClient(
     `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.BOOKINGS}`,
 );
+export const emailApi = createApiClient(
+    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.EMAIL}`,
+);
