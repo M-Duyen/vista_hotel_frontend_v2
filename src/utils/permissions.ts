@@ -81,10 +81,10 @@ export const isAdmin = (user: User | null): boolean => {
 };
 
 /**
- * Check if user is employee or manager
+ * Check if user is employee
  */
 export const isEmployee = (user: User | null): boolean => {
-  return hasAnyRole(user, ["EMPLOYEE", "MANAGER", "ADMIN", "SUPER_ADMIN"]);
+  return hasAnyRole(user, ["EMPLOYEE", "ADMIN", "SUPER_ADMIN"]);
 };
 
 /**
@@ -117,10 +117,9 @@ export const getPrimaryRole = (user: User | null): RoleCode | null => {
   const roleHierarchy: RoleCode[] = [
     "SUPER_ADMIN",
     "ADMIN",
-    "MANAGER",
     "EMPLOYEE",
-    "STAFF",
     "CUSTOMER",
+    "GUEST",
   ];
 
   for (const role of roleHierarchy) {
@@ -196,10 +195,9 @@ export const getRoleLabel = (role: RoleCode | null): string => {
   const labels: Record<RoleCode, string> = {
     SUPER_ADMIN: "Siêu quản trị viên",
     ADMIN: "Quản trị viên",
-    MANAGER: "Quản lý bộ phận",
     EMPLOYEE: "Nhân viên",
-    STAFF: "Nhân viên thấp nhất",
     CUSTOMER: "Khách hàng",
+    GUEST: "Khách vãng lai",
   };
 
   return role ? labels[role] : "Unknown";
