@@ -16,9 +16,10 @@ export const API_CONFIG = {
 
   // Service Endpoints
   ENDPOINTS: {
-    AUTH: "/auth",
-    USERS: "/users",
-    BOOKINGS: "/bookings",
+    AUTH: "/api/auth",
+    USERS: "/api/users",
+    BOOKINGS: "/api/bookings",
+    EMAIL: "/api/email",
   },
 
   // Timeouts (ms)
