@@ -1,10 +1,35 @@
 /* eslint-disable*/
-import { api } from "./apiClient";
+import { promotionsApi } from "./apiClient";
 import type { Promotion } from "../types/Promotion";
 import { saveRoomTypePromotion } from "./roomTypePromotionService";
 // import type { RoomTypePromotion } from "../types/RoomTypePromotion";
 
-const ENDPOINT = "/promotions";
+const normalizePromotion = (raw: any): Promotion => ({
+  promotionID: raw?.promotionID ?? raw?.promotionId ?? "",
+  promotionName: raw?.promotionName ?? "",
+  description: raw?.description ?? "",
+  discountType: raw?.discountType,
+  active: raw?.active ?? false,
+  promotionType: raw?.promotionType
+    ? {
+        promotionTypeID:
+          raw.promotionType?.promotionTypeID ??
+          raw.promotionType?.promotionTypeId ??
+          "",
+        promotionTYPEName:
+          raw.promotionType?.promotionTYPEName ??
+          raw.promotionType?.promotionTypeName ??
+          "",
+        description: raw.promotionType?.description ?? "",
+      }
+    : {
+        promotionTypeID: "",
+        promotionTYPEName: "",
+        description: "",
+      },
+  admin: raw?.admin ?? undefined,
+  roomTypePromotion: raw?.roomTypePromotion ?? raw?.roomTypePromotions ?? [],
+});
 
 interface AxiosError {
   response?: {
@@ -15,8 +40,9 @@ interface AxiosError {
 
 export const getAllPromotions = async () => {
   try {
-    const response = await api.get(`${ENDPOINT}`);
-    return response.data;
+    const response = await promotionsApi.get("");
+    const items = Array.isArray(response.data) ? response.data : [];
+    return items.map(normalizePromotion);
   } catch (error) {
     console.error("Error fetching promotions:", error);
     throw error;
@@ -40,38 +66,40 @@ export const createPromotion = async (
     // Trích xuất roomTypePromotions trước khi gửi
     const { roomTypePromotions, ...promotionOnly } = promotionData;
 
-    // TODO: Get admin from localStorage (JWT token) when authentication is implemented
-    // fake admin for testing
-    const fakeAdmin = {
-      id: "ADMIN001",
-      userName: "adminvista",
-      password: "@admin",
-      email: "admin@vista.com",
-      phone: "0999999999",
-      fullName: "Admin Vista",
-      address: "TP.HCM",
-      userRole: "ADMIN",
-      adminLevel: 1,
-      permissions: ["ALL"],
-    };
+    const promotionTypeId =
+      typeof promotionOnly.promotionType === "string"
+        ? promotionOnly.promotionType
+        : promotionOnly.promotionType?.promotionTypeID ||
+          promotionOnly.promotionType?.promotionTypeId;
 
-    // Thêm fake admin vào promotion
-    const promotionWithAdmin = {
-      ...promotionOnly,
-      admin: fakeAdmin,
+    // TODO: Get adminId from auth context when available
+    const promotionPayload = {
+      promotionId: promotionOnly.promotionID,
+      promotionName: promotionOnly.promotionName,
+      description: promotionOnly.description,
+      discountType: promotionOnly.discountType,
+      active: promotionOnly.active ?? true,
+      adminId: "ADMIN001",
+      promotionType: promotionTypeId
+        ? {
+            promotionTypeId,
+          }
+        : undefined,
     };
 
     // Tạo promotion trước
-    const response = await api.post(`${ENDPOINT}/create`, promotionWithAdmin);
+    const response = await promotionsApi.post("/create", promotionPayload);
     console.log("Promotion created:", response.data);
+
+    let fullPromotion: Promotion | undefined;
 
     // Lưu các room type promotions riêng nếu có
     if (roomTypePromotions && roomTypePromotions.length > 0) {
       console.log("Saving room type promotions...");
 
       // Lấy tất cả các khuyến mãi và tìm khuyến mãi vừa tạo
-      const allPromotions = await api.get(`${ENDPOINT}`);
-      const fullPromotion = allPromotions.data.find(
+      const allPromotions = await getAllPromotions();
+      fullPromotion = allPromotions.find(
         (p: Promotion) => p.promotionID === promotionData.promotionID
       );
 
@@ -99,7 +127,7 @@ export const createPromotion = async (
       await Promise.all(savePromises);
     }
 
-    return response.data;
+    return fullPromotion ?? normalizePromotion(promotionPayload);
   } catch (error: unknown) {
     console.error("Error saving promotion:", error);
     console.error("Error response:", (error as AxiosError).response?.data);
@@ -116,8 +144,8 @@ export const updatePromotionStatus = async (
   active: boolean
 ) => {
   try {
-    const response = await api.patch(
-      `${ENDPOINT}/${promotionID}/status?active=${active}`
+    const response = await promotionsApi.patch(
+      `/${promotionID}/status?active=${active}`
     );
     return response.data;
   } catch (error) {
@@ -128,8 +156,8 @@ export const updatePromotionStatus = async (
 
 export const getPromotionById = async (promotionID: string) => {
   try {
-    const response = await api.get(`${ENDPOINT}/find/${promotionID}`);
-    return response.data;
+    const response = await promotionsApi.get(`/find/${promotionID}`);
+    return normalizePromotion(response.data);
   } catch (error) {
     console.error("Error fetching promotion by ID:", error);
     throw error;
