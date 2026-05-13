@@ -19,6 +19,8 @@ export const API_CONFIG = {
     AUTH: "/api/auth",
     USERS: "/api/users",
     BOOKINGS: "/api/bookings",
+    ROOMS: "/api/rooms",
+    ROOMTYPES: "/api/room-types",
     EMAIL: "/api/email",
   },
 

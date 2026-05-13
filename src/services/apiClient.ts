@@ -68,3 +68,9 @@ export const bookingsApi = createApiClient(
 export const emailApi = createApiClient(
     `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.EMAIL}`,
 );
+export const roomsApi = createApiClient(
+    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ROOMS}`,
+);
+export const roomTypesApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ROOMTYPES}`,
+);
