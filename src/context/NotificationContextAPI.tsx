@@ -45,6 +45,19 @@ interface NotificationProviderProps {
     userId?: string;
 }
 
+const getStoredUser = () => {
+    const savedUser = localStorage.getItem(API_CONFIG.STORAGE_KEYS.USER);
+    if (!savedUser) return null;
+
+    try {
+        return JSON.parse(savedUser);
+    } catch (error) {
+        console.error('[Notification] Invalid user in localStorage:', error);
+        localStorage.removeItem(API_CONFIG.STORAGE_KEYS.USER);
+        return null;
+    }
+};
+
 // ============================
 // MAIN PROVIDER
 // ============================
@@ -54,8 +67,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     const [notifications, setNotifications] = useState<Notification[]>([]);
 
     // Load user from localStorage
-    const savedUser = localStorage.getItem('user');
-    const parsedUser = savedUser ? JSON.parse(savedUser) : null;
+    const parsedUser = getStoredUser();
 
     const userId =
         parsedUser?.customerId ||

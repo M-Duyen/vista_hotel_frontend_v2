@@ -6,7 +6,7 @@ import {
   getBookingServicesByBookingId,
   processCheckout,
 } from "../../services/bookingService";
-import { getPaymentQRCode } from "../../services/paymentService";
+import { generateQRPayment } from "../../services/paymentService";
 
 interface BookingService {
   bookingServiceID: string;
@@ -174,7 +174,7 @@ export default function PaymentModal({
 
   const generateVNPayQR = async () => {
     try {
-      const qrUrl = await getPaymentQRCode(paymentData.bookingId);
+      const qrUrl = await generateQRPayment(paymentData.bookingId);
       setQrCodeUrl(qrUrl);
       startPaymentPolling();
     } catch (error) {

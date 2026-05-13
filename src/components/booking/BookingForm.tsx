@@ -9,9 +9,7 @@ import { MdOutlineRoomService, MdRoomService } from "react-icons/md";
 import { getAll } from "../../services/serviceService";
 import { CiSquareQuestion } from "react-icons/ci";
 import {
-  generateBookingID,
   saveBookingWithDetails,
-  getBookingById,
   overlapBookingExists,
   checkRoomAvailability,
 } from "../../services/bookingService";
@@ -113,7 +111,6 @@ export default function BookingForm({
     useState<PaymentMethod>(PAYMENT_METHODS[0]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<string[]>([]);
-  const [bookingID, setBookingID] = useState<string>("");
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState<CustomerVoucher[]>([]);
 
@@ -134,9 +131,6 @@ export default function BookingForm({
   const fetchedData = async () => {
     try {
       setLoading(true);
-
-      const id = "BK0001"; // ID tự động generate ở BE
-      setBookingID(id);
 
       const service = await getAll();
       setServices(service);
@@ -229,7 +223,7 @@ export default function BookingForm({
   };
 
   const [booking] = useState({
-    bookingID: bookingID || "",
+    bookingID: "",
     checkInDate: checkInDate ? checkInDate.toISOString() : "",
     checkOutDate: checkOutDate ? checkOutDate.toISOString() : "",
     numberOfGuests: 0,
@@ -768,7 +762,6 @@ export default function BookingForm({
     }
 
     const payload: any = {
-      bookingID: bookingID,
       checkInDate: formatLocalDateTime(checkInWithTime),
       checkOutDate: formatLocalDateTime(checkOutWithTime),
       numberOfGuests: booking.numberOfGuests || 1,
@@ -782,52 +775,36 @@ export default function BookingForm({
       type: bookingType,
       duration: bookingType === "HOURLY" ? duration : 0,
       hourlyRate: bookingType === "HOURLY" ? calculatedHourlyRate : null,
-      customer: {
-        id: customer?.id || null,
-      },
+      customerID: customer?.id || null,
       totalCost: await calculateServiceCosts(),
     };
 
     const bookingDetails = rooms.map((r: Room) => ({
-      room: {
-        roomNumber: r.roomNumber,
-      },
+      roomNumber: r.roomNumber,
       roomPrice: r.roomType?.basePrice || 0,
       review: null,
     }));
 
-    // Build bookingServices with room association: one entry per target room
+    // Backend booking_services is keyed by booking + serviceId, so aggregate room-targeted services per service.
     const bookingServicesWithRooms: any[] = [];
     getSelectedServiceObjects().forEach((s: Service) => {
       const targets = selectedServiceTargets[s.serviceID];
       const quantity = serviceQuantities[s.serviceID] || 1;
+      const roomCount =
+        !targets || targets === "ALL"
+          ? rooms.length || 1
+          : Array.isArray(targets)
+            ? targets.length || 1
+            : 1;
 
-      if (!targets || targets === "ALL") {
-        // apply to every room in the booking
-        rooms.forEach((room) => {
-          bookingServicesWithRooms.push({
-            service: { serviceID: s.serviceID },
-            servicePrice: s.price,
-            quantity: quantity,
-            totalAmount: s.price * quantity,
-            orderStatus: "PLACE",
-            paymentMethod: selectedPaymentMethod,
-            room: { roomNumber: room.roomNumber },
-          });
-        });
-      } else if (Array.isArray(targets)) {
-        targets.forEach((roomNumber) => {
-          bookingServicesWithRooms.push({
-            service: { serviceID: s.serviceID },
-            servicePrice: s.price,
-            quantity: quantity,
-            totalAmount: s.price * quantity,
-            orderStatus: "PLACE",
-            paymentMethod: selectedPaymentMethod,
-            room: { roomNumber },
-          });
-        });
-      }
+      bookingServicesWithRooms.push({
+        serviceId: s.serviceID,
+        servicePrice: s.price,
+        quantity: quantity * roomCount,
+        totalAmount: s.price * quantity * roomCount,
+        orderStatus: "PLACE",
+        paymentMethod: selectedPaymentMethod,
+      });
     });
 
     console.log("Booking payload:", payload);
@@ -836,17 +813,15 @@ export default function BookingForm({
 
     try {
       setLoading(true);
-      const success = await saveBookingWithDetails(
+      const savedBooking = await saveBookingWithDetails(
         payload,
         bookingDetails,
         bookingServicesWithRooms,
       );
 
-      if (!success) {
+      if (!savedBooking?.bookingID) {
         throw new Error("Failed to save booking");
       }
-
-      const savedBooking = await getBookingById(bookingID);
 
       console.log("Saved booking response:", savedBooking);
 
@@ -858,7 +833,7 @@ export default function BookingForm({
       const bookingToPass = {
         ...payload,
         ...(savedBooking || {}),
-        bookingID: savedBooking?.bookingID || bookingID,
+        bookingID: savedBooking.bookingID,
         customer: savedBooking?.customer || customer,
       };
 

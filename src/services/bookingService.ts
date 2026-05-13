@@ -5,46 +5,75 @@ import type { BookingDetail } from "../types/BookingDetail";
 
 const ENDPOINT = "/bookings";
 
+const optionalGetData = async <T = any>(url: string): Promise<T | null> => {
+  try {
+    const response = await api.get(url);
+    return response.data ?? null;
+  } catch (error) {
+    console.warn(`Optional booking data not available from ${url}:`, error);
+    return null;
+  }
+};
+
 const mappingBookings = async (res: any) => {
+  const bookingDetailsSource = Array.isArray(res.bookingDetails)
+    ? res.bookingDetails
+    : [];
+
   const [
-    customerRes,
-    employeeRes,
-    earlyCheckinRes,
-    lateCheckoutRes,
-    cancellationRes,
+    customer,
+    employee,
+    earlyCheckin,
+    lateCheckout,
+    cancellation,
     bookingDetails,
   ] = await Promise.all([
-    api.get(`/customers/${res.customerID}`),
-    api.get(`/employees/${res.employeeID}`),
-    api.get(`/early-checkins/booking/${res.bookingID}`),
-    api.get(`/late-checkouts/booking/${res.bookingID}`),
-    api.get(`/booking-cancellations/booking/${res.bookingID}`),
+    res.customerID ? optionalGetData(`/customers/${res.customerID}`) : null,
+    res.employeeID ? optionalGetData(`/employees/${res.employeeID}`) : null,
+    res.earlyCheckinID
+      ? optionalGetData(`/early-checkins/booking/${res.bookingID}`)
+      : null,
+    res.lateCheckoutID
+      ? optionalGetData(`/late-checkouts/booking/${res.bookingID}`)
+      : null,
+    res.cancellationID
+      ? optionalGetData(`/booking-cancellations/booking/${res.bookingID}`)
+      : null,
     Promise.all(
-      res.bookingDetails.map((detail: any) => mappingBookingDetails(detail)),
+      bookingDetailsSource.map((detail: any) =>
+        mappingBookingDetails(detail, res.bookingID),
+      ),
     ),
   ]);
 
   return {
     ...res,
-    customer: customerRes.data,
-    employee: employeeRes,
+    customer: customer || null,
+    employee,
     bookingDetails,
-    earlyCheckin: earlyCheckinRes,
-    lateCheckout: lateCheckoutRes,
-    cancellation: cancellationRes,
+    earlyCheckin,
+    lateCheckout,
+    cancellation,
   };
 };
 
-const mappingBookingDetails = async (res: any) => {
-  const [roomRes, reviewRes] = await Promise.all([
-    api.get(`/rooms/${res.roomNumber}`),
-    api.get(`/reviews/booking/${res.bookingID}/room/${res.roomNumber}`),
+const mappingBookingDetails = async (res: any, bookingID?: string) => {
+  const [room, review] = await Promise.all([
+    res.roomNumber ? optionalGetData(`/rooms/${res.roomNumber}`) : null,
+    bookingID && res.roomNumber
+      ? optionalGetData(`/reviews/booking/${bookingID}/room/${res.roomNumber}`)
+      : Promise.resolve(res.review ?? null),
   ]);
 
   return {
     ...res,
-    room: roomRes.data || null,
-    review: reviewRes.data || null,
+    room: room || {
+      roomNumber: res.roomNumber,
+      status: "BOOKED",
+      roomType: null,
+      images: [],
+    },
+    review,
   };
 };
 
@@ -102,7 +131,7 @@ export const saveBookingWithDetails = async (
   booking: object,
   bookingDetails: object[],
   bookingServices: object[],
-): Promise<boolean> => {
+): Promise<Booking> => {
   try {
     const response = await api.post(`${ENDPOINT}/save-booking`, {
       booking,
@@ -226,16 +255,6 @@ export const searchBookings = async (
   }
 };
 
-export const generateBookingID = async (): Promise<string> => {
-  try {
-    const response = await api.get(`${ENDPOINT}/create-booking-id`);
-    return response.data;
-  } catch (error) {
-    console.error("Error generating booking ID:", error);
-    throw error;
-  }
-};
-
 export const simulatePaymentCallback = async (
   body: unknown,
 ): Promise<unknown> => {
@@ -244,22 +263,6 @@ export const simulatePaymentCallback = async (
     return res.data;
   } catch (error) {
     console.error("Error generating booking ID:", error);
-    throw error;
-  }
-};
-
-export const generateQRPayment = async (
-  bookingId: string,
-  choice: number = 0,
-) => {
-  try {
-    const response = await api.get(`${ENDPOINT}/payment-qr/${bookingId}`, {
-      params: { choice },
-      responseType: "blob",
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Error generating QR payment:", error);
     throw error;
   }
 };
@@ -295,6 +298,7 @@ export const checkIn = async (bookingId: string): Promise<Booking> => {
     throw error;
   }
 };
+
 export const getBookingsByCheckInDate = async (
   date: string,
 ): Promise<Booking[]> => {

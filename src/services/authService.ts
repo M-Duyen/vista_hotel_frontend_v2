@@ -36,7 +36,7 @@ export interface AuthResponse<T = unknown> {
 }
 
 export const handleLogin = async (
-  payload: LoginData
+  payload: LoginData,
 ): Promise<AuthResponse> => {
   try {
     const { data } = await api.post("/auth/login", payload);
@@ -64,7 +64,7 @@ export const handleLogin = async (
     const user = data.data;
     if (user?.email) {
       const html = loginWelcomeBackEmail(
-        user.fullName || user.userName || "Khách hàng"
+        user.fullName || user.userName || "Khách hàng",
       );
       sendEmail({
         to: user.email,
@@ -91,7 +91,7 @@ export const handleLogin = async (
 };
 
 export const handleRegister = async (
-  payload: RegisterData
+  payload: RegisterData,
 ): Promise<AuthResponse> => {
   try {
     const { data } = await api.post("/auth/register", payload);
@@ -108,7 +108,7 @@ export const handleRegister = async (
     const user = data.data;
     if (user?.email) {
       const html = registerSuccessEmail(
-        user.fullName || user.userName || "Khách hàng"
+        user.fullName || user.userName || "Khách hàng",
       );
       sendEmail({
         to: user.email,
@@ -133,14 +133,64 @@ export const handleRegister = async (
   }
 };
 
-export const handleLogout = (): AuthResponse => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("user");
-  return {
-    success: true,
-    message: "Logout successful!",
-  };
+/**
+ * Save token to localStorage
+ */
+export const saveTokens = (token: string, refreshToken?: string) => {
+  localStorage.setItem(API_CONFIG.STORAGE_KEYS.TOKEN, token);
+  if (refreshToken) {
+    localStorage.setItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+  }
+};
+
+/**
+ * Save user to localStorage
+ */
+export const saveUser = (user: StoredUser) => {
+  localStorage.setItem(API_CONFIG.STORAGE_KEYS.USER, JSON.stringify(user));
+};
+
+/**
+ * Get stored token
+ */
+export const getToken = (): string | null => {
+  return localStorage.getItem(API_CONFIG.STORAGE_KEYS.TOKEN);
+};
+
+/**
+ * Get stored user
+ */
+export const getUser = (): StoredUser | null => {
+  const user = localStorage.getItem(API_CONFIG.STORAGE_KEYS.USER);
+  if (!user) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(user) as StoredUser;
+  } catch (error) {
+    console.error("Invalid stored user data. Clearing auth storage.", error);
+    localStorage.removeItem(API_CONFIG.STORAGE_KEYS.USER);
+    localStorage.removeItem(API_CONFIG.STORAGE_KEYS.TOKEN);
+    localStorage.removeItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
+    return null;
+  }
+};
+
+/**
+ * Logout
+ */
+export const handleLogout = () => {
+  localStorage.removeItem(API_CONFIG.STORAGE_KEYS.TOKEN);
+  localStorage.removeItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
+  localStorage.removeItem(API_CONFIG.STORAGE_KEYS.USER);
+};
+
+/**
+ * Check if user is authenticated
+ */
+export const isAuthenticated = (): boolean => {
+  return getToken() !== null;
 };
 
 export const validateToken = async (): Promise<AuthResponse> => {
@@ -170,7 +220,7 @@ export const refreshToken = async (): Promise<AuthResponse> => {
       {},
       {
         headers: { Authorization: `Bearer ${refreshToken}` },
-      }
+      },
     );
 
     if (data.success && data.token) {
@@ -193,7 +243,7 @@ export const refreshToken = async (): Promise<AuthResponse> => {
  */
 export const changePassword = async (
   userId: string,
-  data: PasswordChangeRequest
+  data: PasswordChangeRequest,
 ): Promise<{ success: boolean; message: string }> => {
   try {
     const response = await api.post(`/auth/change-password`, {
@@ -223,14 +273,14 @@ export const changePassword = async (
     };
   } catch (error: any) {
     throw new Error(
-      error?.response?.data?.message || "Failed to change password"
+      error?.response?.data?.message || "Failed to change password",
     );
   }
 };
 
 export const resetPassword = async (
   email: string,
-  newPassword: string
+  newPassword: string,
 ): Promise<{ success: boolean; message: string }> => {
   try {
     const { data } = await api.post("/auth/reset-password", {
@@ -269,7 +319,7 @@ export const resetPassword = async (
 };
 
 export const sendOtpEmail = async (
-  identifier: string
+  identifier: string,
 ): Promise<{ success: boolean; message: string }> => {
   try {
     const { data } = await api.post("/auth/send-otp", { email: identifier });
@@ -305,7 +355,7 @@ export const sendOtpEmail = async (
 export const handleOAuthSuccess = (
   token: string,
   userJson: string,
-  refreshToken?: string
+  refreshToken?: string,
 ) => {
   localStorage.setItem("token", token);
 
