@@ -22,6 +22,9 @@ export const API_CONFIG = {
     ROOMS: "/api/rooms",
     ROOMTYPES: "/api/room-types",
     EMAIL: "/api/email",
+    PROMOTIONS: "/api/promotions",
+    PROMOTIONS_TYPES: "/api/promotion-types",
+    ROOM_TYPE_PROMOTIONS: "/api/room-type-promotions",
   },
 
   // Timeouts (ms)

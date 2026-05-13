@@ -1,7 +1,5 @@
-import { axiosInstance } from "../config/api";
+import { roomTypePromotionsApi } from "./apiClient";
 import type { RoomTypePromotion } from "../types/RoomTypePromotion";
-
-const ENDPOINT = "/room-type-promotions";
 
 interface AxiosError {
   response?: {
@@ -14,7 +12,7 @@ interface AxiosError {
 export const getAllRoomTypePromotions = async (): Promise<
   RoomTypePromotion[]
 > => {
-  const response = await axiosInstance.get(ENDPOINT);
+  const response = await roomTypePromotionsApi.get("");
   return response.data;
 };
 
@@ -86,7 +84,7 @@ export const saveRoomTypePromotion = async (roomTypePromotionData: {
   console.log("Saving RoomTypePromotion:", JSON.stringify(payload, null, 2));
 
   try {
-    const response = await axiosInstance.post(`${ENDPOINT}/create`, payload);
+    const response = await roomTypePromotionsApi.post("/create", payload);
     console.log("RoomTypePromotion saved successfully");
     return response.data;
   } catch (error: unknown) {
@@ -110,8 +108,8 @@ export const deleteRoomTypePromotion = async (
   promotionId: string,
   roomTypeId: string
 ) => {
-  const response = await axiosInstance.delete(
-    `${ENDPOINT}/delete?promotionId=${promotionId}&roomTypeId=${roomTypeId}`
+  const response = await roomTypePromotionsApi.delete(
+    `/delete?promotionId=${promotionId}&roomTypeId=${roomTypeId}`
   );
   return response.data;
 };

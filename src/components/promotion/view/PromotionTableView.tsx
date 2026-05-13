@@ -32,8 +32,8 @@ const PromotionTableView: React.FC<PromotionTableViewProps> = ({
     return promotionType?.promotionTYPEName || "N/A";
   };
 
-  const getDiscountIcon = (discountType: string) => {
-    return discountType.toLowerCase() === "percentage" ? (
+  const getDiscountIcon = (discountType?: string) => {
+    return discountType?.toLowerCase() === "percentage" ? (
       <FaPercentage className="text-blue-500" />
     ) : (
       <FaDollarSign className="text-green-500" />
@@ -69,7 +69,10 @@ const PromotionTableView: React.FC<PromotionTableViewProps> = ({
           <tbody className="divide-y divide-gray-200">
             {promotions.map((promotion, index) => (
               <motion.tr
-                key={promotion.promotionID}
+                key={
+                  promotion.promotionID ||
+                  `${promotion.promotionName || "promotion"}-${index}`
+                }
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}

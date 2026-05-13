@@ -39,10 +39,12 @@ const createApiClient = (baseURL: string): AxiosInstance => {
         console.error(`[401] Unauthorized at ${endpoint}:`, errorMessage);
       }
 
-      if (status === 403) {
-        console.error(`[403] Forbidden at ${endpoint}:`, errorMessage);
-        console.warn("Ban khong co quyen truy cap tai nguyen nay.");
-      }
+            if (status === 403) {
+                console.error(`[403] Forbidden at ${endpoint}:`, errorMessage);
+                console.warn(
+                  "You do not have permission to access this resource.",
+                );
+            }
 
       if (status && status >= 500) {
         console.error(`[${status}] Server error at ${endpoint}:`, errorMessage);
@@ -74,3 +76,12 @@ export const roomsApi = createApiClient(
 export const roomTypesApi = createApiClient(
   `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ROOMTYPES}`,
 );
+export const promotionsApi = createApiClient(
+    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS}`,
+);
+export const promotionTypesApi = createApiClient(
+    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROMOTIONS_TYPES}`,
+);
+export const roomTypePromotionsApi = createApiClient(
+    `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ROOM_TYPE_PROMOTIONS}`,
+)
