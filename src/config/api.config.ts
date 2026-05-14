@@ -11,13 +11,18 @@ export const API_CONFIG = {
   ENDPOINTS: {
     AUTH: "/api/auth",
     USERS: "/api/users",
+    CUSTOMER: "/api/customers",
+    CART: "/api/cart-beans",
     BOOKINGS: "/api/bookings",
+    PAYMENTS: "/api/payments",
     ROOMS: "/api/rooms",
     ROOMTYPES: "/api/room-types",
     EMAIL: "/api/email",
     PROMOTIONS: "/api/promotions",
+    CUSTOMER_VOUCHER: "/api/customer-vouchers",
     PROMOTIONS_TYPES: "/api/promotion-types",
     ROOM_TYPE_PROMOTIONS: "/api/room-type-promotions",
+    SERVICE: "/api/services",
   },
 
   // Timeouts (ms)

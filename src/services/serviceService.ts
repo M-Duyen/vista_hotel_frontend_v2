@@ -1,11 +1,9 @@
 import type { Service } from "../types/Service";
-import { api } from "./apiClient";
-
-const ENDPOINT = "/services";
+import { serviceApi } from "./apiClient";
 
 export const getAll = async () => {
   try {
-    const response = await api.get(ENDPOINT);
+    const response = await serviceApi.get("");
     return response.data;
   } catch (error) {
     console.error("Error fetching services:", error);
@@ -15,7 +13,7 @@ export const getAll = async () => {
 
 export const getServiceById = async (id: string): Promise<Service> => {
   try {
-    const response = await api.get(`${ENDPOINT}/${id}`);
+    const response = await serviceApi.get(`${id}`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching service by ID ${id}:`, error);
@@ -25,10 +23,10 @@ export const getServiceById = async (id: string): Promise<Service> => {
 
 // Lấy dịch vụ theo trạng thái khả dụng
 export const getServicesByAvailability = async (
-  availability: boolean
+  availability: boolean,
 ): Promise<Service[]> => {
   try {
-    const response = await api.get(`${ENDPOINT}/availability`, {
+    const response = await serviceApi.get("/availability", {
       params: { availability },
     });
     return response.data;
@@ -40,10 +38,10 @@ export const getServicesByAvailability = async (
 
 // Tìm kiếm dịch vụ theo tên
 export const searchServicesByName = async (
-  serviceName: string
+  serviceName: string,
 ): Promise<Service[]> => {
   try {
-    const response = await api.get(`${ENDPOINT}/name`, {
+    const response = await serviceApi.get("/name", {
       params: { serviceName },
     });
     return response.data;
@@ -55,10 +53,10 @@ export const searchServicesByName = async (
 
 // Lấy dịch vụ theo danh mục
 export const getServicesByCategory = async (
-  serviceCategory: string
+  serviceCategory: string,
 ): Promise<Service[]> => {
   try {
-    const response = await api.get(`${ENDPOINT}/category`, {
+    const response = await serviceApi.get("/category", {
       params: { serviceCategory },
     });
     return response.data;
@@ -71,7 +69,7 @@ export const getServicesByCategory = async (
 // Lưu (thêm mới hoặc cập nhật) dịch vụ
 export const saveService = async (service: Service): Promise<Service> => {
   try {
-    const response = await api.post(ENDPOINT, service);
+    const response = await serviceApi.post("", service);
     return response.data;
   } catch (error) {
     console.error("Error saving service:", error);
@@ -82,7 +80,7 @@ export const saveService = async (service: Service): Promise<Service> => {
 // Xóa dịch vụ
 export const deleteService = async (serviceID: string): Promise<void> => {
   try {
-    await api.delete(`${ENDPOINT}/${serviceID}`);
+    await serviceApi.delete(`${ENDPOINT}/${serviceID}`);
   } catch (error) {
     console.error("Error deleting service:", error);
     throw error;

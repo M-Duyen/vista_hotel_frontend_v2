@@ -129,6 +129,28 @@ export default function BookingForm({
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const [roomPrices, setRoomPrices] = useState<Record<string, number>>({});
 
+  const getStoredCustomerId = (): string | null => {
+    try {
+      const userDataStr = localStorage.getItem("user");
+      const userData = userDataStr ? JSON.parse(userDataStr) : null;
+      return (
+        userData?.data?.customerId ||
+        userData?.data?.customerID ||
+        userData?.data?.id ||
+        userData?.customerId ||
+        userData?.customerID ||
+        userData?.id ||
+        null
+      );
+    } catch (error) {
+      console.error("Failed to parse user from localStorage:", error);
+      return null;
+    }
+  };
+
+  const getCurrentCustomerId = (): string | null =>
+    (customer as any)?.customerID || customer?.id || getStoredCustomerId();
+
   const fetchedData = async () => {
     try {
       setLoading(true);
@@ -147,9 +169,7 @@ export default function BookingForm({
         }
       }
 
-      const userDataStr = localStorage.getItem("user");
-      const userData = userDataStr ? JSON.parse(userDataStr) : null;
-      const customerId = userData?.data?.id || userData?.id;
+      const customerId = getStoredCustomerId();
 
       const selectedFromCart = (location.state as any)?.selectedRooms;
       let roomsToUse: string[] = [];
@@ -763,6 +783,13 @@ export default function BookingForm({
       );
     }
 
+    const customerId = getCurrentCustomerId();
+    if (!customerId) {
+      setError("User not logged in. Please log in to continue.");
+      showErrorToast("User not logged in. Please log in to continue.");
+      return;
+    }
+
     const payload: any = {
       checkInDate: formatLocalDateTime(checkInWithTime),
       checkOutDate: formatLocalDateTime(checkOutWithTime),
@@ -777,7 +804,7 @@ export default function BookingForm({
       type: bookingType,
       duration: bookingType === "HOURLY" ? duration : 0,
       hourlyRate: bookingType === "HOURLY" ? calculatedHourlyRate : null,
-      customerID: customer?.id || null,
+      customerID: customerId,
       totalCost: await calculateServiceCosts(),
     };
 
