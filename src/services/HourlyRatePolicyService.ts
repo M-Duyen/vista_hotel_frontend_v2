@@ -3,12 +3,12 @@ import axios from 'axios';
 
 import type { HourlyRatePolicy } from '../types/HourlyRatePolicy';
 
-const ENDPOINT = '/hourly-rate-policies';
+const ENDPOINT = '/principle/hourly-rate-policies';
 
 // GET /hourly-rate-policies/base-rates
 export async function getAllPolicyBaseRates(): Promise<HourlyRatePolicy[]> {
     try {
-        const res = await api.get(`${ENDPOINT}/base-rates`);
+        const res = await api.get(`${ENDPOINT}`);
         return res.data as HourlyRatePolicy[];
     } catch (err: unknown) {
         throw formatAxiosError(err);

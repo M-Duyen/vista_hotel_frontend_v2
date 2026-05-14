@@ -226,6 +226,7 @@ const RoomManagement: React.FC = () => {
     const available = rooms.filter((r) => r.status === "available").length;
     const occupied = rooms.filter((r) => r.status === "occupied").length;
     const maintenance = rooms.filter((r) => r.status === "maintenance").length;
+    const cleaning = rooms.filter((r) => r.status === "cleaning").length;
     const occupancyRate =
       rooms.length > 0 ? ((occupied / rooms.length) * 100).toFixed(1) : "0";
 
@@ -253,6 +254,7 @@ const RoomManagement: React.FC = () => {
       available,
       occupied,
       maintenance,
+      cleaning,
       occupancyRate,
       todayBookings: todayBookings.length,
       activeBookings: activeBookings.length,
@@ -552,7 +554,7 @@ const RoomManagement: React.FC = () => {
             icon={FaDoorOpen}
             iconBgColor="bg-[#e8f5e9]"
             iconColor="text-[#2e7d32]"
-            value={stats.available + stats.occupied + stats.maintenance}
+            value={stats.available + stats.occupied + stats.maintenance + stats.cleaning }
             label="Total Rooms"
             trend={{ value: "+2 this month", isPositive: true }}
           />

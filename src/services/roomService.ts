@@ -158,7 +158,7 @@ export const updateRoomStatus = async (
         };
 
         // Gọi API để lưu thay đổi
-        const response = await api.post(`/rooms/save`, updateRoom);
+        const response = await api.post(`${ENDPOINT}/save`, updateRoom);
         return response.data;
     } catch (error) {
         console.error('Error updating room status:', error);

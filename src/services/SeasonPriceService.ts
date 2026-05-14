@@ -2,7 +2,7 @@ import { api } from './apiClient';
 import axios from 'axios';
 import type { SeasonPrice } from '../types/SeasonPrice';
 
-const ENDPOINT = '/seasonal-prices';
+const ENDPOINT = '/principle/seasonal-prices';
 
 export const getAllSeasonalPrices = async (): Promise<SeasonPrice[]> => {
     try {
@@ -41,7 +41,7 @@ export async function saveSeasonalPriceWithRoomTypes(priceDTO: {
 }): Promise<SeasonPrice> {
     try {
         const res = await api.post(
-            `${ENDPOINT}/save-with-room-types`,
+            `${ENDPOINT}`,
             priceDTO,
         );
         return res.data;
@@ -78,7 +78,7 @@ export const deleteSeasonalPrice = async (id: string | number) => {
 // Additional endpoints that return PriceDTOs (seasonal prices with room-type details)
 export const getAllSeasonalPrices_RoomType = async (): Promise<[]> => {
     try {
-        const response = await api.get(`${ENDPOINT}/room-types`);
+        const response = await api.get(`${ENDPOINT}`);
         return response.data;
     } catch (error: Error | unknown) {
         console.error('Error fetching seasonal prices room types:', error);

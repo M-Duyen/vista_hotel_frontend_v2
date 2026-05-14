@@ -52,7 +52,7 @@ const Home: React.FC = () => {
             <section className="relative w-full h-screen overflow-hidden">
                 <video
                     ref={bannerRef}
-                    src="https://res.cloudinary.com/dyccrebqj/video/upload/v1758708870/0924_te7gqq.mp4"
+                    src="https://res.cloudinary.com/dk8gvar3y/video/upload/v1778154652/video_qfqawf.mp4"
                     autoPlay
                     muted
                     loop

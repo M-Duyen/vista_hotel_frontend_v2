@@ -10,7 +10,7 @@ import {
     getAllSeasonalPrices_RoomType,
     saveSeasonalPriceWithRoomTypes,
     deleteSeasonalPrice,
-} from '../../../services/seasonPriceService';
+} from '@/services/SeasonPriceService';
 
 import type { SeasonPrice } from '../../../types/SeasonPrice';
 

@@ -2,7 +2,7 @@ import { api } from './apiClient';
 import axios from 'axios';
 import type { CheckInCheckOutPolicyRule } from '../types/CheckInCheckOutPolicyRule';
 
-const ENDPOINT = '/checkin-checkout-policy-rules';
+const ENDPOINT = '/principle/checkin-checkout-policy-rules';
 
 /**
  * Fetch all check-in/check-out policy rules
