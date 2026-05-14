@@ -68,7 +68,7 @@ const VoucherManagement: React.FC = () => {
     return vouchers.filter((voucher) => {
       const matchesSearch =
         voucher.voucherName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        voucher.voucherID.toLowerCase().includes(searchQuery.toLowerCase());
+        voucher.voucherId.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus =
         statusFilter === "all" ||
@@ -106,7 +106,7 @@ const VoucherManagement: React.FC = () => {
 
     try {
       await voucherService.toggleVoucherStatus(
-        selectedVoucher.voucherID,
+        selectedVoucher.voucherId,
         !selectedVoucher.isActive
       );
       toast?.success(
@@ -130,7 +130,7 @@ const VoucherManagement: React.FC = () => {
       // Kiểm tra xem hộp thoại nào đang mở để xác định đây là chỉnh sửa hay tạo
       if (isEditModalOpen && selectedVoucher) {
         // Update existing voucher
-        await voucherService.updateVoucher(selectedVoucher.voucherID, data);
+        await voucherService.updateVoucher(selectedVoucher.voucherId, data);
         toast?.success("Voucher updated successfully!");
       } else {
         // Create new voucher
@@ -370,7 +370,7 @@ const VoucherManagement: React.FC = () => {
                   {paginatedVouchers.map((voucher) => {
                     return (
                       <tr
-                        key={voucher.voucherID}
+                        key={voucher.voucherId}
                         onClick={(e) => handleRowClick(voucher, e)}
                         className="hover:bg-[#f5f0eb] transition-colors cursor-pointer"
                       >
@@ -380,7 +380,7 @@ const VoucherManagement: React.FC = () => {
                               {voucher.voucherName}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {voucher.voucherID}
+                              {voucher.voucherId}
                             </div>
                           </div>
                         </td>

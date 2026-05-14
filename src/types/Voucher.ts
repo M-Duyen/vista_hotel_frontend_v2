@@ -1,10 +1,11 @@
 export interface Voucher {
-  voucherID: string;
+  voucherId: string;
   voucherName: string;
   discountPercentage: number;
   discountValue: number;
-  startDate: Date;
-  endDate: Date;
-  discountType: string;
+  startDate: Date | string;
+  endDate: Date | string;
+  discountType: "PERCENT" | "FIXED" | string;
   isActive: boolean;
+  active?: boolean;
 }

@@ -1,4 +1,4 @@
-import { api } from "./apiClient";
+import { holidayVoucherApi } from './apiClient';
 
 export interface HolidayVoucherDTO {
   holidayId: string;
@@ -15,7 +15,10 @@ export const saveHolidayVouchers = async (
   holidayVouchers: HolidayVoucherDTO[]
 ) => {
   try {
-    const response = await api.post("/holiday-vouchers", holidayVouchers);
+    const response = await holidayVoucherApi.post(
+      "",
+      holidayVouchers,
+    );
     return response.data;
   } catch (error) {
     console.error("Error saving holiday vouchers:", error);
@@ -28,7 +31,7 @@ export const saveHolidayVouchers = async (
  */
 export const getAllHolidayVouchers = async () => {
   try {
-    const response = await api.get("/holiday-vouchers");
+    const response = await holidayVoucherApi.get("");
     return response.data;
   } catch (error) {
     console.error("Error fetching holiday vouchers:", error);
@@ -41,10 +44,20 @@ export const getAllHolidayVouchers = async () => {
  */
 export const getTodayHolidayVouchers = async () => {
   try {
-    const response = await api.get("/holiday-vouchers/today");
+    const response = await holidayVoucherApi.get("/today");
     return response.data;
   } catch (error) {
     console.error("Error fetching today holiday vouchers:", error);
+    throw error;
+  }
+};
+
+export const updateHolidayVoucherActive = async (active: boolean) => {
+  try {
+    const response = await holidayVoucherApi.patch(`/active/${active}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error updating holiday voucher active status:", error);
     throw error;
   }
 };

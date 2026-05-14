@@ -1,4 +1,8 @@
 import { emailApi } from "./apiClient";
+import {
+  voucherAssignedEmailTemplate,
+  type VoucherEmailTemplateData,
+} from "../utils/emailTemplates/voucherEmails";
 
 export interface EmailPayload {
   to: string;
@@ -15,3 +19,14 @@ export const sendEmail = async (payload: EmailPayload) => {
         throw error;
     }
 }
+
+export const sendVoucherAssignedEmail = async (
+  to: string,
+  data: VoucherEmailTemplateData,
+) => {
+  return sendEmail({
+    to,
+    subject: "Your Vista Hotel voucher is ready",
+    htmlContent: voucherAssignedEmailTemplate(data),
+  });
+};

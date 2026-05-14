@@ -9,14 +9,15 @@ export const validateVoucherForm = (
   formData: Partial<Voucher>
 ): Record<string, string> => {
   const errors: Record<string, string> = {};
+  const voucherId = formData.voucherId ?? "";
 
   // Validate Voucher ID
-  if (!formData.voucherID?.trim()) {
-    errors.voucherID = "Voucher ID is required";
-  } else if (formData.voucherID.length < 3) {
-    errors.voucherID = "Voucher ID must be at least 3 characters";
-  } else if (!/^[A-Z0-9_-]+$/i.test(formData.voucherID)) {
-    errors.voucherID =
+  if (!voucherId.trim()) {
+    errors.voucherId = "Voucher ID is required";
+  } else if (voucherId.length < 3) {
+    errors.voucherId = "Voucher ID must be at least 3 characters";
+  } else if (!/^[A-Z0-9_-]+$/i.test(voucherId)) {
+    errors.voucherId =
       "Voucher ID can only contain letters, numbers, dashes, and underscores";
   }
 
