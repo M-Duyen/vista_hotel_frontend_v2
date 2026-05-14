@@ -25,7 +25,7 @@ interface Promotion {
 }
 
 interface Voucher {
-  voucherID: string;
+  voucherId: string;
   voucherName: string;
   discountPercentage: number;
   discountValue: number;
@@ -289,7 +289,7 @@ const ExclusiveOffers: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {filteredVouchers.map((voucher, index) => (
                         <VoucherCard
-                          key={voucher.voucherID}
+                          key={voucher.voucherId}
                           voucher={voucher}
                           index={index}
                           status={getVoucherStatus(voucher)}
@@ -360,7 +360,7 @@ const ExclusiveOffers: React.FC = () => {
                 {filteredVouchers.length > 0 ? (
                   filteredVouchers.map((voucher, index) => (
                     <VoucherCard
-                      key={voucher.voucherID}
+                      key={voucher.voucherId}
                       voucher={voucher}
                       index={index}
                       status={getVoucherStatus(voucher)}

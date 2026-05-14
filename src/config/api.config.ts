@@ -23,6 +23,10 @@ export const API_CONFIG = {
     PROMOTIONS_TYPES: "/api/promotion-types",
     ROOM_TYPE_PROMOTIONS: "/api/room-type-promotions",
     SERVICE: "/api/services",
+    VOUCHERS: "/api/vouchers",
+    CUSTOMER_VOUCHERS: "/api/customer-vouchers",
+    HOLIDAY_VOUCHERS: "/api/holiday-vouchers",
+    BIRTHDAY_VOUCHERS: "/api/birthday-vouchers",
   },
 
   // Timeouts (ms)

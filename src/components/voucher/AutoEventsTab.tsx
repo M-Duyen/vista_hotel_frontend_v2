@@ -1,22 +1,24 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  Calendar,
   Gift,
-  Award,
-  Heart,
   Settings,
   ChevronRight,
   PartyPopper,
 } from "lucide-react";
 import type { Voucher } from "../../types/Voucher";
 import HolidayVoucherModal from "./HolidayVoucherModal";
-import type { Holiday } from "../../services/googleCalendarService";
+import type { Holiday } from "../../types/Holiday";
 import {
   saveHolidayVouchers,
   getAllHolidayVouchers,
+  updateHolidayVoucherActive,
   type HolidayVoucherDTO,
 } from "../../services/holidayVoucherService";
+import {
+  getBirthdayVoucherConfig,
+  saveBirthdayVoucherConfig,
+} from "../../services/birthdayVoucherService";
 import { useToastContext } from "../../hooks/useToastContext";
 
 interface AutoEvent {
@@ -108,6 +110,7 @@ export default function AutoEventsTab({ vouchers }: AutoEventsTabProps) {
   const [selectedHolidays, setSelectedHolidays] = useState<
     Array<{ holiday: Holiday; voucherId: string }>
   >([]);
+  const [savingConfig, setSavingConfig] = useState(false);
 
   // Load cấu hình khi component mount
   useEffect(() => {
@@ -132,7 +135,7 @@ export default function AutoEventsTab({ vouchers }: AutoEventsTabProps) {
               end: hv.holidayDate,
               date: new Date(hv.holidayDate),
             },
-            voucherId: hv.voucher?.voucherID || "",
+            voucherId: hv.voucher?.voucherId || hv.voucher?.voucherID || "",
           }));
           setSelectedHolidays(mockHolidays);
 
@@ -150,13 +153,65 @@ export default function AutoEventsTab({ vouchers }: AutoEventsTabProps) {
     loadHolidayConfig();
   }, []);
 
+  useEffect(() => {
+    const loadBirthdayConfig = async () => {
+      try {
+        const config = await getBirthdayVoucherConfig();
+        if (!config) {
+          return;
+        }
+
+        setEvents((prev) =>
+          prev.map((event) =>
+            event.id === "birthday"
+              ? {
+                  ...event,
+                  enabled: config.active,
+                  voucherId: config.voucherId,
+                  config: {
+                    ...event.config,
+                    daysBeforeEvent: config.daysBeforeEvent,
+                  },
+                }
+              : event
+          )
+        );
+      } catch (error) {
+        console.error("Error loading birthday voucher config:", error);
+      }
+    };
+
+    loadBirthdayConfig();
+  }, []);
+
   const handleToggleEvent = async (eventId: string) => {
+    const event = events.find((item) => item.id === eventId);
+    const enabled = !event?.enabled;
+
     setEvents((prev) =>
       prev.map((event) =>
-        event.id === eventId ? { ...event, enabled: !event.enabled } : event
+        event.id === eventId ? { ...event, enabled } : event
       )
     );
-    // TODO: Save to backend
+
+    try {
+      if (eventId === "birthday" && event?.voucherId) {
+        await saveBirthdayVoucherConfig({
+          voucherId: event.voucherId,
+          daysBeforeEvent: event.config?.daysBeforeEvent ?? 0,
+          active: enabled,
+        });
+      }
+
+      if (eventId === "holiday" && selectedHolidays.length > 0) {
+        await updateHolidayVoucherActive(enabled);
+      }
+    } catch (error) {
+      console.error("Error updating auto event status:", error);
+      toast.error("Error updating auto event status!", {
+        duration: 3000,
+      });
+    }
   };
 
   const handleConfigureEvent = (eventId: string) => {
@@ -206,20 +261,47 @@ export default function AutoEventsTab({ vouchers }: AutoEventsTabProps) {
     }
   };
 
-  const handleSaveConfig = (
+  const handleSaveConfig = async (
     eventId: string,
     voucherId: string,
     config: any
   ) => {
-    setEvents((prev) =>
-      prev.map((event) =>
-        event.id === eventId
-          ? { ...event, voucherId, config: { ...event.config, ...config } }
-          : event
-      )
-    );
-    setConfigModalOpen(false);
-    // TODO: Save to backend
+    setSavingConfig(true);
+
+    try {
+      setEvents((prev) =>
+        prev.map((event) =>
+          event.id === eventId
+            ? {
+                ...event,
+                enabled: true,
+                voucherId,
+                config: { ...event.config, ...config },
+              }
+            : event
+        )
+      );
+      setConfigModalOpen(false);
+
+      if (eventId === "birthday") {
+        await saveBirthdayVoucherConfig({
+          voucherId,
+          daysBeforeEvent: config?.daysBeforeEvent ?? 0,
+          active: true,
+        });
+
+        toast.success("Birthday Voucher configuration saved successfully!", {
+          duration: 2000,
+        });
+      }
+    } catch (error) {
+      console.error("Error saving auto event configuration:", error);
+      toast.error("Error saving Birthday Voucher configuration!", {
+        duration: 3000,
+      });
+    } finally {
+      setSavingConfig(false);
+    }
   };
 
   const selectedEvent = events.find((e) => e.id === selectedEventId);
@@ -300,7 +382,7 @@ export default function AutoEventsTab({ vouchers }: AutoEventsTabProps) {
                           <span className="text-gray-500">Voucher: </span>
                           <span className="font-medium text-[#6b5e4c]">
                             {vouchers.find(
-                              (v) => v.voucherID === event.voucherId
+                              (v) => v.voucherId === event.voucherId
                             )?.voucherName || "Not set"}
                           </span>
                         </div>
@@ -376,7 +458,7 @@ export default function AutoEventsTab({ vouchers }: AutoEventsTabProps) {
                 >
                   <option value="">Choose a voucher...</option>
                   {activeVouchers.map((voucher) => (
-                    <option key={voucher.voucherID} value={voucher.voucherID}>
+                    <option key={voucher.voucherId} value={voucher.voucherId}>
                       {voucher.voucherName}
                     </option>
                   ))}
@@ -462,17 +544,17 @@ export default function AutoEventsTab({ vouchers }: AutoEventsTabProps) {
               <button
                 onClick={() => {
                   if (selectedEvent.voucherId) {
-                    handleSaveConfig(
+                    void handleSaveConfig(
                       selectedEvent.id,
                       selectedEvent.voucherId,
                       selectedEvent.config
                     );
                   }
                 }}
-                disabled={!selectedEvent.voucherId}
+                disabled={!selectedEvent.voucherId || savingConfig}
                 className="flex-1 px-4 py-2 bg-[#6b5e4c] text-white rounded-lg hover:bg-[#5a4d3d] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
-                Save Configuration
+                {savingConfig ? "Saving..." : "Save Configuration"}
               </button>
             </div>
           </motion.div>

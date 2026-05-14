@@ -95,6 +95,15 @@ export const cartApi = createApiClient(
 export const serviceApi = createApiClient(
   `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.SERVICE}`,
 );
+export const voucherApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.VOUCHERS}`,
+);
 export const customerVoucherApi = createApiClient(
-  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CUSTOMER_VOUCHER}`,
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CUSTOMER_VOUCHERS}`,
+);
+export const holidayVoucherApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.HOLIDAY_VOUCHERS}`,
+);
+export const birthdayVoucherApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.BIRTHDAY_VOUCHERS}`,
 );
