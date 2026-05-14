@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -6,16 +6,19 @@ import {
   faCheckCircle,
   faShieldAlt,
   faKey,
+  faExclamationTriangle,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import logoImage from "../../assets/images/logoWhite.png";
 import Button from "../../components/common/Button";
 import FloatingInput from "../../components/common/FloatingInput";
 import CustomCaptcha from "../../components/common/CustomCaptcha";
+import type { CustomCaptchaRef } from "../../components/common/CustomCaptcha";
 import { validateEmailOrPhone, detectInputType } from "../../utils/validators";
 import { sendOtpEmail } from "../../services/authService";
+import { useToastContext } from "../../hooks/useToastContext";
 
-type Step = "input" | "captcha" | "otp";
+type Step = "input" | "otp";
 
 const ForgotPassword: React.FC = () => {
   const [step, setStep] = useState<Step>("input");
@@ -23,11 +26,16 @@ const ForgotPassword: React.FC = () => {
   const [identifierError, setIdentifierError] = useState("");
   const [identifierSuccess, setIdentifierSuccess] = useState(false);
   const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
+  const [captchaError, setCaptchaError] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otpError, setOtpError] = useState("");
+  const [serverOtp, setServerOtp] = useState(""); // OTP thực từ backend
   const [loading, setLoading] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const [resendTimer, setResendTimer] = useState(0);
+  const captchaRef = useRef<CustomCaptchaRef>(null);
   const navigate = useNavigate();
+  const toast = useToastContext();
 
   // Real-time validation cho identifier
   const handleIdentifierChange = (value: string) => {
@@ -42,44 +50,9 @@ const ForgotPassword: React.FC = () => {
     }
   };
 
-  // Handle next step từ input
-  const handleSendOTP = () => {
-    const error = validateEmailOrPhone(identifier);
-    setIdentifierError(error);
-    setIdentifierSuccess(!error);
-
-    if (error) {
-      setShakeKey((prev) => prev + 1);
-      return;
-    }
-
-    setStep("captcha");
-  };
-
-  // Handle captcha verification
-  const handleCaptchaVerify = async () => {
-    if (!isCaptchaVerified) {
-      alert("Please enter the correct verification code");
-      return;
-    }
-
-    setLoading(true);
-
-    const result = await sendOtpEmail(identifier);
-
-    setLoading(false);
-
-    if (!result.success) {
-      alert(result.message);
-      setIsCaptchaVerified(false);
-      return;
-    }
-
-    // 60 giây countdown
-    setStep("otp");
+  // Bắt đầu countdown timer 60 giây
+  const startResendTimer = () => {
     setResendTimer(60);
-
-    // Countdown timer
     const interval = setInterval(() => {
       setResendTimer((prev) => {
         if (prev <= 1) {
@@ -91,14 +64,58 @@ const ForgotPassword: React.FC = () => {
     }, 1000);
   };
 
+  // Gửi OTP đến email/phone
+  const doSendOtp = async (): Promise<boolean> => {
+    setLoading(true);
+    const result = await sendOtpEmail(identifier);
+    setLoading(false);
+
+    if (!result.success) {
+      toast.error(result.message || "Failed to send OTP. Please try again.", { duration: 3000 });
+      setIsCaptchaVerified(false);
+      captchaRef.current?.refresh();
+      return false;
+    }
+
+    // Lưu serverOtp để so sánh sau
+    setServerOtp(result.otp || "");
+    return true;
+  };
+
+  // Handle nút "Continue" ở step input
+  const handleSendOTP = async () => {
+    const idErr = validateEmailOrPhone(identifier);
+    setIdentifierError(idErr);
+    setIdentifierSuccess(!idErr);
+
+    if (idErr) {
+      setShakeKey((prev) => prev + 1);
+      return;
+    }
+
+    if (!isCaptchaVerified) {
+      setCaptchaError("Please enter the correct verification code");
+      setShakeKey((prev) => prev + 1);
+      return;
+    }
+
+    const ok = await doSendOtp();
+    if (ok) {
+      setStep("otp");
+      startResendTimer();
+      toast.success("Verification code sent! Please check your email.", { duration: 3000 });
+    }
+  };
+
   // Handle OTP input
   const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) return; // Only allow single digit
-    if (value && !/^\d+$/.test(value)) return; // Only allow numbers
+    if (value.length > 1) return;
+    if (value && !/^\d+$/.test(value)) return;
 
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
+    setOtpError("");
 
     // Auto focus next input
     if (value && index < 5) {
@@ -110,12 +127,19 @@ const ForgotPassword: React.FC = () => {
   // Handle OTP paste
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData("text").slice(0, 6);
-    if (!/^\d+$/.test(pastedData)) return;
+    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!pastedData) return;
 
     const newOtp = pastedData.split("");
     while (newOtp.length < 6) newOtp.push("");
     setOtp(newOtp);
+    setOtpError("");
+
+    // Focus vào ô cuối hoặc ô tiếp theo sau ký tự cuối cùng
+    const focusIndex = Math.min(pastedData.length, 5);
+    setTimeout(() => {
+      document.getElementById(`otp-${focusIndex}`)?.focus();
+    }, 0);
   };
 
   // Handle OTP backspace
@@ -129,47 +153,46 @@ const ForgotPassword: React.FC = () => {
     }
   };
 
-  // Verify OTP
+  // Verify OTP - so sánh với serverOtp
   const handleVerifyOtp = () => {
     const otpCode = otp.join("");
     if (otpCode.length !== 6) {
+      setOtpError("Please enter the complete 6-digit code");
       setShakeKey((prev) => prev + 1);
       return;
     }
 
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      // Navigate to reset password page with token/code
-      navigate("/auth/reset-password", {
-        state: {
-          identifier,
-          otpCode,
-          verified: true,
-        },
-      });
-    }, 1500);
+    // Kiểm tra OTP
+    if (serverOtp && otpCode !== serverOtp) {
+      setOtpError("Incorrect verification code. Please try again.");
+      setShakeKey((prev) => prev + 1);
+      setOtp(["", "", "", "", "", ""]);
+      setTimeout(() => document.getElementById("otp-0")?.focus(), 0);
+      return;
+    }
+
+    // OTP đúng → navigate sang reset password
+    navigate("/auth/reset-password", {
+      state: {
+        identifier,
+        otpCode,
+        verified: true,
+      },
+    });
   };
 
   // Resend OTP
   const handleResendOtp = async () => {
     if (resendTimer > 0) return;
 
-    // TODO: Resend OTP
     setOtp(["", "", "", "", "", ""]);
-    setResendTimer(60);
+    setOtpError("");
 
-    await sendOtpEmail(identifier);
-
-    const interval = setInterval(() => {
-      setResendTimer((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    const ok = await doSendOtp();
+    if (ok) {
+      startResendTimer();
+      toast.success("New verification code sent!", { duration: 2000 });
+    }
   };
 
   // Step animations
@@ -189,28 +212,28 @@ const ForgotPassword: React.FC = () => {
 
         {/* Progress indicator */}
         <div className="flex items-center justify-center gap-2 mb-6">
-          {["input", "captcha", "otp"].map((s, idx) => (
+          {["input", "otp"].map((s, idx) => (
             <React.Fragment key={s}>
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                   step === s
                     ? "bg-[#c3923c] text-white scale-110 shadow-lg"
-                    : ["input", "captcha", "otp"].indexOf(step) > idx
-                    ? "bg-[#b4893e] text-white"
+                    : ["input", "otp"].indexOf(step) > idx
+                    ? "bg-green-500 text-white"
                     : "bg-white/20 text-white/60"
                 }`}
               >
-                {["input", "captcha", "otp"].indexOf(step) > idx ? (
+                {["input", "otp"].indexOf(step) > idx ? (
                   <FontAwesomeIcon icon={faCheckCircle} />
                 ) : (
                   idx + 1
                 )}
               </div>
-              {idx < 2 && (
+              {idx < 1 && (
                 <div
                   className={`w-16 h-1 rounded transition-all ${
-                    ["input", "captcha", "otp"].indexOf(step) > idx
-                      ? "bg-[#b4893e]"
+                    ["input", "otp"].indexOf(step) > idx
+                      ? "bg-green-500"
                       : "bg-white/20"
                   }`}
                 />
@@ -220,7 +243,7 @@ const ForgotPassword: React.FC = () => {
         </div>
 
         <AnimatePresence mode="wait">
-          {/* Step 1: Input Email/Phone */}
+          {/* Step 1: Input Email + Captcha */}
           {step === "input" && (
             <motion.div
               key="input"
@@ -232,14 +255,23 @@ const ForgotPassword: React.FC = () => {
               className="space-y-4"
             >
               <div className="text-center mb-6">
+                <div className="flex justify-center mb-4">
+                  <div className="w-16 h-16 bg-[#c3923c]/20 rounded-full flex items-center justify-center">
+                    <FontAwesomeIcon
+                      icon={faShieldAlt}
+                      className="text-3xl text-[#c3923c]"
+                    />
+                  </div>
+                </div>
                 <h1 className="text-2xl font-bold text-yellow-50 mb-2">
                   Forgot Password?
                 </h1>
                 <p className="text-sm text-yellow-50/80">
-                  Enter your email to receive verification code
+                  Enter your email to receive a verification code
                 </p>
               </div>
 
+              {/* Email Input */}
               <div
                 key={`identifier-${shakeKey}`}
                 className={`min-h-[70px] ${
@@ -247,7 +279,7 @@ const ForgotPassword: React.FC = () => {
                 }`}
               >
                 <FloatingInput
-                  label="Email"
+                  label="Email or Phone"
                   type="text"
                   value={identifier}
                   onChange={handleIdentifierChange}
@@ -290,6 +322,7 @@ const ForgotPassword: React.FC = () => {
                 )}
                 {identifierSuccess && !identifierError && (
                   <p className="text-green-500 text-xs mt-1">
+                    ✓{" "}
                     {detectInputType(identifier) === "email"
                       ? "Email"
                       : "Phone"}{" "}
@@ -298,11 +331,23 @@ const ForgotPassword: React.FC = () => {
                 )}
               </div>
 
-              {/* Custom Captcha */}
-              <div>
+              {/* Captcha */}
+              <div
+                key={`captcha-${shakeKey}`}
+                className={`${captchaError ? "animate-[shake_400ms_ease-in-out]" : ""}`}
+              >
                 <CustomCaptcha
-                  onVerify={(isValid) => setIsCaptchaVerified(isValid)}
+                  ref={captchaRef}
+                  onVerify={(isValid) => {
+                    setIsCaptchaVerified(isValid);
+                    if (isValid) setCaptchaError("");
+                  }}
+                  autoRefreshMinutes={2}
+                  className="my-2"
                 />
+                {captchaError && (
+                  <p className="text-red-500 text-xs mt-1">{captchaError}</p>
+                )}
               </div>
 
               {isCaptchaVerified && (
@@ -318,7 +363,7 @@ const ForgotPassword: React.FC = () => {
 
               <div className="flex gap-3">
                 <Button
-                  text="Back"
+                  text="Back to Login"
                   color="bg-white/10"
                   textColor="text-white"
                   size="lg"
@@ -327,73 +372,21 @@ const ForgotPassword: React.FC = () => {
                   className="flex-1 font-semibold hover:bg-white/20 transition-colors border-2 border-white/30"
                 />
                 <Button
-                  text="Continue"
+                  text={loading ? "Sending..." : "Send Code"}
                   color="bg-[#c3923c]"
                   textColor="text-white"
                   size="lg"
                   rounded="md"
                   onClick={handleSendOTP}
-                  disabled={!isCaptchaVerified}
-                  className="flex-1 font-semibold hover:bg-[#b4893e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-              </div>
-            </motion.div>
-          )}
-
-          {/* Step 2: Captcha Verification */}
-          {step === "captcha" && (
-            <motion.div
-              key="captcha"
-              variants={stepVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              transition={{ duration: 0.3 }}
-              className="space-y-4"
-            >
-              <div className="text-center mb-6">
-                <div className="flex justify-center mb-4">
-                  <div className="w-16 h-16 bg-[#c3923c]/20 rounded-full flex items-center justify-center">
-                    <FontAwesomeIcon
-                      icon={faShieldAlt}
-                      className="text-4xl text-[#c3923c]"
-                    />
-                  </div>
-                </div>
-                <h1 className="text-2xl font-bold text-yellow-50 mb-2">
-                  Security Verification
-                </h1>
-                <p className="text-sm text-yellow-50/80">
-                  Please confirm you are not a robot
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <Button
-                  text="Back"
-                  color="bg-white/10"
-                  textColor="text-white"
-                  size="lg"
-                  rounded="md"
-                  onClick={() => setStep("input")}
-                  className="flex-1 font-semibold hover:bg-white/20 transition-colors border-2 border-white/30"
-                />
-                <Button
-                  text={loading ? "Sending code..." : "Send code"}
-                  color="bg-[#c3923c]"
-                  textColor="text-white"
-                  size="lg"
-                  rounded="md"
-                  onClick={handleCaptchaVerify}
-                  disabled={!isCaptchaVerified || loading}
+                  disabled={loading}
                   loading={loading}
-                  className="flex-1 font-semibold hover:bg-[#8f6318] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 font-semibold hover:bg-[#b4893e] transition-colors"
                 />
               </div>
             </motion.div>
           )}
 
-          {/* Step 3: OTP Verification */}
+          {/* Step 2: OTP Verification */}
           {step === "otp" && (
             <motion.div
               key="otp"
@@ -409,7 +402,7 @@ const ForgotPassword: React.FC = () => {
                   <div className="w-16 h-16 bg-[#c3923c]/20 rounded-full flex items-center justify-center">
                     <FontAwesomeIcon
                       icon={faKey}
-                      className="text-4xl text-[#c3923c]"
+                      className="text-3xl text-[#c3923c]"
                     />
                   </div>
                 </div>
@@ -427,8 +420,8 @@ const ForgotPassword: React.FC = () => {
               {/* OTP Input */}
               <div
                 key={`otp-${shakeKey}`}
-                className={`flex justify-center gap-2 mb-6 ${
-                  shakeKey > 0 ? "animate-[shake_400ms_ease-in-out]" : ""
+                className={`flex justify-center gap-2 mb-2 ${
+                  otpError ? "animate-[shake_400ms_ease-in-out]" : ""
                 }`}
               >
                 {otp.map((digit, index) => (
@@ -436,15 +429,34 @@ const ForgotPassword: React.FC = () => {
                     key={index}
                     id={`otp-${index}`}
                     type="text"
+                    inputMode="numeric"
                     maxLength={1}
                     value={digit}
                     onChange={(e) => handleOtpChange(index, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(index, e)}
                     onPaste={index === 0 ? handleOtpPaste : undefined}
-                    className="w-12 h-14 text-center text-2xl font-bold bg-white/10 border-2 border-white/40 rounded-lg text-white focus:border-[#c3923c] focus:outline-none transition-all"
+                    className={`w-12 h-14 text-center text-2xl font-bold bg-white/10 border-2 rounded-lg text-white focus:outline-none transition-all ${
+                      otpError
+                        ? "border-red-500 focus:border-red-500"
+                        : digit
+                        ? "border-[#c3923c] focus:border-[#c3923c]"
+                        : "border-white/40 focus:border-[#c3923c]"
+                    }`}
                   />
                 ))}
               </div>
+
+              {/* OTP Error */}
+              {otpError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-2 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm"
+                >
+                  <FontAwesomeIcon icon={faExclamationTriangle} />
+                  <span>{otpError}</span>
+                </motion.div>
+              )}
 
               {/* Resend OTP */}
               <div className="text-center">
@@ -458,9 +470,10 @@ const ForgotPassword: React.FC = () => {
                 ) : (
                   <button
                     onClick={handleResendOtp}
-                    className="text-[#c3923c] hover:text-[#b4893e] text-sm font-medium transition-colors cursor-pointer"
+                    disabled={loading}
+                    className="text-[#c3923c] hover:text-[#b4893e] text-sm font-medium transition-colors cursor-pointer disabled:opacity-50"
                   >
-                    Didn't receive code? Resend
+                    {loading ? "Sending..." : "Didn't receive code? Resend"}
                   </button>
                 )}
               </div>
@@ -472,18 +485,23 @@ const ForgotPassword: React.FC = () => {
                   textColor="text-white"
                   size="lg"
                   rounded="md"
-                  onClick={() => setStep("captcha")}
+                  onClick={() => {
+                    setStep("input");
+                    setOtp(["", "", "", "", "", ""]);
+                    setOtpError("");
+                    setIsCaptchaVerified(false);
+                    captchaRef.current?.refresh();
+                  }}
                   className="flex-1 font-semibold hover:bg-white/20 transition-colors border-2 border-white/30"
                 />
                 <Button
-                  text={loading ? "Verifying..." : "Verify"}
+                  text="Verify"
                   color="bg-[#c3923c]"
                   textColor="text-white"
                   size="lg"
                   rounded="md"
                   onClick={handleVerifyOtp}
-                  disabled={otp.join("").length !== 6 || loading}
-                  loading={loading}
+                  disabled={otp.join("").length !== 6}
                   className="flex-1 font-semibold hover:bg-[#b4893e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>

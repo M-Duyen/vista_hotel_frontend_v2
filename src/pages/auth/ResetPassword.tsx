@@ -8,6 +8,7 @@ import Button from "../../components/common/Button";
 import FloatingInput from "../../components/common/FloatingInput";
 import { validatePasswordCombined } from "../../utils/validators";
 import { resetPassword } from "../../services/authService";
+import { useToastContext } from "../../hooks/useToastContext";
 
 const ResetPassword: React.FC = () => {
   const [newPassword, setNewPassword] = useState("");
@@ -21,11 +22,12 @@ const ResetPassword: React.FC = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToastContext();
 
   // Lấy thông tin từ Forgot Password
   const state = (location.state as {
     verified?: boolean;
-    identifier?: string; // email dùng để gửi email
+    identifier?: string;
     otpCode?: string;
   }) || { verified: false };
 
@@ -34,10 +36,10 @@ const ResetPassword: React.FC = () => {
   // Kiểm tra xem người dùng có đến từ xác minh OTP không
   useEffect(() => {
     if (!state?.verified) {
-      // Chuyển hướng trở lại quên mật khẩu nếu chưa được xác minh
       navigate("/auth/forgot-password", { replace: true });
     }
-  }, [location, navigate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location]);
 
   // Real-time validation for new password
   const handleNewPasswordChange = (value: string) => {
@@ -100,9 +102,8 @@ const ResetPassword: React.FC = () => {
       return;
     }
 
-    // No email from forgot password flow → redirect back
     if (!emailFromForgot) {
-      alert("Email information not found to reset password. Please try again.");
+      toast.error("Email information not found. Please try again from the beginning.");
       navigate("/auth/forgot-password", { replace: true });
       return;
     }
@@ -110,7 +111,6 @@ const ResetPassword: React.FC = () => {
     setLoading(true);
 
     try {
-      // Gọi API reset-password (flow quên mật khẩu)
       const result = await resetPassword(emailFromForgot, newPassword);
 
       if (!result.success) {
@@ -120,15 +120,16 @@ const ResetPassword: React.FC = () => {
       setLoading(false);
       setShowSuccess(true);
 
-      // Redirect về login
+      // Email thông báo được gửi bên trong resetPassword() (authService.ts)
+      // Redirect về login sau 2.5 giây
       setTimeout(() => {
         navigate("/auth/login");
       }, 2500);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error("Reset password failed:", error);
       setLoading(false);
-      alert(error?.message || "Unable to reset password. Please try again.");
+      toast.error(error?.message || "Unable to reset password. Please try again.", { duration: 4000 });
     }
   };
 
@@ -146,11 +147,7 @@ const ResetPassword: React.FC = () => {
       case 1:
         return { label: "Weak", color: "bg-red-500", width: "25%" };
       case 2:
-        return {
-          label: "Medium",
-          color: "bg-yellow-500",
-          width: "50%",
-        };
+        return { label: "Medium", color: "bg-yellow-500", width: "50%" };
       case 3:
         return { label: "Good", color: "bg-blue-500", width: "75%" };
       case 4:
@@ -162,6 +159,7 @@ const ResetPassword: React.FC = () => {
 
   const passwordStrength = getPasswordStrength(newPassword);
 
+  // Success screen
   if (showSuccess) {
     return (
       <div className="w-full">
@@ -170,21 +168,40 @@ const ResetPassword: React.FC = () => {
           animate={{ opacity: 1, scale: 1 }}
           className="flex flex-col items-center justify-center space-y-6 py-12"
         >
-          <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/30"
+          >
             <FontAwesomeIcon
               icon={faCheckCircle}
               className="text-5xl text-white"
             />
-          </div>
+          </motion.div>
 
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold text-white">Success!</h1>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="text-center space-y-2"
+          >
+            <h1 className="text-3xl font-bold text-white">Password Reset!</h1>
             <p className="text-white/80">
-              Your password has been reset successfully
+              Your password has been reset successfully.
             </p>
-          </div>
+            <p className="text-white/60 text-sm">
+              A confirmation email has been sent to{" "}
+              <span className="text-[#c3923c] font-medium">{emailFromForgot}</span>
+            </p>
+          </motion.div>
 
-          <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-6 text-center">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-6 text-center w-full"
+          >
             <p className="text-white/80 text-sm">
               Redirecting to login page...
             </p>
@@ -193,7 +210,7 @@ const ResetPassword: React.FC = () => {
               <div className="w-2 h-2 bg-[#eab354] rounded-full animate-bounce [animation-delay:150ms]" />
               <div className="w-2 h-2 bg-[#eab354] rounded-full animate-bounce [animation-delay:300ms]" />
             </div>
-          </div>
+          </motion.div>
 
           <Button
             text="Go to Login Page"
@@ -223,7 +240,8 @@ const ResetPassword: React.FC = () => {
             Reset Password
           </h1>
           <p className="text-sm text-yellow-50/80">
-            Create a new password for your account
+            Create a new password for{" "}
+            <span className="text-[#c3923c] font-medium">{emailFromForgot}</span>
           </p>
         </div>
 
@@ -303,7 +321,7 @@ const ResetPassword: React.FC = () => {
             <p className="text-red-500 text-xs mt-1">{newPasswordError}</p>
           )}
           {newPasswordSuccess && !newPasswordError && (
-            <p className="text-green-500 text-xs mt-1">Password is valid</p>
+            <p className="text-green-500 text-xs mt-1">✓ Password is valid</p>
           )}
         </div>
 
@@ -357,7 +375,7 @@ const ResetPassword: React.FC = () => {
             <p className="text-red-500 text-xs mt-1">{confirmPasswordError}</p>
           )}
           {confirmPasswordSuccess && !confirmPasswordError && (
-            <p className="text-green-500 text-xs mt-1">Passwords match</p>
+            <p className="text-green-500 text-xs mt-1">✓ Passwords match</p>
           )}
         </div>
 
@@ -424,6 +442,7 @@ const ResetPassword: React.FC = () => {
             textColor="text-white"
             size="lg"
             rounded="md"
+            type="button"
             onClick={() => navigate("/auth/forgot-password")}
             className="flex-1 font-semibold hover:bg-white/20 transition-colors border-2 border-white/30"
           />

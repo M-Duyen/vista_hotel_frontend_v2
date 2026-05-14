@@ -1,17 +1,19 @@
-import { axiosInstance } from "../config/api";
+import { api } from "./apiClient";
 
-export const getPaymentQRCode = async (bookingId: string): Promise<string> => {
+const ENDPOINT = "/payments";
+
+export const generateQRPayment = async (
+  bookingId: string,
+  choice: number = 0,
+) => {
   try {
-    const response = await axiosInstance.get(
-      `/bookings/payment-qr-checkout/${bookingId}`,
-      {
-        responseType: "blob",
-      }
-    );
-
-    return URL.createObjectURL(response.data);
+    const response = await api.get(`${ENDPOINT}/payment-qr/${bookingId}`, {
+      params: { choice },
+      responseType: "blob",
+    });
+    return response.data;
   } catch (error) {
-    console.error("Error fetching payment QR code:", error);
+    console.error("Error generating QR payment:", error);
     throw error;
   }
 };

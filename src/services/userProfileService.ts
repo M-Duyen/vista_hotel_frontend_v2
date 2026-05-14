@@ -3,6 +3,7 @@ import type { UserProfile, ProfileUpdateRequest } from "../types/UserProfile";
 import type { Customer } from "../types/Customer";
 import type { Booking } from "../types/Booking";
 import { uploadImageToCloudinary } from "./cloudinaryService";
+import { API_CONFIG } from "@/config/api.config";
 
 const CUSTOMER_ENDPOINT = "/customers";
 const EMPLOYEE_ENDPOINT = "/employees";
@@ -12,7 +13,7 @@ const ADMIN_ENDPOINT = "/admins";
  * Lấy thông tin khách hàng theo ID
  */
 export const getCustomerProfile = async (
-  customerId: string
+  customerId: string,
 ): Promise<Customer> => {
   try {
     const response = await api.get(`${CUSTOMER_ENDPOINT}/${customerId}`);
@@ -28,7 +29,7 @@ export const getCustomerProfile = async (
  */
 export const updateCustomerProfile = async (
   customerId: string,
-  data: ProfileUpdateRequest
+  data: ProfileUpdateRequest,
 ): Promise<Customer> => {
   try {
     const response = await api.put(`${CUSTOMER_ENDPOINT}/${customerId}`, data);
@@ -44,8 +45,7 @@ export const updateCustomerProfile = async (
  */
 export const updateEmployeeProfile = async (
   employeeId: string,
-  data: ProfileUpdateRequest
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: ProfileUpdateRequest,
 ): Promise<any> => {
   try {
     const response = await api.put(`${EMPLOYEE_ENDPOINT}/${employeeId}`, data);
@@ -61,8 +61,7 @@ export const updateEmployeeProfile = async (
  */
 export const updateAdminProfile = async (
   adminId: string,
-  data: ProfileUpdateRequest
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: ProfileUpdateRequest,
 ): Promise<any> => {
   try {
     const response = await api.put(`${ADMIN_ENDPOINT}/${adminId}`, data);
@@ -79,7 +78,7 @@ export const updateAdminProfile = async (
 export const updateUserAvatar = async (
   userId: string,
   userRole: string,
-  file: File
+  file: File,
 ): Promise<string> => {
   try {
     // Upload ảnh lên Cloudinary
@@ -110,8 +109,7 @@ export const updateUserAvatar = async (
 export const updateUserProfile = async (
   userId: string,
   userRole: string,
-  data: ProfileUpdateRequest
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: ProfileUpdateRequest,
 ): Promise<any> => {
   try {
     let response;
@@ -135,7 +133,7 @@ export const updateUserProfile = async (
  * Lấy danh sách đặt phòng của khách hàng
  */
 export const getCustomerBookings = async (
-  customerId: string
+  customerId: string,
 ): Promise<Booking[]> => {
   try {
     const response = await api.get(`/bookings/customer/${customerId}`);
@@ -151,7 +149,7 @@ export const getCustomerBookings = async (
  */
 export const getCurrentUserFromStorage = (): UserProfile | null => {
   try {
-    const userStr = localStorage.getItem("user");
+    const userStr = localStorage.getItem(API_CONFIG.STORAGE_KEYS.USER);
     if (userStr) {
       return JSON.parse(userStr);
     }
@@ -167,10 +165,7 @@ export const getCurrentUserFromStorage = (): UserProfile | null => {
  */
 export const updateUserInStorage = (user: UserProfile): void => {
   try {
-    localStorage.setItem("user", JSON.stringify(user));
-    
-    // Dispatch custom event to notify other components about user data update
-    window.dispatchEvent(new Event("userDataUpdated"));
+    localStorage.setItem(API_CONFIG.STORAGE_KEYS.USER, JSON.stringify(user));
   } catch (error) {
     console.error("Error updating user in localStorage:", error);
   }

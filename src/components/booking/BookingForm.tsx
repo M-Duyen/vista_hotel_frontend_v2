@@ -9,7 +9,6 @@ import { MdOutlineRoomService, MdRoomService } from "react-icons/md";
 import { getAll } from "../../services/serviceService";
 import { CiSquareQuestion } from "react-icons/ci";
 import {
-  generateBookingID,
   saveBookingWithDetails,
   getBookingById,
   overlapBookingExists,
@@ -92,7 +91,7 @@ export default function BookingForm({
   // Services and vouchers state
   const [services, setServices] = useState<Service[]>([]);
   const [customerVouchers, setCustomerVouchers] = useState<CustomerVoucher[]>(
-    []
+    [],
   );
   const [customer, setCustomer] = useState<Customer>();
   const [error, setError] = useState("");
@@ -113,7 +112,6 @@ export default function BookingForm({
     useState<PaymentMethod>(PAYMENT_METHODS[0]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<string[]>([]);
-  const [bookingID, setBookingID] = useState<string>("");
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState<CustomerVoucher[]>([]);
 
@@ -135,13 +133,10 @@ export default function BookingForm({
     try {
       setLoading(true);
 
-      const id = await generateBookingID();
-      setBookingID(id);
-
       const service = await getAll();
       setServices(service);
 
-      // Fetch hourly rate policies if booking type is hourly
+      // Fetch hourlyRate policies
       if (bookingType === "HOURLY") {
         try {
           const policies = await getAllPolicyBaseRates();
@@ -192,7 +187,7 @@ export default function BookingForm({
       if (roomsToUse.length > 0) {
         try {
           const bookedDatesPromises = roomsToUse.map((roomId) =>
-            overlapBookingExists(roomId)
+            overlapBookingExists(roomId),
           );
           const bookedDatesArrays = await Promise.all(bookedDatesPromises);
 
@@ -229,7 +224,7 @@ export default function BookingForm({
   };
 
   const [booking] = useState({
-    bookingID: bookingID || "",
+    bookingID: "",
     checkInDate: checkInDate ? checkInDate.toISOString() : "",
     checkOutDate: checkOutDate ? checkOutDate.toISOString() : "",
     numberOfGuests: 0,
@@ -330,7 +325,7 @@ export default function BookingForm({
         // Kiểm tra chồng lấn với các ngày đã được đặt
         if (isDateRangeOverlapping(ci, co, bookedDates)) {
           showErrorToast(
-            "The selected date range overlaps with already booked dates. Please choose different dates."
+            "The selected date range overlaps with already booked dates. Please choose different dates.",
           );
           return;
         } else {
@@ -354,7 +349,7 @@ export default function BookingForm({
   const isDateRangeOverlapping = (
     checkIn: Date,
     checkOut: Date,
-    bookedDates: Date[]
+    bookedDates: Date[],
   ): boolean => {
     // Set giờ của ngày về 00:00:00 để so sánh chính xác
     const normalizeDate = (date: Date) => {
@@ -487,7 +482,7 @@ export default function BookingForm({
    */
   const calculateHourlyRate = (
     duration: number,
-    checkInDate: Date | null
+    checkInDate: Date | null,
   ): number => {
     // Fallback nếu chưa có policy
     if (!checkInDate || hourlyRatePolicies.length === 0) {
@@ -515,11 +510,11 @@ export default function BookingForm({
         if (rate === undefined) {
           // Tìm duration cao nhất trong map
           const maxDuration = Math.max(
-            ...Object.keys(baseRatesMap).map((k) => parseInt(k))
+            ...Object.keys(baseRatesMap).map((k) => parseInt(k)),
           );
           rate = baseRatesMap[maxDuration.toString()];
           console.log(
-            `Duration ${duration}h not found, using max rate (${maxDuration}h): ${rate}%`
+            `Duration ${duration}h not found, using max rate (${maxDuration}h): ${rate}%`,
           );
         }
 
@@ -528,7 +523,7 @@ export default function BookingForm({
           console.log(`Base rate for ${duration}h: ${ratePercentage}%`);
         } else {
           console.warn(
-            `No base rate found for ${duration}h, using default 100%`
+            `No base rate found for ${duration}h, using default 100%`,
           );
         }
       }
@@ -536,7 +531,7 @@ export default function BookingForm({
       else if (Array.isArray(policy.baseRates)) {
         const rates = policy.baseRates as BaseRateItem[];
         const sortedRates = [...rates].sort(
-          (a, b) => b.baseHours - a.baseHours
+          (a, b) => b.baseHours - a.baseHours,
         );
         const matchedRate = sortedRates.find((r) => duration >= r.baseHours);
 
@@ -555,7 +550,7 @@ export default function BookingForm({
       const beforeSurcharge = ratePercentage;
       ratePercentage += policy.weekendSurcharge; // Cộng thêm weekend surcharge %
       console.log(
-        `Weekend surcharge: ${beforeSurcharge}% → ${ratePercentage}% (+${policy.weekendSurcharge}%)`
+        `Weekend surcharge: ${beforeSurcharge}% → ${ratePercentage}% (+${policy.weekendSurcharge}%)`,
       );
     }
 
@@ -584,7 +579,7 @@ export default function BookingForm({
         console.log(
           `Room ${
             room.roomNumber
-          }: ${basePrice} × ${ratePercentage}% = ${totalPrice.toFixed(0)} VND`
+          }: ${basePrice} × ${ratePercentage}% = ${totalPrice.toFixed(0)} VND`,
         );
 
         return sum + totalPrice;
@@ -597,7 +592,8 @@ export default function BookingForm({
         const roomTypeId = room.roomType?.roomTypeID;
         if (!roomTypeId) return sum;
 
-        const price = await calculateRoomPriceAfterApplyPromotion(roomTypeId);
+        const price =
+          (await calculateRoomPriceAfterApplyPromotion(roomTypeId)) || 0;
         console.log("Price: " + price);
 
         return sum + price;
@@ -649,7 +645,7 @@ export default function BookingForm({
       // Kiểm tra chồng lấn với các ngày đã được đặt (chỉ cho daily booking)
       if (isDateRangeOverlapping(ci, co, bookedDates)) {
         setError(
-          "The selected date range overlaps with already booked dates. Please choose different dates."
+          "The selected date range overlaps with already booked dates. Please choose different dates.",
         );
         return;
       }
@@ -687,7 +683,7 @@ export default function BookingForm({
           const conflicts = await checkRoomAvailability(
             room.roomNumber || "",
             ci.toISOString(),
-            co.toISOString()
+            co.toISOString(),
           );
 
           if (conflicts && conflicts.length > 0) {
@@ -709,7 +705,7 @@ export default function BookingForm({
               .join("; ");
 
             showErrorToast(
-              `Room ${room.roomNumber} is already booked during this time. Conflicting bookings: ${conflictDetails}`
+              `Room ${room.roomNumber} is already booked during this time. Conflicting bookings: ${conflictDetails}`,
             );
             setLoading(false);
             return;
@@ -754,7 +750,7 @@ export default function BookingForm({
       checkInWithTime.setHours(hours, minutes, 0, 0);
 
       checkOutWithTime = new Date(
-        checkInWithTime.getTime() + duration * 60 * 60 * 1000
+        checkInWithTime.getTime() + duration * 60 * 60 * 1000,
       );
     }
 
@@ -763,12 +759,11 @@ export default function BookingForm({
     if (bookingType === "HOURLY") {
       calculatedHourlyRate = calculateHourlyRate(duration, hourlyCheckInDate);
       console.log(
-        `Calculated hourly rate: ${calculatedHourlyRate}% for ${duration} hours`
+        `Calculated hourly rate: ${calculatedHourlyRate}% for ${duration} hours`,
       );
     }
 
     const payload: any = {
-      bookingID: bookingID,
       checkInDate: formatLocalDateTime(checkInWithTime),
       checkOutDate: formatLocalDateTime(checkOutWithTime),
       numberOfGuests: booking.numberOfGuests || 1,
@@ -782,52 +777,37 @@ export default function BookingForm({
       type: bookingType,
       duration: bookingType === "HOURLY" ? duration : 0,
       hourlyRate: bookingType === "HOURLY" ? calculatedHourlyRate : null,
-      customer: {
-        id: customer?.id || null,
-      },
+      customerID: customer?.id || null,
       totalCost: await calculateServiceCosts(),
     };
 
     const bookingDetails = rooms.map((r: Room) => ({
-      room: {
-        roomNumber: r.roomNumber,
-      },
+      roomNumber: r.roomNumber,
       roomPrice: r.roomType?.basePrice || 0,
       review: null,
     }));
 
-    // Build bookingServices with room association: one entry per target room
+    // Dựa trên selectedServices và selectedServiceTargets để tạo bookingServices với thông tin phòng áp dụng
     const bookingServicesWithRooms: any[] = [];
     getSelectedServiceObjects().forEach((s: Service) => {
       const targets = selectedServiceTargets[s.serviceID];
       const quantity = serviceQuantities[s.serviceID] || 1;
 
-      if (!targets || targets === "ALL") {
-        // apply to every room in the booking
-        rooms.forEach((room) => {
-          bookingServicesWithRooms.push({
-            service: { serviceID: s.serviceID },
-            servicePrice: s.price,
-            quantity: quantity,
-            totalAmount: s.price * quantity,
-            orderStatus: "PLACE",
-            paymentMethod: selectedPaymentMethod,
-            room: { roomNumber: room.roomNumber },
-          });
-        });
-      } else if (Array.isArray(targets)) {
-        targets.forEach((roomNumber) => {
-          bookingServicesWithRooms.push({
-            service: { serviceID: s.serviceID },
-            servicePrice: s.price,
-            quantity: quantity,
-            totalAmount: s.price * quantity,
-            orderStatus: "PLACE",
-            paymentMethod: selectedPaymentMethod,
-            room: { roomNumber },
-          });
-        });
-      }
+      const roomCount =
+        !targets || targets === "ALL"
+          ? rooms.length || 1
+          : Array.isArray(targets)
+            ? targets.length || 1
+            : 1;
+
+      bookingServicesWithRooms.push({
+        serviceId: s.serviceID,
+        servicePrice: s.price,
+        quantity: quantity * roomCount,
+        totalAmount: s.price * quantity * roomCount,
+        orderStatus: "PLACE",
+        paymentMethod: selectedPaymentMethod,
+      });
     });
 
     console.log("Booking payload:", payload);
@@ -836,19 +816,15 @@ export default function BookingForm({
 
     try {
       setLoading(true);
-      const success = await saveBookingWithDetails(
+      const savedBooking = await saveBookingWithDetails(
         payload,
         bookingDetails,
-        bookingServicesWithRooms
+        bookingServicesWithRooms,
       );
 
-      if (!success) {
+      if (!savedBooking?.bookingID) {
         throw new Error("Failed to save booking");
       }
-
-      const savedBooking = await getBookingById(bookingID);
-
-      console.log("Saved booking response:", savedBooking);
 
       for (const cv of selectedVoucher) {
         cv.state = false;
@@ -858,11 +834,9 @@ export default function BookingForm({
       const bookingToPass = {
         ...payload,
         ...(savedBooking || {}),
-        bookingID: savedBooking?.bookingID || bookingID,
+        bookingID: savedBooking.bookingID,
         customer: savedBooking?.customer || customer,
       };
-
-      console.log("Navigating to payment with:", bookingToPass);
 
       navigate("/customer/payment", {
         state: {
@@ -1262,7 +1236,7 @@ export default function BookingForm({
                                 onChange={(e) =>
                                   updateServiceQuantity(
                                     service.serviceID,
-                                    parseInt(e.target.value) || 1
+                                    parseInt(e.target.value) || 1,
                                   )
                                 }
                                 className="w-16 text-center px-2 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#c9b8a8]"
@@ -1308,7 +1282,7 @@ export default function BookingForm({
                                 onChange={(e) =>
                                   setServiceApplyAll(
                                     service.serviceID,
-                                    e.target.checked
+                                    e.target.checked,
                                   )
                                 }
                               />
@@ -1344,7 +1318,7 @@ export default function BookingForm({
                                     onChange={() =>
                                       toggleServiceTarget(
                                         service.serviceID,
-                                        roomNumber
+                                        roomNumber,
                                       )
                                     }
                                     className="w-4 h-4"
@@ -1384,8 +1358,8 @@ export default function BookingForm({
                         !targets || targets === "ALL"
                           ? rooms.length
                           : Array.isArray(targets)
-                          ? targets.length
-                          : 1;
+                            ? targets.length
+                            : 1;
                       const totalPrice = service.price * quantity * roomCount;
 
                       return (
@@ -1643,7 +1617,7 @@ export default function BookingForm({
                       const checkOut = new Date(hourlyCheckInDate);
                       checkOut.setHours(hours + duration, minutes, 0, 0);
                       return `${checkOut.toLocaleDateString(
-                        "en-GB"
+                        "en-GB",
                       )} at ${checkOut
                         .getHours()
                         .toString()
@@ -1685,8 +1659,8 @@ export default function BookingForm({
                   !targets || targets === "ALL"
                     ? rooms.length
                     : Array.isArray(targets)
-                    ? targets.length
-                    : 1;
+                      ? targets.length
+                      : 1;
                 const totalPrice = service.price * quantity * roomCount;
 
                 return (
@@ -1765,8 +1739,8 @@ export default function BookingForm({
                       })`
                     : `${selectedVoucher.length} vouchers applied`
                   : customerVouchers && customerVouchers.length > 0
-                  ? "Choose voucher"
-                  : "No vouchers available"}
+                    ? "Choose voucher"
+                    : "No vouchers available"}
               </span>
             </div>
             <div className="flex justify-between items-center py-2 border-t border-gray-200 mt-4">

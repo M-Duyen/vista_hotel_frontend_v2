@@ -7,6 +7,7 @@ import {
     websocketService,
     type NotificationMessage,
 } from '../services/websocketService';
+import { API_CONFIG } from '@/config/api.config';
 
 // ============================
 // Frontend Notification Interface
@@ -54,7 +55,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     const [notifications, setNotifications] = useState<Notification[]>([]);
 
     // Load user from localStorage
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem(API_CONFIG.STORAGE_KEYS.USER);
     const parsedUser = savedUser ? JSON.parse(savedUser) : null;
 
     const userId =
@@ -146,7 +147,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     // ============================
     const refreshNotifications = useCallback(async () => {
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem(API_CONFIG.STORAGE_KEYS.TOKEN);
             if (!token) {
                 setNotifications([]);
                 return;

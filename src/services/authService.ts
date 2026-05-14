@@ -1,5 +1,6 @@
 /* eslint-disable */
-import { api } from "./apiClient";
+import { authApi } from "./apiClient";
+import { API_CONFIG } from "@/config/api.config";
 import { sendEmail } from "./emailService";
 import {
   loginWelcomeBackEmail,
@@ -9,172 +10,310 @@ import {
 } from "../utils/emailTemplates/authEmails";
 import type { PasswordChangeRequest } from "../types/UserProfile";
 
-export interface LoginData {
+export type StoredUser = AuthResponse["data"] | Record<string, unknown>;
+
+const extractErrorMessage = (error: unknown, fallback: string): string => {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    typeof (error as { response?: unknown }).response === "object" &&
+    (error as { response?: unknown }).response !== null
+  ) {
+    const response = (error as { response?: { data?: { message?: string } } })
+      .response;
+    if (response?.data?.message) {
+      return response.data.message;
+    }
+  }
+
+  return fallback;
+};
+
+export interface LoginPayload {
   email?: string;
   phone?: string;
+  userName?: string;
   password: string;
-  role?: string;
 }
 
-export interface RegisterData {
+interface BackendLoginPayload {
+  email?: string;
+  phone?: string;
+  username?: string;
+  password: string;
+}
+
+export interface RegisterPayload {
   userName: string;
   fullName: string;
-  email?: string;
-  phone?: string;
+  email: string;
+  phone: string;
   password: string;
-  address?: string;
-  gender?: string;
-  birthDate?: string;
 }
 
-export interface AuthResponse<T = unknown> {
+interface BackendRegisterPayload {
+  username: string;
+  fullName: string;
+  password: string;
+  email: string;
+  phone: string;
+}
+
+interface BackendAuthResponse {
+  token?: string;
+  refreshToken?: string;
+  userId?: string;
+  username?: string;
+  fullName?: string;
+  phone?: string;
+  email?: string;
+  message?: string;
+  expiresIn?: number;
+}
+
+export interface AuthResponse {
   success: boolean;
   message: string;
-  data?: T;
+  data?: {
+    id: string;
+    userName: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    address: string;
+    userRole: string;
+    avatarUrl: string;
+  };
   token?: string;
   refreshToken?: string;
 }
 
+const toAuthResponse = (
+  payload: BackendAuthResponse,
+  fallbackMessage: string,
+): AuthResponse => {
+  const hasUserProfile = Boolean(
+    payload.userId ||
+    payload.username ||
+    payload.email ||
+    payload.phone ||
+    payload.fullName,
+  );
+
+  return {
+    success: true,
+    message: payload.message || fallbackMessage,
+    token: payload.token,
+    refreshToken: payload.refreshToken,
+    data: hasUserProfile
+      ? {
+          id: payload.userId || "",
+          userName: payload.username || "",
+          fullName: payload.fullName || "",
+          email: payload.email || "",
+          phone: payload.phone || "",
+          address: "",
+          userRole: "",
+          avatarUrl: "",
+        }
+      : undefined,
+  };
+};
+
+/**
+ * Login user
+ */
 export const handleLogin = async (
-  payload: LoginData
+  payload: LoginPayload,
 ): Promise<AuthResponse> => {
   try {
-    const { data } = await api.post("/auth/login", payload);
+    const requestBody: BackendLoginPayload = {
+      username: payload.userName,
+      email: payload.email,
+      phone: payload.phone,
+      password: payload.password,
+    };
 
-    // Kiểm tra response từ backend
-    if (data.success === false) {
-      return {
-        success: false,
-        message: data.message || "Login failed",
-      };
-    }
+    const response = await authApi.post<BackendAuthResponse>(
+      "/login",
+      requestBody,
+    );
 
-    // Lưu tokens vào localStorage
-    if (data.token) {
-      localStorage.setItem("token", data.token);
-    }
-    if (data.refreshToken) {
-      localStorage.setItem("refreshToken", data.refreshToken);
-    }
-    if (data.data) {
-      localStorage.setItem("user", JSON.stringify(data.data));
-    }
+    const authResponse = toAuthResponse(response.data, "Login successfully");
 
     // Gửi email chào mừng khi đăng nhập thành công
-    const user = data.data;
-    if (user?.email) {
+    if (authResponse.data?.email) {
       const html = loginWelcomeBackEmail(
-        user.fullName || user.userName || "Khách hàng"
+        authResponse.data.fullName ||
+          authResponse.data.userName ||
+          "Khách hàng",
       );
       sendEmail({
-        to: user.email,
+        to: authResponse.data.email,
         subject: "Chào mừng bạn trở lại Vista Hotel",
         htmlContent: html,
       });
     }
 
-    return {
-      success: true,
-      message: data.message || "Login successful!",
-      data: data.data,
-      token: data.token,
-      refreshToken: data.refreshToken,
-    };
+    return authResponse;
   } catch (err: unknown) {
-    const error = err as { response?: { data?: { message?: string } } };
     return {
       success: false,
-      message:
-        error.response?.data?.message || "Login failed. Please try again.",
+      message: extractErrorMessage(err, "Login failed. Please try again."),
     };
   }
 };
 
+/**
+ * Register user
+ */
 export const handleRegister = async (
-  payload: RegisterData
+  payload: RegisterPayload,
 ): Promise<AuthResponse> => {
   try {
-    const { data } = await api.post("/auth/register", payload);
-
-    // Kiểm tra response từ backend
-    if (data.success === false) {
+    if (
+      !payload.userName ||
+      !payload.fullName ||
+      !payload.password ||
+      !payload.email ||
+      !payload.phone
+    ) {
       return {
         success: false,
-        message: data.message || "Registration failed!",
+        message:
+          "Username, full name, password, email, and phone are required.",
       };
     }
 
+    const requestBody: BackendRegisterPayload = {
+      username: payload.userName,
+      fullName: payload.fullName,
+      password: payload.password,
+      email: payload.email,
+      phone: payload.phone,
+    };
+
+    const response = await authApi.post<BackendAuthResponse>(
+      "/register",
+      requestBody,
+    );
+
+    const authResponse = toAuthResponse(response.data, "Register successfully");
+
     // Gửi email chào mừng sau khi đăng ký thành công
-    const user = data.data;
-    if (user?.email) {
+    if (authResponse.data?.email) {
       const html = registerSuccessEmail(
-        user.fullName || user.userName || "Khách hàng"
+        authResponse.data.fullName ||
+          authResponse.data.userName ||
+          "Khách hàng",
       );
       sendEmail({
-        to: user.email,
+        to: authResponse.data.email,
         subject: "Đăng ký Vista Hotel thành công",
         htmlContent: html,
       });
     }
 
-    return {
-      success: true,
-      message: data.message || "Registration successful!",
-      data: data.data ?? data,
-    };
-  } catch (err: unknown) {
-    const error = err as { response?: { data?: { message?: string } } };
+    return authResponse;
+  } catch (error: unknown) {
     return {
       success: false,
-      message:
-        error.response?.data?.message ||
+      message: extractErrorMessage(
+        error,
         "Registration failed. Please try again.",
+      ),
     };
   }
 };
 
-export const handleLogout = (): AuthResponse => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("user");
-  return {
-    success: true,
-    message: "Logout successful!",
-  };
+/**
+ * Save token to localStorage
+ */
+export const saveTokens = (token: string, refreshToken?: string) => {
+  localStorage.setItem(API_CONFIG.STORAGE_KEYS.TOKEN, token);
+  if (refreshToken) {
+    localStorage.setItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+  }
+};
+
+/**
+ * Save user to localStorage
+ */
+export const saveUser = (user: StoredUser) => {
+  localStorage.setItem(API_CONFIG.STORAGE_KEYS.USER, JSON.stringify(user));
+};
+
+/**
+ * Get stored token
+ */
+export const getToken = (): string | null => {
+  return localStorage.getItem(API_CONFIG.STORAGE_KEYS.TOKEN);
+};
+
+/**
+ * Get stored user
+ */
+export const getUser = (): StoredUser | null => {
+  const user = localStorage.getItem(API_CONFIG.STORAGE_KEYS.USER);
+  return user ? (JSON.parse(user) as StoredUser) : null;
+};
+
+/**
+ * Logout
+ */
+export const handleLogout = () => {
+  localStorage.removeItem(API_CONFIG.STORAGE_KEYS.TOKEN);
+  localStorage.removeItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
+  localStorage.removeItem(API_CONFIG.STORAGE_KEYS.USER);
+};
+
+/**
+ * Check if user is authenticated
+ */
+export const isAuthenticated = (): boolean => {
+  return getToken() !== null;
 };
 
 export const validateToken = async (): Promise<AuthResponse> => {
   try {
-    const { data } = await api.get("/auth/validate");
-    return data;
+    const { data } = await authApi.get("/health");
+    return {
+      success: true,
+      message: data?.status ? `Auth service ${data.status}` : "Auth service OK",
+    };
   } catch (err: unknown) {
     return {
       success: false,
-      message: "Token is invalid or has expired",
+      message: "Auth service is unavailable",
     };
   }
 };
 
 export const refreshToken = async (): Promise<AuthResponse> => {
   try {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (!refreshToken) {
+    const storedRefreshToken = localStorage.getItem(
+      API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN,
+    );
+    if (!storedRefreshToken) {
       return {
         success: false,
         message: "Refresh token not found",
       };
     }
 
-    const { data } = await api.post(
-      "/auth/refresh-token",
-      {},
-      {
-        headers: { Authorization: `Bearer ${refreshToken}` },
-      }
-    );
+    const { data } = await authApi.post("/refresh", {
+      refreshToken: storedRefreshToken,
+    });
 
-    if (data.success && data.token) {
-      localStorage.setItem("token", data.token);
+    if (data?.token) {
+      localStorage.setItem(API_CONFIG.STORAGE_KEYS.TOKEN, data.token);
+      if (data.refreshToken) {
+        localStorage.setItem(
+          API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN,
+          data.refreshToken,
+        );
+      }
     }
 
     return data;
@@ -186,24 +325,34 @@ export const refreshToken = async (): Promise<AuthResponse> => {
   }
 };
 
+export const sendOtp = async (email: string) => {
+  const { data } = await authApi.post("/send-otp", { email });
+  return data;
+};
+
+export const verifyOtp = async (email: string, otp: string) => {
+  const { data } = await authApi.post("/verify-otp", { email, otp });
+  return data;
+};
+
 /**
  * Đổi mật khẩu người dùng
- * Backend endpoint: POST /auth/change-password
+ * Backend endpoint: POST /api/auth/change-password
  * Request body: { userId, currentPassword, newPassword }
  */
 export const changePassword = async (
   userId: string,
-  data: PasswordChangeRequest
+  data: PasswordChangeRequest,
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await api.post(`/auth/change-password`, {
+    const response = await authApi.post(`/change-password`, {
       userId,
       currentPassword: data.currentPassword,
       newPassword: data.newPassword,
     });
 
     // Nếu đổi mật khẩu thành công và user đang login → gửi email
-    const userRaw = localStorage.getItem("user");
+    const userRaw = localStorage.getItem(API_CONFIG.STORAGE_KEYS.USER);
     if (response.data.success && userRaw) {
       const user = JSON.parse(userRaw);
       if (user.email) {
@@ -223,23 +372,27 @@ export const changePassword = async (
     };
   } catch (error: any) {
     throw new Error(
-      error?.response?.data?.message || "Failed to change password"
+      error?.response?.data?.message || "Failed to change password",
     );
   }
 };
 
 export const resetPassword = async (
   email: string,
-  newPassword: string
+  newPassword: string,
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    const { data } = await api.post("/auth/reset-password", {
+    const { data } = await authApi.post("/reset-password", {
       email,
       newPassword,
     });
 
+    const normalizedSuccess =
+      data?.success === true ||
+      (data?.success !== false && /success/i.test(data?.message || ""));
+
     // Nếu reset thành công thì gửi email thông báo
-    if (data.success) {
+    if (normalizedSuccess) {
       const html = passwordChangedTemplate("Khách hàng");
 
       await sendEmail({
@@ -250,10 +403,10 @@ export const resetPassword = async (
     }
 
     return {
-      success: data.success,
+      success: normalizedSuccess,
       message:
         data.message ||
-        (data.success
+        (normalizedSuccess
           ? "Password reset successfully!"
           : "Password reset failed"),
     };
@@ -269,10 +422,12 @@ export const resetPassword = async (
 };
 
 export const sendOtpEmail = async (
-  identifier: string
-): Promise<{ success: boolean; message: string }> => {
+  identifier: string,
+): Promise<{ success: boolean; message: string; otp?: string }> => {
   try {
-    const { data } = await api.post("/auth/send-otp", { email: identifier });
+    const { data } = await authApi.post("/send-otp", {
+      email: identifier,
+    });
 
     if (!data.success) {
       return {
@@ -281,7 +436,7 @@ export const sendOtpEmail = async (
       };
     }
 
-    const otp = data.otp;
+    const otp = data.otp as string;
 
     await sendEmail({
       to: identifier,
@@ -292,6 +447,7 @@ export const sendOtpEmail = async (
     return {
       success: true,
       message: "OTP email sent successfully.",
+      otp,
     };
   } catch (error) {
     console.error("Error sending OTP email:", error);
@@ -305,17 +461,17 @@ export const sendOtpEmail = async (
 export const handleOAuthSuccess = (
   token: string,
   userJson: string,
-  refreshToken?: string
+  refreshToken?: string,
 ) => {
-  localStorage.setItem("token", token);
+  localStorage.setItem(API_CONFIG.STORAGE_KEYS.TOKEN, token);
 
   // decode & parse JSON
   const decodedUserJson = decodeURIComponent(userJson);
   const userObj = JSON.parse(decodedUserJson);
 
-  localStorage.setItem("user", JSON.stringify(userObj));
+  localStorage.setItem(API_CONFIG.STORAGE_KEYS.USER, JSON.stringify(userObj));
 
   if (refreshToken) {
-    localStorage.setItem("refreshToken", refreshToken);
+    localStorage.setItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
   }
 };

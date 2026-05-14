@@ -5,7 +5,13 @@ export type MemberShipLevel =
     | 'GOLD'
     | 'PLATINUM'
     | string;
-export type UserRole = 'CUSTOMER' | 'EMPLOYEE' | 'ADMIN' | string;
+export type UserRole =
+    | 'SUPER_ADMIN'
+    | 'ADMIN'
+    | 'EMPLOYEE'
+    | 'CUSTOMER'
+    | 'GUEST'
+    | string;
 
 export interface Customer {
     id: string;

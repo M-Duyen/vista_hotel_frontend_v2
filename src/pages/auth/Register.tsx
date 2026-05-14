@@ -10,7 +10,7 @@ import logoImage from "../../assets/images/logoWhite.png";
 import googleLogo from "../../assets/images/google-logo.svg";
 import Button from "../../components/common/Button";
 import FloatingInput from "../../components/common/FloatingInput";
-import { handleRegister } from "../../services/authService";
+import { useAuth } from "../../hooks/useAuth";
 import {
   validateFullName,
   validateEmail,
@@ -22,6 +22,7 @@ import {
 import { useToastContext } from "../../hooks/useToastContext";
 
 const Register: React.FC = () => {
+  const { register } = useAuth();
   const [userName, setUserName] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -144,28 +145,17 @@ const Register: React.FC = () => {
     setFullNameSuccess(!fullNameErr);
     if (fullNameErr) isValid = false;
 
-    // Email (optional)
-    if (email.trim()) {
-      const emailErr = validateEmail(email);
-      setEmailError(emailErr);
-      setEmailSuccess(!emailErr);
-      if (emailErr) isValid = false;
-    }
+    // Email (REQUIRED)
+    const emailErr = validateEmail(email);
+    setEmailError(emailErr);
+    setEmailSuccess(!emailErr);
+    if (emailErr) isValid = false;
 
-    // Phone (optional)
-    if (phone.trim()) {
-      const phoneErr = validatePhone(phone);
-      setPhoneError(phoneErr);
-      setPhoneSuccess(!phoneErr);
-      if (phoneErr) isValid = false;
-    }
-
-    // At least one contact method required
-    if (!email.trim() && !phone.trim()) {
-      setEmailError("Email or phone number is required");
-      setPhoneError("Email or phone number is required");
-      isValid = false;
-    }
+    // Phone (REQUIRED)
+    const phoneErr = validatePhone(phone);
+    setPhoneError(phoneErr);
+    setPhoneSuccess(!phoneErr);
+    if (phoneErr) isValid = false;
 
     // Password
     const passwordErr = validatePasswordCombined(password);
@@ -176,7 +166,7 @@ const Register: React.FC = () => {
     // Confirm password
     const confirmPasswordErr = validateConfirmPassword(
       password,
-      confirmPassword
+      confirmPassword,
     );
     setConfirmPasswordError(confirmPasswordErr);
     setConfirmPasswordSuccess(!confirmPasswordErr);
@@ -204,26 +194,15 @@ const Register: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const payload: {
-        userName: string;
-        fullName: string;
-        email?: string;
-        phone?: string;
-        password: string;
-      } = {
+      const payload = {
         userName: userName.trim(),
         fullName: fullName.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
         password,
       };
 
-      if (email.trim()) {
-        payload.email = email.trim();
-      }
-      if (phone.trim()) {
-        payload.phone = phone.trim();
-      }
-
-      const result = await handleRegister(payload);
+      const result = await register(payload);
 
       if (result.success) {
         toast.success("Registration successful! Redirecting to login page...", {
@@ -244,15 +223,14 @@ const Register: React.FC = () => {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = `${
-      import.meta.env.VITE_API_BASE_URL
-    }/oauth2/authorization/google`;
+    // Trỏ thẳng tới service-auth (8001) bypass gateway
+    const authUrl = import.meta.env.VITE_AUTH_SERVICE_URL || "http://localhost:8001";
+    window.location.href = `${authUrl}/oauth2/authorization/google`;
   };
 
   const handleFacebookLogin = () => {
-    window.location.href = `${
-      import.meta.env.VITE_API_BASE_URL
-    }/oauth2/authorization/facebook`;
+    const authUrl = import.meta.env.VITE_AUTH_SERVICE_URL || "http://localhost:8001";
+    window.location.href = `${authUrl}/oauth2/authorization/facebook`;
   };
 
   return (
@@ -291,39 +269,39 @@ const Register: React.FC = () => {
               userNameError
                 ? "border-red-500"
                 : userNameSuccess
-                ? "border-green-500"
-                : "border-white/40"
+                  ? "border-green-500"
+                  : "border-white/40"
             }
             focusBorderColor={
               userNameError
                 ? "focus:border-red-500"
                 : userNameSuccess
-                ? "focus:border-green-500"
-                : "focus:border-[#c3923c]"
+                  ? "focus:border-green-500"
+                  : "focus:border-[#c3923c]"
             }
             labelColor={
               userNameError
                 ? "text-red-500"
                 : userNameSuccess
-                ? "text-green-500"
-                : "text-white/80"
+                  ? "text-green-500"
+                  : "text-white/80"
             }
             focusLabelColor={
               userNameError
                 ? "text-red-500"
                 : userNameSuccess
-                ? "text-green-500"
-                : "text-[#c3923c]"
+                  ? "text-green-500"
+                  : "text-[#c3923c]"
             }
-            textColor="text-white"
-            iconColor="text-white/80"
-            className="bg-transparent"
+            iconColor="text-white"
+            eyeIconColor="text-white"
+            className="bg-transparent text-white"
           />
           {userNameError && (
             <p className="text-red-500 text-xs mt-1">{userNameError}</p>
           )}
           {userNameSuccess && !userNameError && (
-            <p className="text-green-500 text-xs mt-1">Username is valid</p>
+            <p className="text-green-500 text-xs mt-1">✓ Username is valid</p>
           )}
         </div>
 
@@ -345,39 +323,39 @@ const Register: React.FC = () => {
               fullNameError
                 ? "border-red-500"
                 : fullNameSuccess
-                ? "border-green-500"
-                : "border-white/40"
+                  ? "border-green-500"
+                  : "border-white/40"
             }
             focusBorderColor={
               fullNameError
                 ? "focus:border-red-500"
                 : fullNameSuccess
-                ? "focus:border-green-500"
-                : "focus:border-[#c3923c]"
+                  ? "focus:border-green-500"
+                  : "focus:border-[#c3923c]"
             }
             labelColor={
               fullNameError
                 ? "text-red-500"
                 : fullNameSuccess
-                ? "text-green-500"
-                : "text-white/80"
+                  ? "text-green-500"
+                  : "text-white/80"
             }
             focusLabelColor={
               fullNameError
                 ? "text-red-500"
                 : fullNameSuccess
-                ? "text-green-500"
-                : "text-[#c3923c]"
+                  ? "text-green-500"
+                  : "text-[#c3923c]"
             }
-            textColor="text-white"
-            iconColor="text-white/80"
-            className="bg-transparent"
+            iconColor="text-white"
+            eyeIconColor="text-white"
+            className="bg-transparent text-white"
           />
           {fullNameError && (
             <p className="text-red-500 text-xs mt-1">{fullNameError}</p>
           )}
           {fullNameSuccess && !fullNameError && (
-            <p className="text-green-500 text-xs mt-1">Full name is valid</p>
+            <p className="text-green-500 text-xs mt-1">✓ Full name is valid</p>
           )}
         </div>
 
@@ -399,39 +377,39 @@ const Register: React.FC = () => {
               emailError
                 ? "border-red-500"
                 : emailSuccess
-                ? "border-green-500"
-                : "border-white/40"
+                  ? "border-green-500"
+                  : "border-white/40"
             }
             focusBorderColor={
               emailError
                 ? "focus:border-red-500"
                 : emailSuccess
-                ? "focus:border-green-500"
-                : "focus:border-[#c3923c]"
+                  ? "focus:border-green-500"
+                  : "focus:border-[#c3923c]"
             }
             labelColor={
               emailError
                 ? "text-red-500"
                 : emailSuccess
-                ? "text-green-500"
-                : "text-white/80"
+                  ? "text-green-500"
+                  : "text-white/80"
             }
             focusLabelColor={
               emailError
                 ? "text-red-500"
                 : emailSuccess
-                ? "text-green-500"
-                : "text-[#c3923c]"
+                  ? "text-green-500"
+                  : "text-[#c3923c]"
             }
-            textColor="text-white"
-            iconColor="text-white/80"
-            className="bg-transparent"
+            iconColor="text-white"
+            eyeIconColor="text-white"
+            className="bg-transparent text-white"
           />
           {emailError && (
             <p className="text-red-500 text-xs mt-1">{emailError}</p>
           )}
           {emailSuccess && !emailError && (
-            <p className="text-green-500 text-xs mt-1">Email is valid</p>
+            <p className="text-green-500 text-xs mt-1">✓ Email is valid</p>
           )}
         </div>
 
@@ -453,40 +431,40 @@ const Register: React.FC = () => {
               phoneError
                 ? "border-red-500"
                 : phoneSuccess
-                ? "border-green-500"
-                : "border-white/40"
+                  ? "border-green-500"
+                  : "border-white/40"
             }
             focusBorderColor={
               phoneError
                 ? "focus:border-red-500"
                 : phoneSuccess
-                ? "focus:border-green-500"
-                : "focus:border-[#c3923c]"
+                  ? "focus:border-green-500"
+                  : "focus:border-[#c3923c]"
             }
             labelColor={
               phoneError
                 ? "text-red-500"
                 : phoneSuccess
-                ? "text-green-500"
-                : "text-white/80"
+                  ? "text-green-500"
+                  : "text-white/80"
             }
             focusLabelColor={
               phoneError
                 ? "text-red-500"
                 : phoneSuccess
-                ? "text-green-500"
-                : "text-[#c3923c]"
+                  ? "text-green-500"
+                  : "text-[#c3923c]"
             }
-            textColor="text-white"
-            iconColor="text-white/80"
-            className="bg-transparent"
+            iconColor="text-white"
+            eyeIconColor="text-white"
+            className="bg-transparent text-white"
           />
           {phoneError && (
             <p className="text-red-500 text-xs mt-1">{phoneError}</p>
           )}
           {phoneSuccess && !phoneError && (
             <p className="text-green-500 text-xs mt-1">
-              Phone number is valid
+              ✓ Phone number is valid
             </p>
           )}
         </div>
@@ -509,39 +487,39 @@ const Register: React.FC = () => {
               passwordError
                 ? "border-red-500"
                 : passwordSuccess
-                ? "border-green-500"
-                : "border-white/40"
+                  ? "border-green-500"
+                  : "border-white/40"
             }
             focusBorderColor={
               passwordError
                 ? "focus:border-red-500"
                 : passwordSuccess
-                ? "focus:border-green-500"
-                : "focus:border-[#c3923c]"
+                  ? "focus:border-green-500"
+                  : "focus:border-[#c3923c]"
             }
             labelColor={
               passwordError
                 ? "text-red-500"
                 : passwordSuccess
-                ? "text-green-500"
-                : "text-white/80"
+                  ? "text-green-500"
+                  : "text-white/80"
             }
             focusLabelColor={
               passwordError
                 ? "text-red-500"
                 : passwordSuccess
-                ? "text-green-500"
-                : "text-[#c3923c]"
+                  ? "text-green-500"
+                  : "text-[#c3923c]"
             }
-            textColor="text-white"
-            iconColor="text-white/80"
-            className="bg-transparent"
+            iconColor="text-white"
+            eyeIconColor="text-white"
+            className="bg-transparent text-white"
           />
           {passwordError && (
             <p className="text-red-500 text-xs mt-1">{passwordError}</p>
           )}
           {passwordSuccess && !passwordError && (
-            <p className="text-green-500 text-xs mt-1">Password is valid</p>
+            <p className="text-green-500 text-xs mt-1">✓ Password is valid</p>
           )}
         </div>
 
@@ -563,39 +541,39 @@ const Register: React.FC = () => {
               confirmPasswordError
                 ? "border-red-500"
                 : confirmPasswordSuccess
-                ? "border-green-500"
-                : "border-white/40"
+                  ? "border-green-500"
+                  : "border-white/40"
             }
             focusBorderColor={
               confirmPasswordError
                 ? "focus:border-red-500"
                 : confirmPasswordSuccess
-                ? "focus:border-green-500"
-                : "focus:border-[#c3923c]"
+                  ? "focus:border-green-500"
+                  : "focus:border-[#c3923c]"
             }
             labelColor={
               confirmPasswordError
                 ? "text-red-500"
                 : confirmPasswordSuccess
-                ? "text-green-500"
-                : "text-white/80"
+                  ? "text-green-500"
+                  : "text-white/80"
             }
             focusLabelColor={
               confirmPasswordError
                 ? "text-red-500"
                 : confirmPasswordSuccess
-                ? "text-green-500"
-                : "text-[#c3923c]"
+                  ? "text-green-500"
+                  : "text-[#c3923c]"
             }
-            textColor="text-white"
-            iconColor="text-white/80"
-            className="bg-transparent"
+            iconColor="text-white"
+            eyeIconColor="text-white"
+            className="bg-transparent text-white"
           />
           {confirmPasswordError && (
             <p className="text-red-500 text-xs mt-1">{confirmPasswordError}</p>
           )}
           {confirmPasswordSuccess && !confirmPasswordError && (
-            <p className="text-green-500 text-xs mt-1">Passwords match</p>
+            <p className="text-green-500 text-xs mt-1">✓ Passwords match</p>
           )}
         </div>
 

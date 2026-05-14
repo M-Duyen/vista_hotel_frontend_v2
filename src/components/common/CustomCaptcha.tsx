@@ -128,7 +128,7 @@ const CustomCaptcha: React.FC<CustomCaptchaProps> = ({
               type="text"
               value={userInput}
               onChange={(e) => handleInputChange(e.target.value)}
-              placeholder="Nhập mã"
+              placeholder="Enter code..."
               maxLength={6}
               className={`w-full px-4 py-3 bg-white/10 border-2 rounded-lg text-white placeholder-white/50 focus:outline-none transition-all ${
                 userInput
@@ -144,8 +144,8 @@ const CustomCaptcha: React.FC<CustomCaptchaProps> = ({
           <button
             type="button"
             onClick={generateCaptcha}
-            className="p-3 bg-white/10 hover:bg-white/20 border border-white/40 rounded-lg transition-all group"
-            title="Tạo mã mới"
+            className="p-3 bg-white/10 hover:bg-white/20 border border-white/40 rounded-lg transition-all group cursor-pointer"
+            title="Create new captcha"
           >
             <RefreshCw className="w-5 h-5 text-white group-hover:rotate-180 transition-transform duration-500" />
           </button>

@@ -4,11 +4,24 @@ import { api } from "./apiClient";
 const ENDPOINT = "/cart-beans";
 
 export const getCartBeanByCustomerId = async (
-  id: string
+  id: string,
 ): Promise<CartBean> => {
   try {
     const response = await api.get(`${ENDPOINT}/customer/${id}`);
-    return response.data;
+
+    const item = response.data;
+    const cartBean: CartBean = {
+      cartBeanId: item.cartBeanId,
+      customer: await api
+        .get(`/customers/${item.customerId}`)
+        .then((res) => res.data),
+      items: await Promise.all(
+        item.items.map((roomNumber: string) =>
+          api.get(`/rooms/${roomNumber}`).then((res) => res.data),
+        ),
+      ),
+    };
+    return cartBean;
   } catch (error) {
     console.error(`Error fetching cart for customer ${id}:`, error);
     throw error;
@@ -17,7 +30,7 @@ export const getCartBeanByCustomerId = async (
 
 export const addRoomToCart = async (
   customerId: string,
-  roomNumber: string
+  roomNumber: string,
 ): Promise<void> => {
   try {
     await api.post(`${ENDPOINT}/add/${customerId}/${roomNumber}`);
@@ -29,7 +42,7 @@ export const addRoomToCart = async (
 
 export const removeRoomFromCart = async (
   customerId: string,
-  roomNumber: string
+  roomNumber: string,
 ): Promise<void> => {
   try {
     await api.delete(`${ENDPOINT}/remove/${customerId}/${roomNumber}`);

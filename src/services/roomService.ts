@@ -1,11 +1,13 @@
-import { api } from './apiClient';
+// import { api } from './apiClient';
 import type { Room, RoomStatus } from '../types/Room';
+import { roomsApi } from './apiClient';
+import { roomTypesApi } from './apiClient';
 
-const ENDPOINT = '/rooms';
+// const ENDPOINT = '/rooms';
 
 export const getAll = async () => {
     try {
-        const response = await api.get(ENDPOINT);
+        const response = await roomsApi.get('');
         return response.data;
     } catch (error) {
         console.error('Error fetching rooms:', error);
@@ -15,7 +17,7 @@ export const getAll = async () => {
 
 export const getById = async (id: string) => {
     try {
-        const response = await api.get(`${ENDPOINT}/${id}`);
+        const response = await roomsApi.get(`/${id}`);
         return response.data;
     } catch (error) {
         console.error('Error fetching room by ID:', error);
@@ -34,7 +36,7 @@ export const getRoomById = async (id: string) => {
 // Tạo phòng mới
 export const createRoom = async (roomData: Partial<Room>) => {
     try {
-        const response = await api.post(`${ENDPOINT}/save`, roomData);
+        const response = await roomsApi.post('/save', roomData);
         return response.data;
     } catch (error) {
         console.error('Error creating room:', error);
@@ -45,7 +47,7 @@ export const createRoom = async (roomData: Partial<Room>) => {
 // Cập nhật phòng hiện có
 export const updateRoom = async (id: string, roomData: Partial<Room>) => {
     try {
-        const response = await api.post(`${ENDPOINT}/save`, roomData);
+        const response = await roomsApi.post(`/save`, roomData);
         return response.data;
     } catch (error) {
         console.error('Error updating room:', error);
@@ -58,7 +60,7 @@ export const saveRoom = async (
     roomData: Partial<Room> & { roomNumber?: string },
 ) => {
     try {
-        const response = await api.post(`${ENDPOINT}/save`, roomData);
+        const response = await roomsApi.post('/save', roomData);
         return response.data;
     } catch (error) {
         console.error('Error saving room:', error);
@@ -69,7 +71,7 @@ export const saveRoom = async (
 // Delete room
 export const deleteRoom = async (id: string) => {
     try {
-        const response = await api.delete(`${ENDPOINT}/delete/${id}`);
+        const response = await roomsApi.delete(`/delete/${id}`);
         return response.data;
     } catch (error) {
         console.error('Error deleting room:', error);
@@ -80,7 +82,7 @@ export const deleteRoom = async (id: string) => {
 // Lấy danh sách loại phòng
 export const getAllRoomTypes = async () => {
     try {
-        const response = await api.get('/room-types');
+        const response = await roomTypesApi.get('');
         return response.data;
     } catch (error) {
         console.error('Error fetching room types:', error);
@@ -158,7 +160,7 @@ export const updateRoomStatus = async (
         };
 
         // Gọi API để lưu thay đổi
-        const response = await api.post(`${ENDPOINT}/save`, updateRoom);
+        const response = await roomsApi.post('/save', updateRoom);
         return response.data;
     } catch (error) {
         console.error('Error updating room status:', error);
@@ -172,7 +174,7 @@ export const getAvailableRooms = async (
     endDate: string, // ISO datetime: YYYY-MM-DDTHH:mm:ss
 ): Promise<Room[]> => {
     try {
-        const response = await api.get(`${ENDPOINT}/available`, {
+        const response = await roomsApi.get('/available', {
             params: { startDate, endDate },
         });
         return Array.isArray(response.data) ? response.data : [];

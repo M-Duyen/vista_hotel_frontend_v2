@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  generateQRPayment,
   getBookingById,
   cancelBookingPayment,
   confirmPayAtCheckout,
   getRemainingTimeForPayment,
 } from "../../../services/bookingService";
+import { generateQRPayment } from "../../../services/paymentService";
 import type { Booking } from "../../../types/Booking";
 import CountdownTimer from "../../../components/common/CountdownTimer";
 import Header from "../../../components/Header";
@@ -111,8 +111,8 @@ const PaymentPage: React.FC = () => {
 
       console.log(
         `Parsed time: ${hours}h ${minutes}m ${seconds}s = ${totalMinutes.toFixed(
-          2
-        )} minutes`
+          2,
+        )} minutes`,
       );
 
       return totalMinutes;
@@ -151,7 +151,7 @@ const PaymentPage: React.FC = () => {
         setPaymentCompleted(true);
         setTimeout(
           () => navigate(`/customer/mybooking/${booking.bookingID}`),
-          3000
+          3000,
         );
         handleSendEmailReceipt();
       } catch (error) {
@@ -206,7 +206,7 @@ const PaymentPage: React.FC = () => {
           handleSendEmailReceipt();
           setTimeout(
             () => navigate(`/customer/mybooking/${booking.bookingID}`),
-            5000
+            5000,
           );
           return;
         }
@@ -232,7 +232,7 @@ const PaymentPage: React.FC = () => {
           day: "numeric",
           hour: "2-digit",
           minute: "2-digit",
-        }
+        },
       );
 
       const checkOutDate = new Date(booking.checkOutDate).toLocaleDateString(
@@ -244,7 +244,7 @@ const PaymentPage: React.FC = () => {
           day: "numeric",
           hour: "2-digit",
           minute: "2-digit",
-        }
+        },
       );
 
       // Get room details
@@ -253,7 +253,7 @@ const PaymentPage: React.FC = () => {
           (bd) =>
             `Phòng ${bd.room.roomNumber} - ${
               bd.room.roomType?.typeName || "Standard"
-            }`
+            }`,
         ) || [];
 
       const html = confirmBookingEmail(
@@ -262,7 +262,7 @@ const PaymentPage: React.FC = () => {
         checkInDate,
         checkOutDate,
         booking.totalAmount,
-        roomDetails
+        roomDetails,
       );
 
       try {
@@ -477,10 +477,10 @@ const PaymentPage: React.FC = () => {
             <h3 className="font-semibold mb-4">
               {paymentInfo.hasChoice
                 ? `Payment Amount: ${getAmountByChoice(selectedChoice).toFixed(
-                    2
+                    2,
                   )} VND`
                 : `Payment Required: ${formatNumber(
-                    paymentInfo.required
+                    paymentInfo.required,
                   )} VND (${paymentInfo.percentage}%)`}
             </h3>
             <img
