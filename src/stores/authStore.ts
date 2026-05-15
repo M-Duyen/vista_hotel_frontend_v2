@@ -59,10 +59,10 @@ export const useAuthStore = create<AuthState>()(
               phone: response.data.phone,
               address: response.data.address,
               avatarUrl: response.data.avatarUrl,
-              isEnabled: true,
-              roles: [],
-              permissions: [],
-              userRole: response.data.userRole,
+              isEnabled: response.data.isEnabled ?? true,
+              roles: response.data.roles ?? [],
+              permissions: response.data.permissions ?? [],
+              userRole: response.data.roles?.[0] ?? "GUEST",
             };
 
             authService.saveTokens(response.token, response.refreshToken);
@@ -117,10 +117,10 @@ export const useAuthStore = create<AuthState>()(
                   phone: response.data.phone,
                   address: response.data.address,
                   avatarUrl: response.data.avatarUrl,
-                  isEnabled: true,
-                  roles: [],
-                  permissions: [],
-                  userRole: response.data.userRole,
+                  isEnabled: response.data.isEnabled ?? true,
+                  roles: response.data.roles ?? [],
+                  permissions: response.data.permissions ?? [],
+                  userRole: response.data.roles?.[0] ?? "GUEST",
                 }
               : null;
 
