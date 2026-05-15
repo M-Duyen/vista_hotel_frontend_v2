@@ -29,9 +29,21 @@ export interface Booking {
   customer: Customer;
   employee?: Employee;
   bookingDetails: BookingDetail[];
+  bookingServices?: BookingService[];
   earlyCheckin?: EarlyCheckin | null;
   lateCheckout?: LateCheckout | null;
   cancellation: BookingCancellation | null;
+}
+
+export interface BookingService {
+  id?: string;
+  serviceId?: string;
+  servicePrice?: number;
+  quantity?: number;
+  totalAmount?: number;
+  orderStatus?: string;
+  paymentMethod?: string;
+  roomNumber: string | string[];
 }
 
 export interface EarlyCheckin {
