@@ -20,6 +20,8 @@ export interface Customer {
     email: string;
     phone: string;
     avatartUrl: string | null;
+    avatarUrl?: string | null;
+    username?: string;
     fullName?: string | null;
     address: string;
     userRole: UserRole;

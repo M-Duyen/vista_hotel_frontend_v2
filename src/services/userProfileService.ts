@@ -31,7 +31,18 @@ export const updateCustomerProfile = async (
   data: ProfileUpdateRequest,
 ): Promise<Customer> => {
   try {
-    const response = await customerApi.put(`/${customerId}`, data);
+    const currentProfile = await getCustomerProfile(customerId);
+    const response = await customerApi.put(`/${customerId}`, {
+      username: currentProfile.userName ?? currentProfile.username,
+      email: data.email ?? currentProfile.email,
+      fullName: data.fullName ?? currentProfile.fullName,
+      phone: data.phone ?? currentProfile.phone,
+      address: data.address ?? currentProfile.address,
+      avatarUrl:
+        data.avatarUrl ?? currentProfile.avatarUrl ?? currentProfile.avatartUrl,
+      birthDate: data.birthDate ?? currentProfile.birthDate,
+      gender: data.gender ?? currentProfile.gender,
+    });
     return response.data;
   } catch (error) {
     console.error("Error updating customer profile:", error);
@@ -86,11 +97,25 @@ export const updateUserAvatar = async (
 
     // Cập nhật avatarUrl vào database
     if (userRole === "CUSTOMER") {
-      await customerApi.put(`/${userId}/avatar`, { avatarUrl });
+      await updateCustomerProfile(userId, { avatarUrl });
     } else if (userRole === "EMPLOYEE") {
-      await api.put(`${EMPLOYEE_ENDPOINT}/${userId}/avatar`, { avatarUrl });
-    } else if (userRole === "ADMIN") {
-      await api.put(`${ADMIN_ENDPOINT}/${userId}/avatar`, { avatarUrl });
+      const currentUser = getCurrentUserFromStorage();
+      await updateEmployeeProfile(userId, {
+        fullName: currentUser?.fullName,
+        email: currentUser?.email,
+        phone: currentUser?.phone,
+        address: currentUser?.address ?? "",
+        avatarUrl,
+      });
+    } else if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
+      const currentUser = getCurrentUserFromStorage();
+      await updateAdminProfile(userId, {
+        fullName: currentUser?.fullName,
+        email: currentUser?.email,
+        phone: currentUser?.phone,
+        address: currentUser?.address ?? "",
+        avatarUrl,
+      });
     }
 
     return avatarUrl;
@@ -114,7 +139,7 @@ export const updateUserProfile = async (
       response = await updateCustomerProfile(userId, data);
     } else if (userRole === "EMPLOYEE") {
       response = await updateEmployeeProfile(userId, data);
-    } else if (userRole === "ADMIN") {
+    } else if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
       response = await updateAdminProfile(userId, data);
     } else {
       throw new Error("Invalid user role");

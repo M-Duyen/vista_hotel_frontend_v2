@@ -8,16 +8,22 @@ import {
   faUserCircle,
   faBookmark,
   faSignOutAlt,
+  faChartLine,
+  faTasks,
+  faTicketAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import { CiShoppingCart, CiSearch, CiMenuBurger } from "react-icons/ci";
 
 import type { NavItem } from "../types/Header";
 import NotificationBell from "./common/NotificationBell";
+import { handleLogout as logout } from "../services/authService";
 interface User {
   id: string;
   userName: string;
   fullName?: string;
   email: string;
+  userRole?: string;
+  roles?: string[];
 }
 
 const navItems: NavItem[] = [
@@ -47,6 +53,8 @@ const Header: React.FC = () => {
           console.error("Error parsing user data:", error);
           localStorage.removeItem("user");
         }
+      } else {
+        setUser(null);
       }
     };
 
@@ -54,19 +62,59 @@ const Header: React.FC = () => {
 
     // Listen for storage changes (when user logs in/out in another tab)
     window.addEventListener("storage", checkUserStatus);
-    return () => window.removeEventListener("storage", checkUserStatus);
+    window.addEventListener("authChanged", checkUserStatus);
+    window.addEventListener("userDataUpdated", checkUserStatus);
+    return () => {
+      window.removeEventListener("storage", checkUserStatus);
+      window.removeEventListener("authChanged", checkUserStatus);
+      window.removeEventListener("userDataUpdated", checkUserStatus);
+    };
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
+    logout();
     setUser(null);
-    navigate("/auth/login");
+    navigate("/auth/login", { replace: true });
   };
   const getLastTwoWords = (name: string): string => {
     if (!name) return "";
     const parts = name.trim().split(" ");
     if (parts.length <= 2) return name; // Nếu tên chỉ có 1–2 từ thì giữ nguyên
     return parts.slice(-2).join(" "); // Lấy 2 từ cuối
+  };
+
+  const getProfilePath = () => {
+    const role = user?.userRole || user?.roles?.[0];
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return "/admin/profile";
+    if (role === "EMPLOYEE") return "/employee/profile";
+    return "/customer/profile";
+  };
+
+  const getUserMenuItems = () => {
+    const role = user?.userRole || user?.roles?.[0];
+    const roleItems =
+      role === "SUPER_ADMIN" || role === "ADMIN"
+        ? [
+            { label: "Dashboard", path: "/admin", icon: faChartLine },
+            { label: "Management", path: "/admin/room-management", icon: faTasks },
+          ]
+        : role === "EMPLOYEE"
+          ? [
+              { label: "Dashboard", path: "/employee/customers", icon: faChartLine },
+              {
+                label: "Booking Management",
+                path: "/employee/bookingPage",
+                icon: faTasks,
+              },
+            ]
+          : [];
+
+    return [
+      ...roleItems,
+      { label: "My Profile", path: getProfilePath(), icon: faUserCircle },
+      { label: "My Booking", path: "/customer/mybooking", icon: faBookmark },
+      { label: "My Vouchers", path: `${getProfilePath()}?tab=vouchers`, icon: faTicketAlt },
+    ];
   };
 
   return (
@@ -115,21 +163,16 @@ const Header: React.FC = () => {
                   </p>
                 </div>
 
-                <Link
-                  to="/customer/profile"
-                  className="flex items-center px-4 py-2 text-sm text-white hover:bg-white/10 font-serif transition"
-                >
-                  <FontAwesomeIcon icon={faUserCircle} className="mr-2 w-4" />
-                  My Profile
-                </Link>
-
-                <Link
-                  to="/customer/mybooking"
-                  className="flex items-center px-4 py-2 text-sm text-white hover:bg-white/10 font-serif transition"
-                >
-                  <FontAwesomeIcon icon={faBookmark} className="mr-2 w-4" />
-                  My Booking
-                </Link>
+                {getUserMenuItems().map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className="flex items-center px-4 py-2 text-sm text-white hover:bg-white/10 font-serif transition"
+                  >
+                    <FontAwesomeIcon icon={item.icon} className="mr-2 w-4" />
+                    {item.label}
+                  </Link>
+                ))}
 
                 <button
                   onClick={handleLogout}

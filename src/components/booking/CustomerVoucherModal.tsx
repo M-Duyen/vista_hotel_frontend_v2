@@ -36,7 +36,7 @@ function CustomerVoucherModal({
         if (onSelectVoucher) {
             if (selectedVoucherIds.length > 0) {
                 const selectedVouchers = availableVouchers.filter((v) =>
-                    selectedVoucherIds.includes(v.voucher.voucherID),
+                    selectedVoucherIds.includes(v.voucher.voucherId),
                 );
                 onSelectVoucher(selectedVouchers);
             }
@@ -77,7 +77,7 @@ function CustomerVoucherModal({
                                 {availableVouchers.map((custVoucher, index) => {
                                     const isChecked =
                                         selectedVoucherIds.includes(
-                                            custVoucher.voucher.voucherID,
+                                            custVoucher.voucher.voucherId,
                                         );
                                     const discountType =
                                         custVoucher.voucher.discountType;
@@ -88,7 +88,7 @@ function CustomerVoucherModal({
                                             onClick={() =>
                                                 toggleVoucher(
                                                     custVoucher.voucher
-                                                        .voucherID,
+                                                        .voucherId,
                                                 )
                                             }
                                             className={`p-4 border-2 rounded-lg cursor-pointer transition ${
@@ -148,7 +148,7 @@ function CustomerVoucherModal({
                                                             toggleVoucher(
                                                                 custVoucher
                                                                     .voucher
-                                                                    .voucherID,
+                                                                    .voucherId,
                                                             )
                                                         }
                                                         className="w-5 h-5 cursor-pointer accent-[#CCBDA3]"

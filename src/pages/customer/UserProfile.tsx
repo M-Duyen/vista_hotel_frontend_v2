@@ -42,6 +42,69 @@ import Header from "../../components/Header";
 
 type MenuTab = "profile" | "password" | "membership" | "bookings" | "vouchers";
 
+type ProfileSource = Partial<UserProfile> & {
+  username?: string;
+  roles?: string[];
+  avatartUrl?: string | null;
+};
+
+const getRolesFromToken = (): string[] => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) return [];
+
+    const payload = token.split(".")[1];
+    if (!payload) return [];
+
+    const normalizedPayload = payload
+      .replace(/-/g, "+")
+      .replace(/_/g, "/")
+      .padEnd(Math.ceil(payload.length / 4) * 4, "=");
+    const decodedPayload = JSON.parse(atob(normalizedPayload));
+
+    return Array.isArray(decodedPayload.roles) ? decodedPayload.roles : [];
+  } catch (error) {
+    console.error("Error reading roles from token:", error);
+    return [];
+  }
+};
+
+const normalizeProfile = (
+  data: ProfileSource,
+  fallback?: UserProfile
+): UserProfile => {
+  const userRole =
+    data.userRole ||
+    data.roles?.[0] ||
+    fallback?.userRole ||
+    getRolesFromToken()[0] ||
+    "CUSTOMER";
+
+  return {
+    id: data.id ?? fallback?.id ?? "",
+    userName: data.userName ?? data.username ?? fallback?.userName ?? "",
+    email: data.email ?? fallback?.email ?? "",
+    phone: data.phone ?? fallback?.phone ?? "",
+    fullName: data.fullName ?? fallback?.fullName ?? "",
+    address: data.address ?? fallback?.address ?? null,
+    userRole,
+    avatarUrl: data.avatarUrl ?? data.avatartUrl ?? fallback?.avatarUrl ?? null,
+    birthDate: data.birthDate ?? fallback?.birthDate,
+    gender: data.gender ?? fallback?.gender,
+    joinedDate: data.joinedDate ?? fallback?.joinedDate,
+    loyaltyPoints: data.loyaltyPoints ?? fallback?.loyaltyPoints ?? 0,
+    memberShipLevel:
+      data.memberShipLevel ?? fallback?.memberShipLevel ?? "BRONZE",
+    reputationPoint: data.reputationPoint ?? fallback?.reputationPoint ?? 100,
+    department: data.department ?? fallback?.department,
+    position: data.position ?? fallback?.position,
+    salary: data.salary ?? fallback?.salary,
+    hireDate: data.hireDate ?? fallback?.hireDate,
+    adminLevel: data.adminLevel ?? fallback?.adminLevel,
+    permissions: data.permissions ?? fallback?.permissions,
+  };
+};
+
 const UserProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -66,10 +129,23 @@ const UserProfilePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === "bookings" && profile?.userRole === "CUSTOMER") {
+    const tab = new URLSearchParams(location.search).get("tab");
+    if (
+      tab === "profile" ||
+      tab === "password" ||
+      tab === "membership" ||
+      tab === "bookings" ||
+      tab === "vouchers"
+    ) {
+      setActiveTab(tab);
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    if (activeTab === "bookings" && profile?.id) {
       loadBookings();
     }
-    if (activeTab === "vouchers" && profile?.userRole === "CUSTOMER") {
+    if (activeTab === "vouchers" && profile?.id) {
       loadVouchers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,24 +162,28 @@ const UserProfilePage: React.FC = () => {
         return;
       }
 
-      // Fetch fresh data from API
-      if (user.userRole === "CUSTOMER") {
+      const storedProfile = normalizeProfile(user as ProfileSource);
+
+      // Only customer profile has a matching customer endpoint; the UI below is shared for all roles.
+      if (storedProfile.userRole === "CUSTOMER") {
         const customerData = await userProfileService.getCustomerProfile(
-          user.id
+          storedProfile.id
         );
-        setProfile(customerData as unknown as UserProfile);
-        userProfileService.updateUserInStorage(
-          customerData as unknown as UserProfile
+        const normalizedCustomer = normalizeProfile(
+          customerData as ProfileSource,
+          storedProfile
         );
+        setProfile(normalizedCustomer);
+        userProfileService.updateUserInStorage(normalizedCustomer);
       } else {
-        setProfile(user);
+        setProfile(storedProfile);
       }
     } catch (error) {
       console.error("Error loading profile:", error);
       // Fallback to localStorage data
       const user = userProfileService.getCurrentUserFromStorage();
       if (user) {
-        setProfile(user);
+        setProfile(normalizeProfile(user as ProfileSource));
       } else {
         toast.error("Cannot load account information!");
       }
@@ -117,11 +197,15 @@ const UserProfilePage: React.FC = () => {
 
     try {
       setBookingsLoading(true);
+      if (profile.userRole && profile.userRole !== "CUSTOMER") {
+        setBookings([]);
+        return;
+      }
       const data = await userProfileService.getCustomerBookings(profile.id);
       setBookings(data);
     } catch (error) {
       console.error("Error loading bookings:", error);
-      toast.error("Cannot load booking history!");
+      setBookings([]);
     } finally {
       setBookingsLoading(false);
     }
@@ -132,11 +216,15 @@ const UserProfilePage: React.FC = () => {
 
     try {
       setVouchersLoading(true);
+      if (profile.userRole && profile.userRole !== "CUSTOMER") {
+        setVouchers([]);
+        return;
+      }
       const data = await getVouchersByCustomerId(profile.id);
       setVouchers(data);
     } catch (error) {
       console.error("Error loading vouchers:", error);
-      toast.error("Cannot load vouchers!");
+      setVouchers([]);
     } finally {
       setVouchersLoading(false);
     }
@@ -202,8 +290,12 @@ const UserProfilePage: React.FC = () => {
       profile.userRole || "CUSTOMER",
       data
     );
-    setProfile(updated as unknown as UserProfile);
-    userProfileService.updateUserInStorage(updated as unknown as UserProfile);
+    const normalizedProfile = normalizeProfile(
+      updated as ProfileSource,
+      profile
+    );
+    setProfile(normalizedProfile);
+    userProfileService.updateUserInStorage(normalizedProfile);
   };
 
   const handleAvatarUpdate = (avatarUrl: string) => {
@@ -231,7 +323,7 @@ const UserProfilePage: React.FC = () => {
       toast.success(result.message || "Logged out successfully!");
     }
     setShowLogoutDialog(false);
-    navigate("/auth/login");
+    navigate("/auth/login", { replace: true });
   };
 
   const menuItems: { id: MenuTab; label: string; icon: React.JSX.Element }[] = [
@@ -239,14 +331,11 @@ const UserProfilePage: React.FC = () => {
     { id: "password", label: "Change Password", icon: <FaLock /> },
   ];
 
-  // Add customer-specific menu items
-  if (profile?.userRole === "CUSTOMER") {
-    menuItems.push(
-      { id: "membership", label: "Membership Info", icon: <FaTrophy /> },
-      { id: "bookings", label: "Booking History", icon: <FaHistory /> },
-      { id: "vouchers", label: "My Vouchers", icon: <FaTicketAlt /> }
-    );
-  }
+  menuItems.push(
+    { id: "membership", label: "Membership Info", icon: <FaTrophy /> },
+    { id: "bookings", label: "Booking History", icon: <FaHistory /> },
+    { id: "vouchers", label: "My Vouchers", icon: <FaTicketAlt /> }
+  );
 
   if (loading || !profile) {
     return (
@@ -381,8 +470,7 @@ const UserProfilePage: React.FC = () => {
                   <p className="text-center text-xs md:text-sm text-white/80">
                     {profile.email}
                   </p>
-                  {profile.userRole === "CUSTOMER" &&
-                    profile.memberShipLevel && (
+                  {profile.memberShipLevel && (
                       <div className="mt-3 text-center">
                         <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold">
                           {profile.memberShipLevel === "PLATINUM"
@@ -457,18 +545,16 @@ const UserProfilePage: React.FC = () => {
                   />
                 )}
 
-                {activeTab === "membership" &&
-                  profile.userRole === "CUSTOMER" && (
-                    <MembershipInfoSection profile={profile} />
-                  )}
+                {activeTab === "membership" && (
+                  <MembershipInfoSection profile={profile} />
+                )}
 
-                {activeTab === "bookings" &&
-                  profile.userRole === "CUSTOMER" && (
-                    <BookingHistorySection
-                      bookings={bookings}
-                      loading={bookingsLoading}
-                    />
-                  )}
+                {activeTab === "bookings" && (
+                  <BookingHistorySection
+                    bookings={bookings}
+                    loading={bookingsLoading}
+                  />
+                )}
 
                 {activeTab === "vouchers" && (
                   <div>
@@ -507,7 +593,7 @@ const UserProfilePage: React.FC = () => {
                                   );
                                   return (
                                     <VoucherCard
-                                      key={`${voucher.voucherID}-${index}`}
+                                      key={`${voucher.voucherId}-${index}`}
                                       voucher={voucher}
                                       index={index}
                                       status={status}

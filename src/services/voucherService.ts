@@ -1,9 +1,10 @@
 import { voucherApi } from "./apiClient";
+import { getByCustomerId } from "./customerVoucherService";
 import type { Voucher } from "../types/Voucher";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mapBackendVoucher = (data: any): Voucher => {
-  const voucherId = data?.voucherId ?? "";
+  const voucherId = data?.voucherId ?? data?.voucherID ?? "";
   const isActive =
     data?.isActive !== undefined
       ? Boolean(data.isActive)
@@ -115,6 +116,26 @@ export const updateVoucher = async (
 export const getVouchersByCustomerId = async (
   customerId: string,
 ): Promise<Voucher[]> => {
+  try {
+    const customerVouchers = await getByCustomerId(customerId);
+    const vouchers = customerVouchers
+      .map((customerVoucher) => customerVoucher.voucher)
+      .filter((voucher) => Boolean(voucher?.voucherId));
+
+    if (vouchers.length > 0) {
+      return vouchers;
+    }
+
+    console.warn(
+      "Customer voucher endpoint returned no vouchers, falling back to voucher endpoint.",
+    );
+  } catch (customerVoucherError) {
+    console.warn(
+      "Customer voucher endpoint failed, falling back to voucher endpoint:",
+      customerVoucherError,
+    );
+  }
+
   try {
     const response = await voucherApi.get(`/customerID=${customerId}`);
     return response.data.map(mapBackendVoucher);

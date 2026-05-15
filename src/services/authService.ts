@@ -266,6 +266,13 @@ export const handleLogout = () => {
   localStorage.removeItem(API_CONFIG.STORAGE_KEYS.TOKEN);
   localStorage.removeItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
   localStorage.removeItem(API_CONFIG.STORAGE_KEYS.USER);
+  window.dispatchEvent(new Event("authChanged"));
+  window.dispatchEvent(new Event("userDataUpdated"));
+
+  return {
+    success: true,
+    message: "Logged out successfully!",
+  };
 };
 
 /**

@@ -35,7 +35,7 @@ const VoucherCard: React.FC<VoucherCardProps> = ({
 
   return (
     <motion.div
-      key={`${voucher.voucherID}-${index}`}
+      key={`${voucher.voucherId}-${index}`}
       initial={{ opacity: 0, x: -50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 50 }}
@@ -117,19 +117,19 @@ const VoucherCard: React.FC<VoucherCardProps> = ({
                 <div className="flex items-center gap-2">
                   <div className="flex-1 bg-[#F5F0EB] border border-[#CCBDA3]/40 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 shadow-sm min-w-0">
                     <code className="text-sm sm:text-base font-mono font-bold text-[#C3923C] tracking-wide truncate block">
-                      {voucher.voucherID}
+                      {voucher.voucherId}
                     </code>
                   </div>
                   <button
-                    onClick={() => onCopy(voucher.voucherID)}
+                    onClick={() => onCopy(voucher.voucherId)}
                     className={`cursor-pointer p-2 rounded-lg transition-all duration-300 shadow-sm flex-shrink-0 ${
-                      copiedCode === voucher.voucherID
+                      copiedCode === voucher.voucherId
                         ? "bg-success text-white"
                         : "bg-[#CCBDA3] text-white hover:bg-[#C3923C]"
                     }`}
                     title="Copy code"
                   >
-                    {copiedCode === voucher.voucherID ? (
+                    {copiedCode === voucher.voucherId ? (
                       <FaCheckCircle className="text-sm" />
                     ) : (
                       <FaCopy className="text-sm" />
