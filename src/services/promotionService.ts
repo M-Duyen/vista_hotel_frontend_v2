@@ -102,6 +102,7 @@ export const createPromotion = async (
           promotion: {
             promotionID: promotionPayload.promotionId,
           },
+          discountType: promotionPayload.discountType,
           discountValue: rtp.discountValue,
           startDate: rtp.startDate,
           endDate: rtp.endDate,
