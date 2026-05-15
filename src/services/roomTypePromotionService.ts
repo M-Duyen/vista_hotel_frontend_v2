@@ -23,7 +23,10 @@ export const getRoomTypePromotionsByPromotionId = async (
   try {
     const allRTP = await getAllRoomTypePromotions();
     return allRTP.filter(
-      (rtp: RoomTypePromotion) => rtp.promotion?.promotionID === promotionId
+      (rtp: any) =>
+        rtp.promotion?.promotionID === promotionId ||
+        rtp.promotion?.promotionId === promotionId ||
+        rtp.id?.promotionId === promotionId
     );
   } catch (error) {
     console.error("Error fetching room type promotions:", error);
@@ -38,7 +41,10 @@ export const getRoomTypePromotionsByRoomTypeId = async (
   try {
     const allRTP = await getAllRoomTypePromotions();
     return allRTP.filter(
-      (rtp: RoomTypePromotion) => rtp.roomType?.roomTypeID === roomTypeId
+      (rtp: any) =>
+        rtp.roomType?.roomTypeID === roomTypeId ||
+        rtp.roomType?.roomTypeId === roomTypeId ||
+        rtp.id?.roomTypeId === roomTypeId
     );
   } catch (error) {
     console.error("Error fetching room type promotions:", error);
@@ -54,28 +60,9 @@ export const saveRoomTypePromotion = async (roomTypePromotionData: {
   startDate: string;
   endDate: string;
 }): Promise<RoomTypePromotion> => {
-  const promotion = { ...roomTypePromotionData.promotion } as Record<
-    string,
-    unknown
-  >;
-  if ("roomTypePromotions" in promotion) {
-    delete promotion.roomTypePromotions; // Remove @OneToMany collection
-  }
-
-  const roomType = { ...roomTypePromotionData.roomType } as Record<
-    string,
-    unknown
-  >;
-  if ("rooms" in roomType) {
-    delete roomType.rooms; // Remove @OneToMany collection if exists
-  }
-  if ("amenities" in roomType) {
-    delete roomType.amenities; // Remove @ManyToMany collection if exists
-  }
-
   const payload = {
-    roomType: roomType,
-    promotion: promotion,
+    roomTypeId: roomTypePromotionData.roomType.roomTypeID,
+    promotionId: roomTypePromotionData.promotion?.promotionID,
     discountValue: Number(roomTypePromotionData.discountValue),
     startDate: roomTypePromotionData.startDate,
     endDate: roomTypePromotionData.endDate,

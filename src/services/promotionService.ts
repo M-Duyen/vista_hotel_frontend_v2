@@ -91,43 +91,31 @@ export const createPromotion = async (
     const response = await promotionsApi.post("/create", promotionPayload);
     console.log("Promotion created:", response.data);
 
-    let fullPromotion: Promotion | undefined;
-
     // Lưu các room type promotions riêng nếu có
     if (roomTypePromotions && roomTypePromotions.length > 0) {
       console.log("Saving room type promotions...");
 
       // Lấy tất cả các khuyến mãi và tìm khuyến mãi vừa tạo
-      const allPromotions = await getAllPromotions();
-      fullPromotion = allPromotions.find(
-        (p: Promotion) => p.promotionID === promotionData.promotionID
-      );
-
-      if (!fullPromotion) {
-        console.error("Could not find created promotion!");
-        throw new Error("Promotion created but not found in database");
-      }
-
-      console.log("Found full promotion:", fullPromotion);
-
       const savePromises = roomTypePromotions.map((rtp) => {
         const rtpData = {
           roomType: rtp.roomType,
-          promotion: fullPromotion,
+          promotion: {
+            promotionID: promotionPayload.promotionId,
+          },
           discountValue: rtp.discountValue,
           startDate: rtp.startDate,
           endDate: rtp.endDate,
         };
-        return saveRoomTypePromotion(rtpData).catch((error) => {
-          console.error("Failed to save room type promotion:", error);
-          return null;
-        });
+        return saveRoomTypePromotion(rtpData);
       });
 
       await Promise.all(savePromises);
     }
 
-    return fullPromotion ?? normalizePromotion(promotionPayload);
+    return normalizePromotion({
+      ...promotionPayload,
+      roomTypePromotions: roomTypePromotions ?? [],
+    });
   } catch (error: unknown) {
     console.error("Error saving promotion:", error);
     console.error("Error response:", (error as AxiosError).response?.data);
