@@ -1,4 +1,4 @@
-/* eslint-disable */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { api, bookingsApi, customerApi, roomsApi, usersApi } from "./apiClient";
 import type { Booking, RoomBooking } from "../types/Booking";
 import type { BookingDetail } from "../types/BookingDetail";
@@ -26,8 +26,8 @@ const mappingBookings = async (res: any) => {
       : Promise.resolve(null),
     res.cancellationID
       ? api
-          .get(`/booking-cancellations/booking/${res.bookingID}`)
-          .catch(() => null)
+        .get(`/booking-cancellations/booking/${res.bookingID}`)
+        .catch(() => null)
       : Promise.resolve(null),
     Promise.all(
       res.bookingDetails.map((detail: any) => mappingBookingDetails(detail)),
@@ -442,6 +442,7 @@ export const getByRoom = async (roomNumber: string): Promise<Booking[]> => {
 export type BookingServiceCreateItem = {
   serviceID: string;
   quantity: number;
+  roomNumber?: string[];
 };
 
 // Thêm nhiều dịch vụ cho 1 booking (nếu backend hỗ trợ bulk)
@@ -494,7 +495,7 @@ export const cancelBooking = async (
   bookingId: string,
   cancelReason: string,
   cancelledBy: string,
-  refundMethod: any | null,
+  refundMethod: Record<string, unknown> | null,
 ) => {
   try {
     const payload: any = {
@@ -520,10 +521,48 @@ export const cancelBooking = async (
 
 export const getBookingServicesByBookingId = async (bookingId: string) => {
   try {
-    const response = await api.get(`/booking-services/booking/${bookingId}`);
+    const response = await api.get(`/api/booking-services/booking/${bookingId}`);
     return response.data;
   } catch (error) {
     console.error("Error fetching booking services:", error);
+    throw error;
+  }
+};
+
+export const saveBookingService = async (
+  bookingId: string,
+  data: object,
+) => {
+  try {
+    const response = await api.post(
+      `/api/booking-services/booking/${bookingId}`,
+      data,
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error saving booking service:", error);
+    throw error;
+  }
+};
+
+export const updateBookingService = async (
+  id: string | number,
+  data: Partial<BookingServiceCreateItem>,
+) => {
+  try {
+    const response = await api.put(`/api/booking-services/${id}`, data);
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating booking service ${id}:`, error);
+    throw error;
+  }
+};
+
+export const deleteBookingService = async (id: string | number) => {
+  try {
+    await api.delete(`/api/booking-services/${id}`);
+  } catch (error) {
+    console.error(`Error deleting booking service ${id}:`, error);
     throw error;
   }
 };
@@ -569,6 +608,9 @@ export default {
   getByRoom,
   addServicesToBooking,
   addServiceToBooking,
+  saveBookingService,
+  updateBookingService,
+  deleteBookingService,
   checkRoomAvailability,
   getRemainingTimeForPayment,
   cancelBooking,

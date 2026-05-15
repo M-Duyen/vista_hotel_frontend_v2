@@ -813,22 +813,25 @@ export default function BookingForm({
       review: null,
     }));
 
-    // Dựa trên selectedServices và selectedServiceTargets để tạo bookingServices với thông tin phòng áp dụng
+    // Dựa trên selectedServices và selectedServiceTargets để tạo bookingServices với danh sách phòng áp dụng
     const bookingServicesWithRooms: any[] = [];
     getSelectedServiceObjects().forEach((s: Service) => {
       const targets = selectedServiceTargets[s.serviceID];
       const quantity = serviceQuantities[s.serviceID] || 1;
 
-      const roomCount =
-        !targets || targets === "ALL"
-          ? rooms.length || 1
-          : Array.isArray(targets)
-            ? targets.length || 1
-            : 1;
+      let roomNumbers: string[] = [];
+      if (!targets || targets === "ALL") {
+        roomNumbers = rooms.map((r: Room) => r.roomNumber!).filter(Boolean);
+      } else if (Array.isArray(targets)) {
+        roomNumbers = targets;
+      }
+
+      const roomCount = roomNumbers.length || 1;
 
       bookingServicesWithRooms.push({
         serviceId: s.serviceID,
         servicePrice: s.price,
+        roomNumber: roomNumbers, // Gửi dưới dạng list
         quantity: quantity * roomCount,
         totalAmount: s.price * quantity * roomCount,
         orderStatus: "PLACE",

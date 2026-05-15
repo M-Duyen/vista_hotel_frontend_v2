@@ -5,6 +5,9 @@ import Header from "../../components/Header";
 import {
   getBookingById,
   getBookingServicesByBookingId,
+  deleteBookingService,
+  saveBookingService,
+  updateBookingService,
 } from "../../services/bookingService";
 import { getAll as getAllServices } from "../../services/serviceService";
 import { getAllEarlyCheckins } from "../../services/earlyCheckinService";
@@ -42,6 +45,7 @@ interface BookingServiceItem {
   room?: {
     roomNumber: string;
   };
+  roomNumbers?: string[];
   // UI-only fields
   scheduledDate?: string;
   scheduledTime?: string;
@@ -77,6 +81,7 @@ export default function BookingDetailPage() {
   const [bookingServices, setBookingServices] = useState<BookingServiceItem[]>(
     []
   );
+  const [rawBookingServices, setRawBookingServices] = useState<any[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
 
   // State cho CRUD dịch vụ
@@ -140,45 +145,20 @@ export default function BookingDetailPage() {
         setBooking(bookingRes);
         setDetails(bookingRes.bookingDetails || []);
 
-        // Lấy bookingServices từ response của booking
+        // Lấy bookingServices từ API riêng
         setLoadingServices(true);
         try {
-          if (
-            bookingRes.bookingServices &&
-            Array.isArray(bookingRes.bookingServices) &&
-            bookingRes.bookingServices.length > 0
-          ) {
-            const servicesFromApi: BookingServiceItem[] =
-              bookingRes.bookingServices.map((item: any, index: number) => ({
-                id: `service-${index}-${item.service?.serviceID || index}`,
-                service: {
-                  serviceID: item.service?.serviceID || "",
-                  serviceName: item.service?.serviceName || "Unknown Service",
-                  price: item.service?.price || 0,
-                  description: item.service?.description || "",
-                  serviceCategory: item.service?.serviceCategory || "",
-                  images: item.service?.images || [],
-                },
-                quantity: item.quantity || 1,
-                servicePrice: item.servicePrice || item.service?.price || 0,
-                totalAmount:
-                  item.totalAmount || item.servicePrice * item.quantity || 0,
-                orderStatus: item.orderStatus || "PLACE",
-                paymentMethod: item.paymentMethod || "CASH",
-                room: item.room || undefined,
-                scheduledDate: bookingRes.checkInDate?.split("T")[0] || "",
-                scheduledTime: "10:00",
-              }));
-
-            console.log("Booking services from API:", servicesFromApi);
-            setBookingServices(servicesFromApi);
+          const servicesRes = await getBookingServicesByBookingId(id);
+          if (Array.isArray(servicesRes) && servicesRes.length > 0) {
+            console.log("Booking services from API:", servicesRes);
+            setRawBookingServices(servicesRes);
           } else {
             console.log("No booking services found in response");
-            setBookingServices([]);
+            setRawBookingServices([]);
           }
         } catch (err) {
-          console.error("Error processing booking services:", err);
-          setBookingServices([]);
+          console.error("Error fetching booking services:", err);
+          setRawBookingServices([]);
         } finally {
           setLoadingServices(false);
         }
@@ -187,7 +167,7 @@ export default function BookingDetailPage() {
 
         if (bookingRes.earlyCheckin) {
           earlyRequest = {
-            requestID: bookingRes.earlyCheckin.requestID || "booking-" + id,
+            requestID: bookingRes.earlyCheckin.id || "booking-" + id,
             requestTime: bookingRes.earlyCheckin.requestTime,
             approvalStatus: bookingRes.earlyCheckin.approvalStatus,
             additionalFee: bookingRes.earlyCheckin.additionalFee,
@@ -264,17 +244,112 @@ export default function BookingDetailPage() {
     0
   );
 
+  const mapBookingServices = (
+    rawServices: any[],
+    checkInDate?: string
+  ): BookingServiceItem[] =>
+    rawServices.map((item) => {
+      const serviceId = item.service?.serviceID || item.serviceId || "";
+      const serviceFromList = availableServices.find(
+        (service) => service.serviceID === serviceId
+      );
+      const servicePrice =
+        item.servicePrice ?? item.service?.price ?? serviceFromList?.price ?? 0;
+
+      return {
+        id: item.id || `temp-${Math.random()}`,
+        service: {
+          serviceID: serviceId,
+          serviceName:
+            item.service?.serviceName || serviceFromList?.serviceName || "Unknown Service",
+          price: item.service?.price ?? serviceFromList?.price ?? servicePrice,
+          description:
+            item.service?.description || serviceFromList?.description || "",
+          serviceCategory:
+            item.service?.serviceCategory || serviceFromList?.serviceCategory || "",
+          images: item.service?.images || serviceFromList?.images || [],
+        },
+        quantity: item.quantity ?? 1,
+        servicePrice,
+        totalAmount:
+          item.totalAmount ?? servicePrice * (item.quantity ?? 1),
+        orderStatus: item.orderStatus || "PLACE",
+        paymentMethod: item.paymentMethod || "CASH",
+        roomNumbers: Array.isArray(item.roomNumber)
+          ? item.roomNumber
+          : item.roomNumber
+            ? [item.roomNumber]
+            : undefined,
+        room: item.room || (item.roomNumber
+          ? {
+            roomNumber: Array.isArray(item.roomNumber)
+              ? item.roomNumber[0]
+              : item.roomNumber,
+          }
+          : undefined),
+        scheduledDate: checkInDate?.split("T")[0] || "",
+        scheduledTime: "10:00",
+      };
+    });
+
+  const mergeSavedService = (saved: any) => {
+    if (!saved) return;
+
+    const nextItem = Array.isArray(saved) ? saved[0] : saved;
+    if (!nextItem) return;
+
+    setRawBookingServices((prev) => {
+      const nextId =
+        nextItem.id ??
+        nextItem.bookingServiceId ??
+        `${nextItem.serviceId}-${JSON.stringify(nextItem.roomNumber || [])}`;
+
+      const existingIndex = prev.findIndex((item) => {
+        const currentId =
+          item.id ??
+          item.bookingServiceId ??
+          `${item.serviceId}-${JSON.stringify(item.roomNumber || [])}`;
+        return currentId === nextId;
+      });
+
+      if (existingIndex === -1) {
+        return [...prev, nextItem];
+      }
+
+      const clone = [...prev];
+      clone[existingIndex] = nextItem;
+      return clone;
+    });
+  };
+
+  const getAppliedRoomCount = (roomNumber: string) => {
+    if (roomNumber !== "ALL") return 1;
+    return Math.max(1, details.length);
+  };
+
+  useEffect(() => {
+    if (!rawBookingServices.length) {
+      setBookingServices([]);
+      return;
+    }
+
+    setBookingServices(
+      mapBookingServices(rawBookingServices, booking?.checkInDate)
+    );
+  }, [availableServices, rawBookingServices, booking?.checkInDate]);
+
   // ========== CRUD Service Functions ==========
 
-  // Open add service modal
   const handleAddService = () => {
     setEditingService(null);
     const checkInDate =
       booking?.checkInDate?.split("T")[0] ||
       new Date().toISOString().split("T")[0];
+    const roomCount = getAppliedRoomCount("ALL");
+
     setServiceForm({
       serviceID: availableServices[0]?.serviceID || "",
-      quantity: 1,
+      quantity: roomCount,
       roomNumber: "ALL",
       scheduledDate: checkInDate,
       scheduledTime: "10:00",
@@ -282,13 +357,18 @@ export default function BookingDetailPage() {
     setShowServiceModal(true);
   };
 
-  // Open edit service modal
   const handleEditService = (item: BookingServiceItem) => {
+    const roomNumbers = item.roomNumbers || [];
+    const isAllRooms = roomNumbers.length > 0 && roomNumbers.length === details.length;
+    const roomCount = isAllRooms ? Math.max(1, details.length) : 1;
+
     setEditingService(item);
     setServiceForm({
       serviceID: item.service.serviceID,
-      quantity: item.quantity,
-      roomNumber: item.room?.roomNumber || "ALL",
+      quantity: Math.max(item.quantity, roomCount),
+      roomNumber: isAllRooms
+        ? "ALL"
+        : roomNumbers[0] || item.room?.roomNumber || "ALL",
       scheduledDate:
         item.scheduledDate || booking?.checkInDate?.split("T")[0] || "",
       scheduledTime: item.scheduledTime || "10:00",
@@ -296,56 +376,101 @@ export default function BookingDetailPage() {
     setShowServiceModal(true);
   };
 
-  // Save service (add or edit) - UI only
-  const handleSaveService = () => {
+  // Save service (add or edit) - Call BookingService API
+  const handleSaveService = async () => {
+    if (!id || !booking) return;
+
     const selectedService = availableServices.find(
       (s) => s.serviceID === serviceForm.serviceID
     );
     if (!selectedService) return;
 
-    const roomCount = serviceForm.roomNumber === "ALL" ? details.length : 1;
-    const totalAmount =
-      selectedService.price * serviceForm.quantity * roomCount;
+    const roomNumbers = serviceForm.roomNumber === "ALL"
+      ? details
+        .map((d) => d.room.roomNumber)
+        .filter((roomNumber): roomNumber is string => Boolean(roomNumber))
+      : serviceForm.roomNumber
+        ? [serviceForm.roomNumber]
+        : [];
 
-    const newService: BookingServiceItem = {
-      id: editingService?.id || `new-${Date.now()}`,
-      service: {
-        serviceID: selectedService.serviceID,
-        serviceName: selectedService.serviceName,
-        price: selectedService.price,
-        description: selectedService.description,
-        serviceCategory: selectedService.serviceCategory,
-        images: selectedService.images,
-      },
-      quantity: serviceForm.quantity,
-      servicePrice: selectedService.price,
-      totalAmount: totalAmount,
-      orderStatus: editingService?.orderStatus || "PLACE",
-      paymentMethod: "CASH",
-      room:
-        serviceForm.roomNumber === "ALL"
-          ? undefined
-          : { roomNumber: serviceForm.roomNumber },
-      scheduledDate: serviceForm.scheduledDate,
-      scheduledTime: serviceForm.scheduledTime,
-    };
-
-    if (editingService) {
-      setBookingServices((prev) =>
-        prev.map((s) => (s.id === editingService.id ? newService : s))
-      );
-    } else {
-      setBookingServices((prev) => [...prev, newService]);
+    if (roomNumbers.length === 0) {
+      alert("Please select at least one room for this service.");
+      return;
     }
 
-    setShowServiceModal(false);
-    setEditingService(null);
+    const roomCount = getAppliedRoomCount(serviceForm.roomNumber);
+    if (serviceForm.quantity < roomCount) {
+      alert(
+        `Quantity must be at least ${roomCount} when applying to ${roomCount} room(s).`
+      );
+      return;
+    }
+
+    const totalQuantity = serviceForm.quantity;
+    const totalAmount = selectedService.price * totalQuantity;
+    const servicePayload = {
+      serviceId: selectedService.serviceID,
+      quantity: totalQuantity,
+      roomNumber: roomNumbers,
+      totalAmount,
+      orderStatus: editingService?.orderStatus || "PLACE",
+      paymentMethod: editingService?.paymentMethod || "CASH",
+    };
+
+    setLoadingServices(true);
+    try {
+      const savedService = editingService?.id
+        ? await updateBookingService(editingService.id, servicePayload)
+        : await saveBookingService(id, servicePayload);
+
+      console.log("Saved booking service:", savedService);
+
+      // Update UI immediately from the created/updated service object
+      mergeSavedService(savedService);
+
+      // Refresh booking data
+      const updatedBooking = await getBookingById(id);
+      setBooking(updatedBooking);
+
+      // Refresh services list from dedicated API
+      const servicesRes = await getBookingServicesByBookingId(id);
+      if (Array.isArray(servicesRes) && servicesRes.length > 0) {
+        setRawBookingServices(servicesRes);
+      }
+
+      setShowServiceModal(false);
+      setEditingService(null);
+    } catch (err: any) {
+      console.error("Error saving booking with services:", err);
+      const serverMsg = err?.response?.data || err?.message || String(err);
+      alert("Failed to save service: " + JSON.stringify(serverMsg));
+    } finally {
+      setLoadingServices(false);
+    }
   };
 
-  // Delete service - UI only
-  const handleDeleteService = (serviceId: string) => {
-    setBookingServices((prev) => prev.filter((s) => s.id !== serviceId));
-    setShowDeleteConfirm(null);
+  // Delete service - With Backend Persistence
+  const handleDeleteService = async (serviceId: string) => {
+    if (!id) return;
+
+    setLoadingServices(true);
+    try {
+      await deleteBookingService(serviceId);
+
+      // Refresh data
+      const updatedBooking = await getBookingById(id);
+      setBooking(updatedBooking);
+
+      const servicesRes = await getBookingServicesByBookingId(id);
+      setRawBookingServices(Array.isArray(servicesRes) ? servicesRes : []);
+
+      setShowDeleteConfirm(null);
+    } catch (err) {
+      console.error("Error deleting service:", err);
+      alert("Failed to delete service.");
+    } finally {
+      setLoadingServices(false);
+    }
   };
 
   // Get min/max dates for scheduling
@@ -442,39 +567,49 @@ export default function BookingDetailPage() {
   const renderNotification = () => {
     if (!booking) return null;
 
+    const renderBox = (
+      title: string,
+      wrapperClass: string,
+      titleClass: string,
+      extra?: React.ReactNode,
+    ) => (
+      <div className={`mb-6 p-4 ${wrapperClass} border rounded-xl`}>
+        <h4 className={`font-semibold ${titleClass}`}>{title}</h4>
+        {extra}
+      </div>
+    );
+
     if (
       (booking.status === "PENDING" || booking.status === "WAITING") &&
       earlyCheckinRequest
     ) {
       const req = earlyCheckinRequest;
       if (req.approvalStatus === "APPROVED") {
-        return (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
-            <h4 className="font-semibold text-green-800">
-              Early Check-in đã được duyệt
-            </h4>
+        return renderBox(
+          "Early Check-in đã được duyệt",
+          "bg-green-50 border-green-200",
+          "text-green-800",
+          req.additionalFee ? (
             <p className="text-green-600 text-sm">
-              Phí bổ sung: {req.additionalFee?.toLocaleString() || 0} VNĐ
+              Phí bổ sung: {req.additionalFee.toLocaleString()} VNĐ
             </p>
-          </div>
+          ) : null,
         );
       }
+
       if (req.approvalStatus === "REJECTED") {
-        return (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-            <h4 className="font-semibold text-red-800">
-              Early Check-in bị từ chối
-            </h4>
-          </div>
+        return renderBox(
+          "Early Check-in bị từ chối",
+          "bg-red-50 border-red-200",
+          "text-red-800",
         );
       }
+
       if (req.approvalStatus === "PENDING") {
-        return (
-          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-            <h4 className="font-semibold text-yellow-800">
-              Early Check-in đang chờ xử lý
-            </h4>
-          </div>
+        return renderBox(
+          "Early Check-in đang chờ xử lý",
+          "bg-yellow-50 border-yellow-200",
+          "text-yellow-800",
         );
       }
     }
@@ -482,35 +617,31 @@ export default function BookingDetailPage() {
     if (booking.status === "CHECKED_IN" && lateCheckoutRequest) {
       const req = lateCheckoutRequest;
       if (req.approvalStatus === "APPROVED") {
-        return (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
-            <h4 className="font-semibold text-green-800">
-              Late Check-out đã được duyệt
-            </h4>
-            {req.additionalFee > 0 && (
-              <p className="text-green-600 text-sm">
-                Phí bổ sung: {req.additionalFee.toLocaleString()} VNĐ
-              </p>
-            )}
-          </div>
+        return renderBox(
+          "Late Check-out đã được duyệt",
+          "bg-green-50 border-green-200",
+          "text-green-800",
+          req.additionalFee > 0 ? (
+            <p className="text-green-600 text-sm">
+              Phí bổ sung: {req.additionalFee.toLocaleString()} VNĐ
+            </p>
+          ) : null,
         );
       }
+
       if (req.approvalStatus === "REJECTED") {
-        return (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-            <h4 className="font-semibold text-red-800">
-              Late Check-out bị từ chối
-            </h4>
-          </div>
+        return renderBox(
+          "Late Check-out bị từ chối",
+          "bg-red-50 border-red-200",
+          "text-red-800",
         );
       }
+
       if (req.approvalStatus === "PENDING") {
-        return (
-          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-            <h4 className="font-semibold text-yellow-800">
-              Late Check-out đang chờ xử lý
-            </h4>
-          </div>
+        return renderBox(
+          "Late Check-out đang chờ xử lý",
+          "bg-yellow-50 border-yellow-200",
+          "text-yellow-800",
         );
       }
     }
@@ -577,9 +708,8 @@ export default function BookingDetailPage() {
           </div>
 
           <span
-            className={`px-5 py-2 rounded-full border-2 text-sm font-semibold ${
-              statusColor[booking.status as keyof typeof statusColor]
-            }`}
+            className={`px-5 py-2 rounded-full border-2 text-sm font-semibold ${statusColor[booking.status as keyof typeof statusColor]
+              }`}
           >
             {booking.status?.replace("_", " ") || "PENDING"}
           </span>
@@ -703,14 +833,14 @@ export default function BookingDetailPage() {
                 {(booking.status === "PENDING" ||
                   booking.status === "WAITING" ||
                   booking.status === "CHECKED_IN") && (
-                  <button
-                    onClick={handleAddService}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#c9b8a8] text-white rounded-lg hover:bg-[#b9ad96] transition"
-                  >
-                    <MdAdd className="text-lg" />
-                    Add Service
-                  </button>
-                )}
+                    <button
+                      onClick={handleAddService}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#c9b8a8] text-white rounded-lg hover:bg-[#b9ad96] transition"
+                    >
+                      <MdAdd className="text-lg" />
+                      Add Service
+                    </button>
+                  )}
               </div>
 
               {loadingServices ? (
@@ -724,13 +854,13 @@ export default function BookingDetailPage() {
                   {(booking.status === "PENDING" ||
                     booking.status === "WAITING" ||
                     booking.status === "CHECKED_IN") && (
-                    <button
-                      onClick={handleAddService}
-                      className="mt-3 text-[#c9b8a8] hover:underline"
-                    >
-                      + Add your first service
-                    </button>
-                  )}
+                      <button
+                        onClick={handleAddService}
+                        className="mt-3 text-[#c9b8a8] hover:underline"
+                      >
+                        + Add your first service
+                      </button>
+                    )}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -780,22 +910,16 @@ export default function BookingDetailPage() {
                                 {item.servicePrice?.toLocaleString()} VNĐ
                               </span>
                             </div>
-                            {item.room && (
+                            {(item.roomNumbers && item.roomNumbers.length > 0) || item.room ? (
                               <div className="flex items-center gap-1">
                                 <span className="text-black/60">Room:</span>
                                 <span className="font-medium text-[#c9b8a8]">
-                                  {item.room.roomNumber}
+                                  {item.roomNumbers && item.roomNumbers.length > 0
+                                    ? item.roomNumbers.join(", ")
+                                    : item.room?.roomNumber}
                                 </span>
                               </div>
-                            )}
-                            {item.paymentMethod && (
-                              <div className="flex items-center gap-1">
-                                <span className="text-black/60">Payment:</span>
-                                <span className="font-medium">
-                                  {item.paymentMethod}
-                                </span>
-                              </div>
-                            )}
+                            ) : null}
                           </div>
                         </div>
 
@@ -1019,27 +1143,32 @@ export default function BookingDetailPage() {
                     onClick={() =>
                       setServiceForm((prev) => ({
                         ...prev,
-                        quantity: Math.max(1, prev.quantity - 1),
+                        quantity: Math.max(
+                          getAppliedRoomCount(prev.roomNumber),
+                          prev.quantity - 1,
+                        ),
                       }))
                     }
-                    disabled={serviceForm.quantity <= 1}
-                    className={`w-10 h-10 flex items-center justify-center rounded-full border transition ${
-                      serviceForm.quantity <= 1
-                        ? "border-gray-200 text-gray-300 cursor-not-allowed"
-                        : "border-[#c9b8a8] text-[#c9b8a8] hover:bg-[#c9b8a8] hover:text-white"
-                    }`}
+                    disabled={serviceForm.quantity <= getAppliedRoomCount(serviceForm.roomNumber)}
+                    className={`w-10 h-10 flex items-center justify-center rounded-full border transition ${serviceForm.quantity <= getAppliedRoomCount(serviceForm.roomNumber)
+                      ? "border-gray-200 text-gray-300 cursor-not-allowed"
+                      : "border-[#c9b8a8] text-[#c9b8a8] hover:bg-[#c9b8a8] hover:text-white"
+                      }`}
                   >
                     −
                   </button>
                   <input
                     type="number"
-                    min="1"
+                    min={getAppliedRoomCount(serviceForm.roomNumber)}
                     max="99"
                     value={serviceForm.quantity}
                     onChange={(e) =>
                       setServiceForm((prev) => ({
                         ...prev,
-                        quantity: parseInt(e.target.value) || 1,
+                        quantity: Math.max(
+                          getAppliedRoomCount(prev.roomNumber),
+                          Number.parseInt(e.target.value, 10) || getAppliedRoomCount(prev.roomNumber),
+                        ),
                       }))
                     }
                     className="w-20 text-center px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#c9b8a8]"
@@ -1053,11 +1182,10 @@ export default function BookingDetailPage() {
                       }))
                     }
                     disabled={serviceForm.quantity >= 99}
-                    className={`w-10 h-10 flex items-center justify-center rounded-full border transition ${
-                      serviceForm.quantity >= 99
-                        ? "border-gray-200 text-gray-300 cursor-not-allowed"
-                        : "border-[#c9b8a8] text-[#c9b8a8] hover:bg-[#c9b8a8] hover:text-white"
-                    }`}
+                    className={`w-10 h-10 flex items-center justify-center rounded-full border transition ${serviceForm.quantity >= 99
+                      ? "border-gray-200 text-gray-300 cursor-not-allowed"
+                      : "border-[#c9b8a8] text-[#c9b8a8] hover:bg-[#c9b8a8] hover:text-white"
+                      }`}
                   >
                     +
                   </button>
@@ -1070,12 +1198,15 @@ export default function BookingDetailPage() {
                 </label>
                 <select
                   value={serviceForm.roomNumber}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const nextRoomNumber = e.target.value;
+                    const nextRoomCount = getAppliedRoomCount(nextRoomNumber);
                     setServiceForm((prev) => ({
                       ...prev,
-                      roomNumber: e.target.value,
-                    }))
-                  }
+                      roomNumber: nextRoomNumber,
+                      quantity: Math.max(prev.quantity, nextRoomCount),
+                    }));
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#c9b8a8]"
                 >
                   <option value="ALL">
@@ -1086,8 +1217,7 @@ export default function BookingDetailPage() {
                       key={detail.room.roomNumber}
                       value={detail.room.roomNumber}
                     >
-                      Room {detail.room.roomNumber} -{" "}
-                      {detail.room.roomType?.typeName}
+                      Room {detail.room.roomNumber} - {detail.room.roomType?.typeName}
                     </option>
                   ))}
                 </select>
@@ -1138,34 +1268,26 @@ export default function BookingDetailPage() {
                         (s) => s.serviceID === serviceForm.serviceID
                       );
                       if (!service) return "0 VNĐ";
-                      const roomCount =
-                        serviceForm.roomNumber === "ALL" ? details.length : 1;
-                      return (
-                        (
-                          (service.price || 0) *
-                          serviceForm.quantity *
-                          roomCount
-                        ).toLocaleString() + " VNĐ"
-                      );
+                      return ((service.price || 0) * serviceForm.quantity).toLocaleString() + " VNĐ";
                     })()}
                   </span>
                 </div>
               </div>
-            </div>
 
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowServiceModal(false)}
-                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveService}
-                className="flex-1 px-4 py-3 bg-[#c9b8a8] text-white rounded-lg hover:bg-[#b9ad96] transition"
-              >
-                {editingService ? "Save Changes" : "Add Service"}
-              </button>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowServiceModal(false)}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveService}
+                  className="flex-1 px-4 py-3 bg-[#c9b8a8] text-white rounded-lg hover:bg-[#b9ad96] transition"
+                >
+                  {editingService ? "Save Changes" : "Add Service"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
