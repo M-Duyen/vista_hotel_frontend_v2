@@ -56,6 +56,7 @@ export const getRoomTypePromotionsByRoomTypeId = async (
 export const saveRoomTypePromotion = async (roomTypePromotionData: {
   roomType: { roomTypeID: string };
   promotion?: { promotionID: string };
+  discountType?: "PERCENT" | "FIXED" | string;
   discountValue: number;
   startDate: string;
   endDate: string;
@@ -63,6 +64,7 @@ export const saveRoomTypePromotion = async (roomTypePromotionData: {
   const payload = {
     roomTypeId: roomTypePromotionData.roomType.roomTypeID,
     promotionId: roomTypePromotionData.promotion?.promotionID,
+    discountType: roomTypePromotionData.discountType,
     discountValue: Number(roomTypePromotionData.discountValue),
     startDate: roomTypePromotionData.startDate,
     endDate: roomTypePromotionData.endDate,

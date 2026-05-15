@@ -58,14 +58,10 @@ export const validatePromotionName = (name: string): string => {
 */
 export const validatePromotionDescription = (description: string): string => {
   if (!description || description.trim().length === 0) {
-    return "Description is required";
+    return "";
   }
 
   const trimmed = description.trim();
-  if (trimmed.length < 10) {
-    return "Description must be at least 10 characters";
-  }
-
   if (trimmed.length > 1000) {
     return "Description must not exceed 1000 characters";
   }
