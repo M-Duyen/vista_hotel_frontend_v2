@@ -62,8 +62,14 @@ export const authApi = createApiClient(
 export const usersApi = createApiClient(
   `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}`,
 );
+export const customerApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CUSTOMER}`,
+);
 export const bookingsApi = createApiClient(
   `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.BOOKINGS}`,
+);
+export const paymentsApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PAYMENTS}`,
 );
 export const emailApi = createApiClient(
   `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.EMAIL}`,
@@ -82,6 +88,24 @@ export const promotionTypesApi = createApiClient(
 );
 export const roomTypePromotionsApi = createApiClient(
   `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ROOM_TYPE_PROMOTIONS}`,
+);
+export const cartApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CART}`,
+);
+export const serviceApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.SERVICE}`,
+);
+export const voucherApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.VOUCHERS}`,
+);
+export const customerVoucherApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CUSTOMER_VOUCHERS}`,
+);
+export const holidayVoucherApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.HOLIDAY_VOUCHERS}`,
+);
+export const birthdayVoucherApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.BIRTHDAY_VOUCHERS}`,
 );
 export const seasonPriceApi = createApiClient(
   `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.SEASONAL_PRICES}`,

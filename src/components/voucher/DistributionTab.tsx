@@ -45,7 +45,7 @@ export default function DistributionTab({
   };
 
   const handleDistribute = () => {
-    const voucher = vouchers.find((v) => v.voucherID === selectedVoucherId);
+    const voucher = vouchers.find((v) => v.voucherId === selectedVoucherId);
     if (voucher) {
       onDistribute(voucher);
     }
@@ -80,7 +80,7 @@ export default function DistributionTab({
             >
               <option value="">Choose a voucher...</option>
               {activeVouchers.map((voucher) => (
-                <option key={voucher.voucherID} value={voucher.voucherID}>
+                <option key={voucher.voucherId} value={voucher.voucherId}>
                   {voucher.voucherName} -{" "}
                   {voucher.discountType === "PERCENT"
                     ? `${voucher.discountPercentage}%`

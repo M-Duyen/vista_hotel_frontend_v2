@@ -19,7 +19,7 @@ const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
   submitting = false,
 }) => {
   const [formData, setFormData] = useState<Partial<Voucher>>({
-    voucherID: "",
+    voucherId: "",
     voucherName: "",
     discountType: "PERCENT",
     discountPercentage: 0,
@@ -51,7 +51,7 @@ const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
         console.log("Setting isActive to:", isActiveValue); // Debug log
 
         setFormData({
-          voucherID: voucher.voucherID || "",
+          voucherId: voucher.voucherId || "",
           voucherName: voucher.voucherName || "",
           discountType: voucher.discountType || "PERCENT",
           discountPercentage: voucher.discountPercentage ?? 0,
@@ -62,7 +62,7 @@ const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
         });
       } else {
         setFormData({
-          voucherID: "",
+          voucherId: "",
           voucherName: "",
           discountType: "PERCENT",
           discountPercentage: 0,
@@ -81,7 +81,7 @@ const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       setFormData({
-        voucherID: "",
+        voucherId: "",
         voucherName: "",
         discountType: "PERCENT",
         discountPercentage: 0,
@@ -177,19 +177,19 @@ const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
               </label>
               <input
                 type="text"
-                value={formData.voucherID}
-                onChange={(e) => handleFieldChange("voucherID", e.target.value)}
-                onBlur={() => handleFieldBlur("voucherID")}
+                value={formData.voucherId}
+                onChange={(e) => handleFieldChange("voucherId", e.target.value)}
+                onBlur={() => handleFieldBlur("voucherId")}
                 disabled={!!voucher}
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6b5e4c] ${
-                  touched.voucherID && errors.voucherID
+                  touched.voucherId && errors.voucherId
                     ? "border-red-500"
                     : "border-gray-300"
                 } ${voucher ? "bg-gray-100" : ""}`}
                 placeholder="e.g., SUMMER2024"
               />
-              {touched.voucherID && errors.voucherID && (
-                <p className="text-red-500 text-xs mt-1">{errors.voucherID}</p>
+              {touched.voucherId && errors.voucherId && (
+                <p className="text-red-500 text-xs mt-1">{errors.voucherId}</p>
               )}
             </div>
 

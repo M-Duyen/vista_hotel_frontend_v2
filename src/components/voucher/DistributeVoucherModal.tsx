@@ -69,7 +69,7 @@ const DistributeVoucherModal: React.FC<DistributeVoucherModalProps> = ({
     try {
       setDistributing(true);
       const result = await voucherService.distributeVoucher(
-        voucher.voucherID,
+        voucher.voucherId,
         criteria
       );
 

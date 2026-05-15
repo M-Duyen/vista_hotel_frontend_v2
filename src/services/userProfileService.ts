@@ -1,11 +1,10 @@
-import { api } from "./apiClient";
+import { api, customerApi, bookingsApi } from "./apiClient";
 import type { UserProfile, ProfileUpdateRequest } from "../types/UserProfile";
 import type { Customer } from "../types/Customer";
 import type { Booking } from "../types/Booking";
 import { uploadImageToCloudinary } from "./cloudinaryService";
 import { API_CONFIG } from "@/config/api.config";
 
-const CUSTOMER_ENDPOINT = "/customers";
 const EMPLOYEE_ENDPOINT = "/employees";
 const ADMIN_ENDPOINT = "/admins";
 
@@ -16,7 +15,7 @@ export const getCustomerProfile = async (
   customerId: string,
 ): Promise<Customer> => {
   try {
-    const response = await api.get(`${CUSTOMER_ENDPOINT}/${customerId}`);
+    const response = await customerApi.get(`/${customerId}`);
     return response.data;
   } catch (error) {
     console.error("Error fetching customer profile:", error);
@@ -32,7 +31,7 @@ export const updateCustomerProfile = async (
   data: ProfileUpdateRequest,
 ): Promise<Customer> => {
   try {
-    const response = await api.put(`${CUSTOMER_ENDPOINT}/${customerId}`, data);
+    const response = await customerApi.put(`/${customerId}`, data);
     return response.data;
   } catch (error) {
     console.error("Error updating customer profile:", error);
@@ -86,16 +85,14 @@ export const updateUserAvatar = async (
     const avatarUrl = uploadResult.secure_url;
 
     // Cập nhật avatarUrl vào database
-    let endpoint = "";
     if (userRole === "CUSTOMER") {
-      endpoint = `${CUSTOMER_ENDPOINT}/${userId}/avatar`;
+      await customerApi.put(`/${userId}/avatar`, { avatarUrl });
     } else if (userRole === "EMPLOYEE") {
-      endpoint = `${EMPLOYEE_ENDPOINT}/${userId}/avatar`;
+      await api.put(`${EMPLOYEE_ENDPOINT}/${userId}/avatar`, { avatarUrl });
     } else if (userRole === "ADMIN") {
-      endpoint = `${ADMIN_ENDPOINT}/${userId}/avatar`;
+      await api.put(`${ADMIN_ENDPOINT}/${userId}/avatar`, { avatarUrl });
     }
 
-    await api.put(endpoint, { avatarUrl });
     return avatarUrl;
   } catch (error) {
     console.error("Error updating user avatar:", error);
@@ -136,7 +133,7 @@ export const getCustomerBookings = async (
   customerId: string,
 ): Promise<Booking[]> => {
   try {
-    const response = await api.get(`/bookings/customer/${customerId}`);
+    const response = await bookingsApi.get(`/customer/${customerId}`);
     return response.data;
   } catch (error) {
     console.error("Error fetching customer bookings:", error);
