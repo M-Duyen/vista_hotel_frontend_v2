@@ -10,7 +10,7 @@ import {
     getAllSeasonalPrices_RoomType,
     saveSeasonalPriceWithRoomTypes,
     deleteSeasonalPrice,
-} from '@/services/SeasonPriceService';
+} from '@/services/seasonPriceService';
 
 import type { SeasonPrice } from '../../../types/SeasonPrice';
 
@@ -502,11 +502,10 @@ export default function PricingManager() {
                                 <button
                                     key={t.key}
                                     onClick={() => setActiveTab(t.key as any)}
-                                    className={`w-full text-sm py-2 rounded-full ${
-                                        active
+                                    className={`w-full text-sm py-2 rounded-full ${active
                                             ? 'bg-white shadow-md font-semibold'
                                             : 'text-gray-600 hover:bg-white/50'
-                                    }`}
+                                        }`}
                                 >
                                     {t.label}
                                 </button>

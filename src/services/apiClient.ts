@@ -83,3 +83,20 @@ export const promotionTypesApi = createApiClient(
 export const roomTypePromotionsApi = createApiClient(
   `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ROOM_TYPE_PROMOTIONS}`,
 );
+export const seasonPriceApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.SEASONAL_PRICES}`,
+);
+export const calculateRoomPriceApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CALCULATE_ROOM_PRICE}`,
+);
+export const checkinCheckoutPoliciesApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHECKIN_CHECKOUT_POLICIES}`,
+);
+export const checkinCheckoutPolicyRulesApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHECKIN_CHECKOUT_POLICY_RULES}`,
+);
+export const hourlyRatePoliciesApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.HOURLY_RATE_POLICIES}`,
+);
+
+

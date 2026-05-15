@@ -1,8 +1,7 @@
-import { api } from './apiClient';
+import { checkinCheckoutPolicyRulesApi } from './apiClient';
 import axios from 'axios';
 import type { CheckInCheckOutPolicyRule } from '../types/CheckInCheckOutPolicyRule';
 
-const ENDPOINT = '/principle/checkin-checkout-policy-rules';
 
 /**
  * Fetch all check-in/check-out policy rules
@@ -10,7 +9,7 @@ const ENDPOINT = '/principle/checkin-checkout-policy-rules';
  */
 export async function getAllRules(): Promise<CheckInCheckOutPolicyRule[]> {
     try {
-        const res = await api.get(ENDPOINT);
+        const res = await checkinCheckoutPolicyRulesApi.get('');
         return res.data as CheckInCheckOutPolicyRule[];
     } catch (err: unknown) {
         throw formatAxiosError(err);
@@ -25,7 +24,7 @@ export async function getRuleById(
     id: number | string,
 ): Promise<CheckInCheckOutPolicyRule> {
     try {
-        const res = await api.get(`${ENDPOINT}/${id}`);
+        const res = await checkinCheckoutPolicyRulesApi.get(`/${id}`);
         return res.data as CheckInCheckOutPolicyRule;
     } catch (err: unknown) {
         throw formatAxiosError(err);
@@ -34,13 +33,13 @@ export async function getRuleById(
 
 /**
  * Create or update a rule
- * POST /checkin-checkout-policy-rules/save
+ * POST /checkin-checkout-policy-rules
  */
 export async function saveRule(
     rule: Partial<CheckInCheckOutPolicyRule>,
 ): Promise<CheckInCheckOutPolicyRule> {
     try {
-        const res = await api.post(`${ENDPOINT}/save`, rule);
+        const res = await checkinCheckoutPolicyRulesApi.post('', rule);
         return res.data as CheckInCheckOutPolicyRule;
     } catch (err: unknown) {
         throw formatAxiosError(err);

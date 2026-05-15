@@ -20,9 +20,9 @@ import { Input } from '@/components/my-input/components/ui/input';
 import {
     getAllPolicyBaseRates,
     saveHourlyRatePolicy,
-} from '@/services/HourlyRatePolicyService';
+} from '@/services/hourlyRatePolicyService';
 import { CiEdit } from 'react-icons/ci';
-import {  FiPlus, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiTrash2 } from 'react-icons/fi';
 import type { HourlyRatePolicy, BaseRateItem } from '@/types/HourlyRatePolicy';
 import ConfirmDialog from '@/components/dialog/ConfirmDialog';
 
@@ -94,11 +94,11 @@ export default function ByHourTab() {
                 baseRates: normalizeBaseRates(policy),
                 weekendDays: Array.isArray(policy.weekendDays)
                     ? policy.weekendDays.map((d: string) =>
-                          String(d).toUpperCase(),
-                      )
+                        String(d).toUpperCase(),
+                    )
                     : policy.weekendDays
-                    ? [String(policy.weekendDays).toUpperCase()]
-                    : [],
+                        ? [String(policy.weekendDays).toUpperCase()]
+                        : [],
             }));
 
             console.log('Normalized policies:', normalized);
@@ -429,11 +429,11 @@ export default function ByHourTab() {
                                                         ) &&
                                                             policy.weekendDays
                                                                 .length ===
-                                                                0)) && (
-                                                        <span className="text-gray-400 text-sm">
-                                                            —
-                                                        </span>
-                                                    )}
+                                                            0)) && (
+                                                            <span className="text-gray-400 text-sm">
+                                                                —
+                                                            </span>
+                                                        )}
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
@@ -544,8 +544,8 @@ export default function ByHourTab() {
                                                                             <span className="text-gray-600 flex justify-center">
                                                                                 {rateObj
                                                                                     ? `${fmt(
-                                                                                          rateObj.baseRate,
-                                                                                      )}`
+                                                                                        rateObj.baseRate,
+                                                                                    )}`
                                                                                     : '—'}
                                                                             </span>
                                                                         </div>
@@ -582,10 +582,9 @@ export default function ByHourTab() {
                                                                             )
                                                                         }
                                                                         className="h-8 px-3 text-xs bg-white"
-                                                                        title={`Edit ${
-                                                                            mp.policyName ??
+                                                                        title={`Edit ${mp.policyName ??
                                                                             'Policy'
-                                                                        } - ${h}h`}
+                                                                            } - ${h}h`}
                                                                     >
                                                                         <CiEdit className="w-4 h-4" />
                                                                     </Button>
@@ -702,57 +701,57 @@ export default function ByHourTab() {
                                             ? formData.baseRates
                                             : []
                                         ).map((rate: BaseRateItem, idx: number) => (
-                                                <div
-                                                    key={idx}
-                                                    className="flex items-center gap-3"
-                                                >
-                                                    <div className="flex-1">
-                                                        <Input
-                                                            type="number"
-                                                            min="1"
-                                                            value={
-                                                                rate.baseHours
-                                                            }
-                                                            onChange={(e) =>
-                                                                updateBaseRateRow(
-                                                                    idx,
-                                                                    'baseHours',
-                                                                    Number(
-                                                                        e.target
-                                                                            .value,
-                                                                    ),
-                                                                )
-                                                            }
-                                                            placeholder="Hours"
-                                                            className="h-10"
-                                                        />
-                                                    </div>
-                                                    <span className="text-gray-400">
-                                                        →
-                                                    </span>
-                                                    <div className="flex-1">
-                                                        <Input
-                                                            type="number"
-                                                            min="0"
-                                                            value={
-                                                                rate.baseRate
-                                                            }
-                                                            onChange={(e) =>
-                                                                updateBaseRateRow(
-                                                                    idx,
-                                                                    'baseRate',
-                                                                    Number(
-                                                                        e.target
-                                                                            .value,
-                                                                    ),
-                                                                )
-                                                            }
-                                                            placeholder="Rate (VND)"
-                                                            className="h-10"
-                                                        />
-                                                    </div>
-                                                    {(formData.baseRates || [])
-                                                        .length > 1 && (
+                                            <div
+                                                key={idx}
+                                                className="flex items-center gap-3"
+                                            >
+                                                <div className="flex-1">
+                                                    <Input
+                                                        type="number"
+                                                        min="1"
+                                                        value={
+                                                            rate.baseHours
+                                                        }
+                                                        onChange={(e) =>
+                                                            updateBaseRateRow(
+                                                                idx,
+                                                                'baseHours',
+                                                                Number(
+                                                                    e.target
+                                                                        .value,
+                                                                ),
+                                                            )
+                                                        }
+                                                        placeholder="Hours"
+                                                        className="h-10"
+                                                    />
+                                                </div>
+                                                <span className="text-gray-400">
+                                                    →
+                                                </span>
+                                                <div className="flex-1">
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        value={
+                                                            rate.baseRate
+                                                        }
+                                                        onChange={(e) =>
+                                                            updateBaseRateRow(
+                                                                idx,
+                                                                'baseRate',
+                                                                Number(
+                                                                    e.target
+                                                                        .value,
+                                                                ),
+                                                            )
+                                                        }
+                                                        placeholder="Rate (VND)"
+                                                        className="h-10"
+                                                    />
+                                                </div>
+                                                {(formData.baseRates || [])
+                                                    .length > 1 && (
                                                         <button
                                                             onClick={() =>
                                                                 removeBaseRateRow(
@@ -764,8 +763,8 @@ export default function ByHourTab() {
                                                             <FiTrash2 className="w-4 h-4" />
                                                         </button>
                                                     )}
-                                                </div>
-                                            ),
+                                            </div>
+                                        ),
                                         )}
                                     </div>
                                     <p className="text-xs text-gray-500 mt-2">
@@ -819,11 +818,10 @@ export default function ByHourTab() {
                                                             d.value,
                                                         )
                                                     }
-                                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                                                        isSelected
+                                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${isSelected
                                                             ? 'bg-indigo-600 text-white'
                                                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {d.label}
                                                 </button>

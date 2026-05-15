@@ -29,7 +29,7 @@ import { getCartBeanByCustomerId } from "../../services/cartBeanService";
 import CustomerVoucherModal from "./CustomerVoucherModal";
 import { RiHotelLine } from "react-icons/ri";
 import { TbHotelService } from "react-icons/tb";
-import { getAllPolicyBaseRates } from "../../services/HourlyRatePolicyService";
+import { getAllPolicyBaseRates } from "../../services/hourlyRatePolicyService";
 import type {
   HourlyRatePolicy,
   BaseRateItem,
@@ -577,8 +577,7 @@ export default function BookingForm({
         const totalPrice = (price * ratePercentage) / 100;
 
         console.log(
-          `Room ${
-            room.roomNumber
+          `Room ${room.roomNumber
           }: ${basePrice} × ${ratePercentage}% = ${totalPrice.toFixed(0)} VND`,
         );
 
@@ -1164,11 +1163,10 @@ export default function BookingForm({
                     <div key={index}>
                       {/* Service Item */}
                       <div
-                        className={`flex items-center gap-4 p-4 border border-gray-200 rounded-lg transition cursor-pointer ${
-                          selectedServices.includes(service.serviceID)
+                        className={`flex items-center gap-4 p-4 border border-gray-200 rounded-lg transition cursor-pointer ${selectedServices.includes(service.serviceID)
                             ? "bg-gray-50 border-[#c9b8a8]"
                             : "hover:bg-gray-50"
-                        }`}
+                          }`}
                         onClick={() => toggleService(service.serviceID)}
                       >
                         <input
@@ -1217,12 +1215,11 @@ export default function BookingForm({
                                   (serviceQuantities[service.serviceID] || 1) <=
                                   1
                                 }
-                                className={`w-8 h-8 flex items-center justify-center rounded-full border transition ${
-                                  (serviceQuantities[service.serviceID] || 1) <=
-                                  1
+                                className={`w-8 h-8 flex items-center justify-center rounded-full border transition ${(serviceQuantities[service.serviceID] || 1) <=
+                                    1
                                     ? "border-gray-200 text-gray-300 cursor-not-allowed"
                                     : "border-[#c9b8a8] text-[#c9b8a8] hover:bg-[#c9b8a8] hover:text-white"
-                                }`}
+                                  }`}
                               >
                                 <span className="text-lg font-bold">−</span>
                               </button>
@@ -1250,12 +1247,11 @@ export default function BookingForm({
                                   (serviceQuantities[service.serviceID] || 1) >=
                                   99
                                 }
-                                className={`w-8 h-8 flex items-center justify-center rounded-full border transition ${
-                                  (serviceQuantities[service.serviceID] || 1) >=
-                                  99
+                                className={`w-8 h-8 flex items-center justify-center rounded-full border transition ${(serviceQuantities[service.serviceID] || 1) >=
+                                    99
                                     ? "border-gray-200 text-gray-300 cursor-not-allowed"
                                     : "border-[#c9b8a8] text-[#c9b8a8] hover:bg-[#c9b8a8] hover:text-white"
-                                }`}
+                                  }`}
                               >
                                 <span className="text-lg font-bold">+</span>
                               </button>
@@ -1276,7 +1272,7 @@ export default function BookingForm({
                                 type="checkbox"
                                 checked={
                                   selectedServiceTargets[service.serviceID] ===
-                                    "ALL" ||
+                                  "ALL" ||
                                   !selectedServiceTargets[service.serviceID]
                                 }
                                 onChange={(e) =>
@@ -1300,16 +1296,15 @@ export default function BookingForm({
                                 targets === "ALL"
                                   ? false
                                   : Array.isArray(targets) &&
-                                    targets.includes(roomNumber);
+                                  targets.includes(roomNumber);
                               const disabled = targets === "ALL";
                               return (
                                 <label
                                   key={roomNumber}
-                                  className={`flex items-center gap-2 cursor-pointer p-2 rounded ${
-                                    disabled
+                                  className={`flex items-center gap-2 cursor-pointer p-2 rounded ${disabled
                                       ? "opacity-50 cursor-not-allowed"
                                       : "hover:bg-gray-100"
-                                  }`}
+                                    }`}
                                 >
                                   <input
                                     type="checkbox"
@@ -1622,9 +1617,9 @@ export default function BookingForm({
                         .getHours()
                         .toString()
                         .padStart(2, "0")}:${checkOut
-                        .getMinutes()
-                        .toString()
-                        .padStart(2, "0")}`;
+                          .getMinutes()
+                          .toString()
+                          .padStart(2, "0")}`;
                     })()}
                   </span>
                 </div>
@@ -1732,11 +1727,10 @@ export default function BookingForm({
               >
                 {selectedVoucher && selectedVoucher.length > 0
                   ? selectedVoucher.length === 1
-                    ? `${selectedVoucher[0].voucher.voucherName} (${
-                        selectedVoucher[0].voucher.discountType === "PERCENT"
-                          ? `-${selectedVoucher[0].voucher.discountPercentage}%`
-                          : `-${selectedVoucher[0].voucher.discountValue?.toLocaleString()} VND`
-                      })`
+                    ? `${selectedVoucher[0].voucher.voucherName} (${selectedVoucher[0].voucher.discountType === "PERCENT"
+                      ? `-${selectedVoucher[0].voucher.discountPercentage}%`
+                      : `-${selectedVoucher[0].voucher.discountValue?.toLocaleString()} VND`
+                    })`
                     : `${selectedVoucher.length} vouchers applied`
                   : customerVouchers && customerVouchers.length > 0
                     ? "Choose voucher"
@@ -1784,11 +1778,10 @@ export default function BookingForm({
               <button
                 onClick={handleSaveBooking}
                 disabled={loading}
-                className={`px-8 py-3 text-white font-semibold rounded-lg transition ${
-                  loading
+                className={`px-8 py-3 text-white font-semibold rounded-lg transition ${loading
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-[#c9b8a8] hover:bg-[#b8a896]"
-                }`}
+                  }`}
               >
                 {loading ? "Saving..." : "Reserve"}
               </button>

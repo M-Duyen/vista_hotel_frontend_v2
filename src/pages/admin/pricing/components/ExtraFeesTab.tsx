@@ -20,14 +20,19 @@ import { Input } from '@/components/my-input/components/ui/input';
 import {
     getAllRules,
     saveRule,
-} from '@/services/CheckInCheckOutPolicyRuleService';
+} from '@/services/checkInCheckOutPolicyRuleService';
 import type {
     CheckInCheckOutPolicyRule,
     RuleType,
 } from '@/types/CheckInCheckOutPolicyRule';
 import { CiEdit } from 'react-icons/ci';
-import { FiPlus, FiFilter } from 'react-icons/fi';
+import { FiPlus, FiFilter, FiSettings } from 'react-icons/fi';
 import ConfirmDialog from '@/components/dialog/ConfirmDialog';
+import {
+    getAllPolicies,
+    savePolicy,
+} from '@/services/checkInCheckOutPolicyService';
+import type { CheckInCheckOutPolicy } from '@/types/CheckInCheckOutPolicy';
 
 export default function ExtraFeesTab() {
     const [rules, setRules] = useState<CheckInCheckOutPolicyRule[]>([]);
@@ -37,6 +42,15 @@ export default function ExtraFeesTab() {
         useState<CheckInCheckOutPolicyRule | null>(null);
     const [formData, setFormData] = useState<
         Partial<CheckInCheckOutPolicyRule>
+    >({});
+
+    // Policy state
+    const [policies, setPolicies] = useState<CheckInCheckOutPolicy[]>([]);
+    const [policyModalOpen, setPolicyModalOpen] = useState(false);
+    const [editingPolicy, setEditingPolicy] =
+        useState<CheckInCheckOutPolicy | null>(null);
+    const [policyFormData, setPolicyFormData] = useState<
+        Partial<CheckInCheckOutPolicy>
     >({});
 
     // filter state
@@ -62,7 +76,20 @@ export default function ExtraFeesTab() {
 
     useEffect(() => {
         loadRules();
+        loadPolicies();
     }, []);
+
+    async function loadPolicies() {
+        setLoading(true);
+        try {
+            const data = await getAllPolicies();
+            setPolicies(data || []);
+        } catch (err) {
+            console.error('Failed to load policies:', err);
+        } finally {
+            setLoading(false);
+        }
+    }
 
     async function loadRules() {
         setLoading(true);
@@ -144,6 +171,52 @@ export default function ExtraFeesTab() {
         }
     }
 
+    // Policy functions
+    function openPolicyEditModal(policy: CheckInCheckOutPolicy) {
+        setEditingPolicy(policy);
+        setPolicyFormData({ ...policy });
+        setPolicyModalOpen(true);
+    }
+
+    function closePolicyModal() {
+        setPolicyModalOpen(false);
+        setEditingPolicy(null);
+        setPolicyFormData({});
+    }
+
+    async function handlePolicySubmit() {
+        if (
+            !policyFormData.standardCheckInTime ||
+            !policyFormData.standardCheckOutTime
+        ) {
+            alert('Please fill check-in and check-out times');
+            return;
+        }
+
+        try {
+            await savePolicy({
+                ...policyFormData,
+                id: editingPolicy?.id,
+            });
+            closePolicyModal();
+            await loadPolicies();
+            setNotify({
+                isOpen: true,
+                title: 'Success',
+                message: 'Standard policy updated successfully.',
+                type: 'success',
+            });
+        } catch (err: any) {
+            console.error('Error saving policy:', err);
+            setNotify({
+                isOpen: true,
+                title: 'Error',
+                message: err.message || 'Failed to save policy',
+                type: 'danger',
+            });
+        }
+    }
+
     // filtered rules
     const filteredRules = filterType
         ? rules.filter((r) => r.type === filterType)
@@ -195,32 +268,101 @@ export default function ExtraFeesTab() {
             {/* Header Card */}
             <Card className="shadow-sm border-0">
                 <CardHeader className="px-6 py-5">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
+                    <div className="">
+                        <div className='flex item-center justify-between mb-2'>
+                            <div className="flex items-center gap-4">
                             <div>
                                 <CardTitle className="text-xl font-semibold text-gray-900">
-                                    Check-in / Check-out Policy Rules
+                                    Standard Check-in / Check-out Policies
                                 </CardTitle>
                                 <CardDescription className="text-sm text-gray-600 mt-1">
-                                    Manage surcharges for early check-in and
-                                    late check-out
+                                    Set the default check-in and check-out times for the hotel
                                 </CardDescription>
                             </div>
                         </div>
-
-                        <Button
+                         <Button
                             onClick={openAddModal}
                             className="bg-[--color-primary] hover:bg-[--color-secondary] text-white shadow-sm flex items-center gap-2"
                         >
                             <FiPlus className="w-4 h-4" />
                             Add Rule
                         </Button>
+                        </div>
+                          <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-[color:var(--color-secondary)]/25 ">
+                                        <TableHead className="py-4 px-6 text-sm font-semibold text-gray-700">
+                                            Name
+                                        </TableHead>
+                                        <TableHead className="py-4 px-6 text-sm font-semibold text-gray-700">
+                                            Standard check-in time
+                                        </TableHead>
+                                        <TableHead className="flex justify-center py-4 px-6 text-center text-sm font-semibold text-gray-700">
+                                            Standard check-out time
+                                        </TableHead>
+                                    
+                                        <TableHead className="py-4 px-6 text-center text-sm font-semibold text-gray-700 w-24">
+                                            Actions
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+
+                                <TableBody>
+                                    {policies.map((policy) => (
+                                        <TableRow
+                                            key={policy.id}
+                                            className=" hover:bg-gray-50/50 transition-colors"
+                                        >
+                                            <TableCell className="py-4 px-6">
+                                                <span className="font-medium text-gray-900">
+                                                    {policy.description || 'Standard Policy'}
+                                                </span>
+                                            </TableCell>
+
+                                            <TableCell className="py-4 px-6">
+                                                <div className="flex items-center gap-2 text-sm text-gray-700">
+                                                    <span className="font-bold bg-green-50 text-green-700 px-3 py-1 rounded-lg border border-green-100">
+                                                        {fmtTime(policy.standardCheckInTime)}
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+
+                                            <TableCell className="py-4 px-6 text-center">
+                                                <span className="font-bold bg-blue-50 text-blue-700 px-3 py-1 rounded-lg border border-blue-100">
+                                                    {fmtTime(policy.standardCheckOutTime)}
+                                                </span>
+                                            </TableCell>
+
+                                            <TableCell className="py-4 px-6">
+                                                <div className="flex items-center justify-center">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => openPolicyEditModal(policy)}
+                                                        className="h-8 w-8 p-0 flex items-center justify-center hover:bg-gray-100 rounded-full transition-all"
+                                                        title="Edit Policy"
+                                                    >
+                                                        <CiEdit className="w-5 h-5" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+
+                       
                     </div>
                 </CardHeader>
             </Card>
 
-            {/* Main Content Card */}
-            <Card className="shadow-sm border-0">
+            {/* Rules Section */}
+            <div className="pt-4">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="h-6 w-1 rounded-full bg-purple-600" />
+                    <h3 className="text-lg font-bold text-gray-900">Surcharge & Policy Rules</h3>
+                </div>
+                <Card className="shadow-sm border-0">
                 <CardHeader className="bg-gray-50/50 px-6 py-4 rounded-t-2xl">
                     <div className="flex items-center justify-between">
                         <div>
@@ -255,11 +397,10 @@ export default function ExtraFeesTab() {
                                         </span>
                                     </div>
                                     <svg
-                                        className={`w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 ${
-                                            filterDropdownOpen
-                                                ? 'rotate-180'
-                                                : ''
-                                        }`}
+                                        className={`w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 ${filterDropdownOpen
+                                            ? 'rotate-180'
+                                            : ''
+                                            }`}
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -302,19 +443,18 @@ export default function ExtraFeesTab() {
                                                     onClick={() => {
                                                         setFilterType(
                                                             option.value as
-                                                                | RuleType
-                                                                | '',
+                                                            | RuleType
+                                                            | '',
                                                         );
                                                         setFilterDropdownOpen(
                                                             false,
                                                         );
                                                     }}
-                                                    className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${
-                                                        filterType ===
+                                                    className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${filterType ===
                                                         option.value
-                                                            ? 'bg-[#6b5e4c] text-white font-medium'
-                                                            : 'text-gray-700 hover:bg-gray-50'
-                                                    }`}
+                                                        ? 'bg-[#6b5e4c] text-white font-medium'
+                                                        : 'text-gray-700 hover:bg-gray-50'
+                                                        }`}
                                                 >
                                                     {option.label}
                                                 </button>
@@ -380,15 +520,14 @@ export default function ExtraFeesTab() {
                                             <TableCell className="py-4 px-6">
                                                 <div className="flex items-center gap-2">
                                                     <span
-                                                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                                                            rule.type ===
+                                                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${rule.type ===
                                                             'EARLY_CHECKIN'
-                                                                ? 'bg-green-50 text-green-700 border border-green-200'
-                                                                : 'bg-orange-50 text-orange-700 border border-orange-200'
-                                                        }`}
+                                                            ? 'bg-green-50 text-green-700 border border-green-200'
+                                                            : 'bg-orange-50 text-orange-700 border border-orange-200'
+                                                            }`}
                                                     >
                                                         {rule.type ===
-                                                        'EARLY_CHECKIN'
+                                                            'EARLY_CHECKIN'
                                                             ? 'Early Check-in'
                                                             : 'Late Check-out'}
                                                     </span>
@@ -433,7 +572,7 @@ export default function ExtraFeesTab() {
 
                                             <TableCell className="py-4 px-6 text-left">
                                                 {rule.freeForMinRankLevel !=
-                                                null ? (
+                                                    null ? (
                                                     <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200">
                                                         {getRankLevelName(
                                                             rule.freeForMinRankLevel,
@@ -469,6 +608,7 @@ export default function ExtraFeesTab() {
                     )}
                 </CardContent>
             </Card>
+            </div>
 
             {/* Modal: Add/Edit Rule */}
             {modalOpen && (
@@ -591,6 +731,7 @@ export default function ExtraFeesTab() {
                                         value={
                                             formData.surchargePercentage ?? 0
                                         }
+                                        disabled={formData.isDayCharge ?? false}
                                         onChange={(e) =>
                                             setFormData({
                                                 ...formData,
@@ -617,6 +758,12 @@ export default function ExtraFeesTab() {
                                             setFormData({
                                                 ...formData,
                                                 isDayCharge: e.target.checked,
+                                                surchargePercentage:
+                                                    e.target.checked
+                                                        ? 100
+                                                        : formData
+                                                            .surchargePercentage ??
+                                                        0,
                                             })
                                         }
                                         className="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
@@ -626,8 +773,7 @@ export default function ExtraFeesTab() {
                                             Charge as Full Day (100%)
                                         </label>
                                         <p className="text-xs text-gray-500">
-                                            If checked, charge equals one full
-                                            night rate
+                                            If checked, charge equals one full night rate
                                         </p>
                                     </div>
                                 </div>
@@ -684,6 +830,119 @@ export default function ExtraFeesTab() {
                     </div>
                 </>
             )}
+
+            {/* Modal: Edit Standard Policy */}
+            {policyModalOpen && (
+                <>
+                    <div
+                        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+                        onClick={closePolicyModal}
+                    />
+                    <div
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                            <div className="px-6 py-5 border-b">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                                            <FiSettings className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-semibold text-gray-900">
+                                                Edit Standard Policy
+                                            </h3>
+                                            <p className="text-sm text-gray-600 mt-0.5">
+                                                Set baseline check-in/out times
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        className="p-2 hover:bg-gray-100 rounded-full transition-all"
+                                        onClick={closePolicyModal}
+                                    >
+                                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="p-6 space-y-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        Description
+                                    </label>
+                                    <Input
+                                        value={policyFormData.description ?? ''}
+                                        onChange={(e) =>
+                                            setPolicyFormData({
+                                                ...policyFormData,
+                                                description: e.target.value,
+                                            })
+                                        }
+                                        placeholder="e.g., Standard Operating Hours"
+                                        className="h-11"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                                            Check-in Time *
+                                        </label>
+                                        <Input
+                                            type="time"
+                                            value={policyFormData.standardCheckInTime ?? ''}
+                                            onChange={(e) =>
+                                                setPolicyFormData({
+                                                    ...policyFormData,
+                                                    standardCheckInTime: e.target.value,
+                                                })
+                                            }
+                                            className="h-11"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                                            Check-out Time *
+                                        </label>
+                                        <Input
+                                            type="time"
+                                            value={policyFormData.standardCheckOutTime ?? ''}
+                                            onChange={(e) =>
+                                                setPolicyFormData({
+                                                    ...policyFormData,
+                                                    standardCheckOutTime: e.target.value,
+                                                })
+                                            }
+                                            className="h-11"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="px-6 py-4 border-t bg-gray-50 flex items-center justify-end gap-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={closePolicyModal}
+                                    className="border-gray-300"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={handlePolicySubmit}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200 px-6"
+                                >
+                                    Update Policy
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+
 
             {/* Notification Dialog */}
             <ConfirmDialog

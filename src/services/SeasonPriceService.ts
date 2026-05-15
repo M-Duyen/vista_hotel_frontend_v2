@@ -2,7 +2,7 @@ import { api } from './apiClient';
 import axios from 'axios';
 import type { SeasonPrice } from '../types/SeasonPrice';
 
-const ENDPOINT = '/principle/seasonal-prices';
+const ENDPOINT = '/api/principle/seasonal-prices';
 
 export const getAllSeasonalPrices = async (): Promise<SeasonPrice[]> => {
     try {

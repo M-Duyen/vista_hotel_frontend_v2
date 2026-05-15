@@ -1,27 +1,25 @@
-import { api } from './apiClient';
 import axios from 'axios';
 
 import type { HourlyRatePolicy } from '../types/HourlyRatePolicy';
 
-const ENDPOINT = '/principle/hourly-rate-policies';
+import { hourlyRatePoliciesApi } from './apiClient';
 
 // GET /hourly-rate-policies/base-rates
 export async function getAllPolicyBaseRates(): Promise<HourlyRatePolicy[]> {
     try {
-        const res = await api.get(`${ENDPOINT}`);
+        const res = await hourlyRatePoliciesApi.get('');
         return res.data as HourlyRatePolicy[];
     } catch (err: unknown) {
         throw formatAxiosError(err);
     }
 }
 
-// POST /hourly-rate-policies/save
+// POST /hourly-rate-policies
 export async function saveHourlyRatePolicy(
     policy: Partial<HourlyRatePolicy>,
 ): Promise<HourlyRatePolicy> {
     try {
-        console.log('API POST', `${ENDPOINT}/save`, policy);
-        const res = await api.post(`${ENDPOINT}/save`, policy);
+        const res = await hourlyRatePoliciesApi.post('', policy);
         return res.data as HourlyRatePolicy;
     } catch (err: unknown) {
         // Try to extract server message

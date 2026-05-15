@@ -102,6 +102,8 @@ const ServiceManagement: React.FC = () => {
             SPA: 'Spa',
             TRANSPORT: 'Transport',
             TOUR: 'Tour',
+            WELLNESS: 'Wellness',
+            RECREATION: 'Recreation',
             OTHER: 'Other',
         };
         return labels[category] || category;
@@ -114,6 +116,8 @@ const ServiceManagement: React.FC = () => {
             SPA: <Sparkles className="w-5 h-5" />,
             TRANSPORT: <Car className="w-5 h-5" />,
             TOUR: <Map className="w-5 h-5" />,
+            WELLNESS: <Sparkles className="w-5 h-5" />,
+            RECREATION: <Package className="w-5 h-5" />,
             OTHER: <Package className="w-5 h-5" />,
         };
         return icons[category] || <Package className="w-5 h-5" />;
@@ -126,6 +130,8 @@ const ServiceManagement: React.FC = () => {
             SPA: 'bg-rose-100 text-rose-700 border-rose-200',
             TRANSPORT: 'bg-emerald-100 text-emerald-700 border-emerald-200',
             TOUR: 'bg-violet-100 text-violet-700 border-violet-200',
+            WELLNESS: 'bg-teal-100 text-teal-700 border-teal-200',
+            RECREATION: 'bg-indigo-100 text-indigo-700 border-indigo-200',
             OTHER: 'bg-gray-100 text-gray-700 border-gray-200',
         };
         return colors[category] || colors.OTHER;
@@ -170,8 +176,9 @@ const ServiceManagement: React.FC = () => {
 
             {/* Filters and Search */}
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-[#CCBDA3]/20 p-4 sm:p-6 mb-6">
-                <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
-                    <div className="flex gap-3 flex-wrap">
+                <div className="flex flex-col xl:flex-row gap-6 justify-between items-start xl:items-center">
+                    {/* Category Filters */}
+                    <div className="flex flex-wrap gap-2">
                         <button
                             onClick={() => setCategoryFilter('ALL')}
                             className={`group px-5 py-2.5 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 ${
@@ -238,22 +245,45 @@ const ServiceManagement: React.FC = () => {
                             <Map className="w-4 h-4" />
                             Tour
                         </button>
+                        <button
+                            onClick={() => setCategoryFilter('WELLNESS')}
+                            className={`group px-5 py-2.5 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 ${
+                                categoryFilter === 'WELLNESS'
+                                    ? 'bg-teal-600 text-white shadow-lg scale-105'
+                                    : 'bg-teal-50 text-teal-700 hover:bg-teal-100 hover:scale-105'
+                            }`}
+                        >
+                            <Sparkles className="w-4 h-4" />
+                            Wellness
+                        </button>
+                        <button
+                            onClick={() => setCategoryFilter('RECREATION')}
+                            className={`group px-5 py-2.5 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 ${
+                                categoryFilter === 'RECREATION'
+                                    ? 'bg-indigo-600 text-white shadow-lg scale-105'
+                                    : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:scale-105'
+                            }`}
+                        >
+                            <Package className="w-4 h-4" />
+                            Recreation
+                        </button>
                     </div>
 
-                    <div className="flex gap-3">
-                        <div className="relative">
+                    {/* Search and Action Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto">
+                        <div className="relative flex-1 sm:min-w-[280px]">
                             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                             <input
                                 type="text"
                                 placeholder="Search services..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-12 pr-4 py-3 border-2 border-[#CCBDA3]/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#CCBDA3] focus:border-transparent w-64 transition-all duration-300"
+                                className="w-full pl-12 pr-4 py-3 border-2 border-[#CCBDA3]/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#CCBDA3] focus:border-transparent transition-all duration-300"
                             />
                         </div>
                         <button
                             onClick={() => setShowAddModal(true)}
-                            className="px-6 py-3 bg-gradient-to-r from-[#CCBDA3] to-[#b8a88a] text-white rounded-xl hover:shadow-lg hover:scale-105 font-medium flex items-center gap-2 transition-all duration-300"
+                            className="px-6 py-3 bg-gradient-to-r from-[#CCBDA3] to-[#b8a88a] text-white rounded-xl hover:shadow-lg hover:scale-105 font-medium flex items-center justify-center gap-2 transition-all duration-300 whitespace-nowrap"
                         >
                             <Plus className="w-5 h-5" />
                             Add Service

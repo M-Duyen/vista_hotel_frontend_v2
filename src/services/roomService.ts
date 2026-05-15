@@ -1,7 +1,6 @@
 // import { api } from './apiClient';
 import type { Room, RoomStatus } from '../types/Room';
-import { roomsApi } from './apiClient';
-import { roomTypesApi } from './apiClient';
+import { roomsApi, roomTypesApi } from './apiClient';
 
 // const ENDPOINT = '/rooms';
 

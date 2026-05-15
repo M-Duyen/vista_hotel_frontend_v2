@@ -1,7 +1,7 @@
-import type { Service } from "../types/Service";
+export type { Service } from "../types/Service";
 import { api } from "./apiClient";
 
-const ENDPOINT = "/services";
+const ENDPOINT = "/api/services";
 
 export const getAll = async () => {
   try {
@@ -68,13 +68,24 @@ export const getServicesByCategory = async (
   }
 };
 
-// Lưu (thêm mới hoặc cập nhật) dịch vụ
-export const saveService = async (service: Service): Promise<Service> => {
+// Thêm mới dịch vụ
+export const createService = async (service: Partial<Service>): Promise<Service> => {
   try {
     const response = await api.post(ENDPOINT, service);
     return response.data;
   } catch (error) {
-    console.error("Error saving service:", error);
+    console.error("Error creating service:", error);
+    throw error;
+  }
+};
+
+// Cập nhật dịch vụ
+export const updateService = async (id: string, service: Partial<Service>): Promise<Service> => {
+  try {
+    const response = await api.put(`${ENDPOINT}/${id}`, service);
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating service with ID ${id}:`, error);
     throw error;
   }
 };

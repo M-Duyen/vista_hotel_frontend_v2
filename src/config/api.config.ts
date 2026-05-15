@@ -18,6 +18,12 @@ export const API_CONFIG = {
     PROMOTIONS: "/api/promotions",
     PROMOTIONS_TYPES: "/api/promotion-types",
     ROOM_TYPE_PROMOTIONS: "/api/room-type-promotions",
+    SEASONAL_PRICES: "/api/principle/seasonal-prices",
+    CALCULATE_ROOM_PRICE: "/api/principle/calculate-room-price",
+    CHECKIN_CHECKOUT_POLICIES: "/api/principle/checkin-checkout-policies",
+    CHECKIN_CHECKOUT_POLICY_RULES: "/api/principle/checkin-checkout-policy-rules",
+    HOURLY_RATE_POLICIES: "/api/principle/hourly-rate-policies",
+  
   },
 
   // Timeouts (ms)

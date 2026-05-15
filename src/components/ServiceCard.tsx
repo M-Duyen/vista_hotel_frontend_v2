@@ -1,9 +1,15 @@
 import React from 'react';
 import type { Service } from '../types/Service';
 
-const ServiceCard: React.FC<{ service: Service }> = ({ service }) => {
+const ServiceCard: React.FC<{ service: Service; onClick?: () => void }> = ({
+    service,
+    onClick,
+}) => {
     return (
-        <article className="service-card bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+        <article
+            onClick={onClick}
+            className="service-card bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
+        >
             <img
                 src={
                     service.images?.[0] ||

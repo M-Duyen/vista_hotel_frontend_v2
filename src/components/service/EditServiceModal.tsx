@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Service } from '../../services/serviceService';
-import { saveService } from '../../services/serviceService';
+import { updateService } from '../../services/serviceService';
 
 interface EditServiceModalProps {
     service: Service;
@@ -13,19 +13,31 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
     onClose,
     onSuccess,
 }) => {
-    const [formData, setFormData] = useState<Service>(service);
+    const [formData, setFormData] = useState<Partial<Service>>(service);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
 
     useEffect(() => {
         setFormData(service);
     }, [service]);
 
-    const validateServiceHours = (hours: string): boolean => {
-        if (!hours || hours.trim() === '') return false;
-        const pattern =
-            /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]\s*-\s*([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-        return pattern.test(hours.trim());
+
+    const handleAddImage = () => {
+        if (imageUrl.trim()) {
+            setFormData((prev) => ({
+                ...prev,
+                images: [...(prev.images || []), imageUrl.trim()],
+            }));
+            setImageUrl('');
+        }
+    };
+
+    const handleRemoveImage = (index: number) => {
+        setFormData((prev) => ({
+            ...prev,
+            images: (prev.images || []).filter((_, i) => i !== index),
+        }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -46,23 +58,20 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
             return;
         }
 
-        if (!formData.price || formData.price <= 0) {
-            setError('Price must be greater than 0');
+        if (formData.price === undefined || formData.price < 0) {
+            setError('Price must be at least 0');
             setLoading(false);
             return;
         }
 
-        // Validate giờ hoạt động
-        if (!validateServiceHours(formData.serviceHours)) {
-            setError(
-                'Service hours cannot be empty and must be in correct format. Please enter in format: 08:00-22:00',
-            );
+        if (!formData.serviceHours || formData.serviceHours.trim() === '') {
+            setError('Service hours cannot be empty');
             setLoading(false);
             return;
         }
 
         try {
-            const result = await saveService(formData);
+            const result = await updateService(service.serviceID, formData);
             onSuccess(result);
             onClose();
         } catch (err) {
@@ -167,7 +176,6 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 required
                                 min="0"
-                                step="1000"
                             />
                         </div>
 
@@ -179,11 +187,10 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                             <input
                                 type="text"
                                 name="serviceHours"
-                                value={formData.serviceHours}
+                                value={formData.serviceHours ?? ''}
                                 onChange={handleChange}
                                 placeholder="Example: 08:00-22:00 or 08:00 - 22:00"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9]\s*-\s*([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
                                 required
                             />
                         </div>
@@ -198,15 +205,53 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
+                                <option value="FOOD_BEVERAGE">Food & Beverage</option>
                                 <option value="LAUNDRY">Laundry</option>
-                                <option value="FOOD_BEVERAGE">
-                                    Food & Beverage
-                                </option>
                                 <option value="SPA">Spa</option>
                                 <option value="TRANSPORT">Transport</option>
                                 <option value="TOUR">Tour</option>
+                                <option value="WELLNESS">Wellness</option>
+                                <option value="RECREATION">Recreation</option>
                                 <option value="OTHER">Other</option>
                             </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Images
+                            </label>
+                            <div className="flex gap-2 mb-2">
+                                <input
+                                    type="url"
+                                    value={imageUrl}
+                                    onChange={(e) => setImageUrl(e.target.value)}
+                                    placeholder="Enter image URL"
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleAddImage}
+                                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                                >
+                                    Add
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                                {formData.images?.map((url, index) => (
+                                    <div key={index} className="relative group aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                                        <img src={url} alt="" className="w-full h-full object-cover" />
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveImage(index)}
+                                            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
                         <div className="flex items-center">
