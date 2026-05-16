@@ -158,6 +158,10 @@ const AIChatWidget: React.FC = () => {
     }));
   };
 
+  const handleChatPage = () => {
+    window.location.href = "/chat";
+  }
+  
   const handleSend = async () => {
     if (inputValue.trim() === "" || !user) return;
 
@@ -283,6 +287,12 @@ const AIChatWidget: React.FC = () => {
                 ></i>
               </button>
               <button
+                onClick={handleChatPage}
+                className="w-8 h-8 hover:bg-white/20 rounded-lg flex items-center justify-center transition-colors"
+              >
+                <i className="fa-solid fa-up-right-and-down-left-from-center"></i>
+              </button>
+              <button
                 onClick={toggleWidget}
                 className="w-8 h-8 hover:bg-white/20 rounded-lg flex items-center justify-center transition-colors"
               >
@@ -396,7 +406,7 @@ const AIChatWidget: React.FC = () => {
 
               {/* Suggestions */}
               {messages.length <= 2 && (
-                <div className="px-4 py-2 border-t bg-white">
+                <div className="px-4 py-2 bg-white">
                   <div className="flex flex-wrap gap-1">
                     {suggestions.map((suggestion, index) => (
                       <button
@@ -412,7 +422,7 @@ const AIChatWidget: React.FC = () => {
               )}
 
               {/* Input Area */}
-              <div className="p-4 border-t bg-white rounded-b-2xl">
+              <div className="p-4 bg-white rounded-b-2xl">
                 <div className="flex items-end gap-2 bg-gray-50 rounded-xl px-3 py-2">
                   <textarea
                     ref={textareaRef}
