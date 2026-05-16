@@ -447,11 +447,11 @@ export default function BookingDetailPage() {
     }
     switch (earlyCheckinRequest.approvalStatus) {
       case 'PENDING':
-        return <button disabled className="w-full bg-yellow-500 text-white py-3 rounded-xl opacity-75 cursor-not-allowed">Đã gửi yc check-in sớm</button>;
+        return <button disabled className="w-full bg-yellow-500 text-white py-3 rounded-xl opacity-75 cursor-not-allowed">Đã gửi yêu cầu check-in sớm</button>;
       case 'APPROVED':
         return <button disabled className="w-full bg-green-600 text-white py-3 rounded-xl opacity-75 cursor-not-allowed">Early Check-in đã được chấp nhận</button>;
-      case 'REJECTED':
-        return <button onClick={() => setShowEarlyModal(true)} className="cursor-pointer w-full bg-black text-white py-3 rounded-xl">Gửi lại Early Check-in</button>;
+      case 'REJECTED': 
+        return <button onClick={() => setShowEarlyModal(true)} className="cursor-pointer w-full bg-black text-white py-3 rounded-xl">Gửi lại yêu cầu check-in sớm</button>;
       default: return null;
     }
   };
