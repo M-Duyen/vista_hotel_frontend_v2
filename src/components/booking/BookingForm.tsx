@@ -666,10 +666,11 @@ export default function BookingForm({
       co = new Date(checkOutDate);
       co.setHours(0, 0, 0, 0);
 
-      if (ci < today) {
-        setError("Check-in cannot be before today.");
-        return;
-      }
+      //TODO: Chú thích tạm:))
+      // if (ci < today) {
+      //   setError("Check-in cannot be before today.");
+      //   return;
+      // }
       if (co <= ci) {
         setError("Check-out must be after check-in.");
         return;
