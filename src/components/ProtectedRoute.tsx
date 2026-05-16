@@ -48,7 +48,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (!hasAccess) {
     if (fallback) return <>{fallback}</>;
-    return <Navigate to="/403" replace />;
+    return <Navigate to="/404" replace />;
   }
 
   return <>{children}</>;
