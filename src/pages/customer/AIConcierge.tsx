@@ -59,10 +59,11 @@ const AIConcierge: React.FC = () => {
     const [loading, setLoading] = useState(false);
     // Booking confirm popup state
     const [bookingPopup, setBookingPopup] = useState<any>(null);
-    const [selectedBookingType, setSelectedBookingType] = useState<'DAILY'|'HOURLY'>('DAILY');
+    const [selectedBookingType, setSelectedBookingType] = useState<'DAILY' | 'HOURLY'>('DAILY');
     const [selectedServices, setSelectedServices] = useState<string[]>([]);
     const [checkInDate, setCheckInDate] = useState('');
     const [checkOutDate, setCheckOutDate] = useState('');
+    const [checkInTime, setCheckInTime] = useState('14:00');
     const [durationHours, setDurationHours] = useState(3);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -199,19 +200,16 @@ const AIConcierge: React.FC = () => {
         }));
     };
 
-    const handleSend = async () => {
-        if (inputValue.trim() === '' || !user) {
-            console.warn(
-                'Cannot send message: user not logged in or empty input',
-            );
+    const sendDirectMessage = async (content: string) => {
+        if (!content.trim() || !user) {
+            console.warn('Cannot send message: user not logged in or empty input');
             return;
         }
 
-        const userMessageContent = inputValue;
         const newMessage: Message = {
             id: Date.now(),
             type: 'user',
-            content: userMessageContent,
+            content: content,
             time: new Date().toLocaleTimeString([], {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -219,18 +217,12 @@ const AIConcierge: React.FC = () => {
         };
 
         setMessages((prev) => [...prev, newMessage]);
-        setInputValue('');
         setIsTyping(true);
 
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-        }
-
         try {
-            const response = await sendChatMessage(user.id, userMessageContent);
+            const response = await sendChatMessage(user.id, content);
             setIsTyping(false);
 
-            // Handle booking confirm redirect
             if (response.uiType === 'BOOKING_CONFIRM') {
                 setBookingPopup(response.uiData);
             }
@@ -253,16 +245,15 @@ const AIConcierge: React.FC = () => {
 
             setMessages((prev) => [...prev, botMessage]);
 
-            // Update chat history with new message
             if (currentSessionId) {
                 setChatHistories((prev) =>
                     prev.map((chat) =>
                         chat.sessionId === currentSessionId
                             ? {
-                                  ...chat,
-                                  time: 'Just now',
-                                  messageCount: chat.messageCount + 2,
-                              }
+                                ...chat,
+                                time: 'Just now',
+                                messageCount: chat.messageCount + 2,
+                            }
                             : chat,
                     ),
                 );
@@ -282,6 +273,16 @@ const AIConcierge: React.FC = () => {
             };
             setMessages((prev) => [...prev, errorMessage]);
         }
+    };
+
+    const handleSend = async () => {
+        if (inputValue.trim() === '') return;
+        const msg = inputValue;
+        setInputValue('');
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+        }
+        await sendDirectMessage(msg);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -304,43 +305,7 @@ const AIConcierge: React.FC = () => {
 
     const handleRoomSelect = async (roomName: string) => {
         if (!user) return;
-
-        const userMessage: Message = {
-            id: Date.now(),
-            type: 'user',
-            content: `I'd like to book the ${roomName}`,
-            time: new Date().toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-            }),
-        };
-
-        setMessages((prev) => [...prev, userMessage]);
-        setIsTyping(true);
-
-        try {
-            const response = await sendChatMessage(
-                user.id,
-                `I'd like to book the ${roomName}`,
-            );
-
-            setIsTyping(false);
-
-            const botMessage: Message = {
-                id: Date.now() + 1,
-                type: 'ai',
-                content: response.content,
-                time: new Date().toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                }),
-            };
-
-            setMessages((prev) => [...prev, botMessage]);
-        } catch (error) {
-            setIsTyping(false);
-            console.error('Error:', error);
-        }
+        await sendDirectMessage(`Tôi muốn đặt phòng ${roomName}`);
     };
 
     const handleNewChat = async () => {
@@ -515,19 +480,17 @@ const AIConcierge: React.FC = () => {
                             aria-label="Toggle sidebar"
                         >
                             <i
-                                className={`fa-solid ${
-                                    isSidebarOpen ? 'fa-times' : 'fa-bars'
-                                }`}
+                                className={`fa-solid ${isSidebarOpen ? 'fa-times' : 'fa-bars'
+                                    }`}
                             ></i>
                         </button>
 
                         {/* Sidebar */}
                         <div
-                            className={`${
-                                isSidebarOpen
-                                    ? 'translate-x-0'
-                                    : '-translate-x-full'
-                            } lg:translate-x-0 fixed lg:relative inset-y-0 left-0 z-40 w-72 sm:w-80 bg-gradient-to-b from-gray-50 to-white border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out`}
+                            className={`${isSidebarOpen
+                                ? 'translate-x-0'
+                                : '-translate-x-full'
+                                } lg:translate-x-0 fixed lg:relative inset-y-0 left-0 z-40 w-72 sm:w-80 bg-gradient-to-b from-gray-50 to-white border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out`}
                             style={{ height: '100%' }}
                         >
                             <div className="p-4 sm:p-6 border-b border-gray-200 bg-white">
@@ -562,32 +525,29 @@ const AIConcierge: React.FC = () => {
                                                     chat.sessionId,
                                                 )
                                             }
-                                            className={`p-3 sm:p-4 rounded-xl cursor-pointer transition-all group ${
-                                                chat.active
-                                                    ? 'bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white shadow-md'
-                                                    : 'bg-gray-50 hover:bg-gray-100 hover:shadow-sm'
-                                            }`}
+                                            className={`p-3 sm:p-4 rounded-xl cursor-pointer transition-all group ${chat.active
+                                                ? 'bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white shadow-md'
+                                                : 'bg-gray-50 hover:bg-gray-100 hover:shadow-sm'
+                                                }`}
                                         >
                                             <div className="flex items-start justify-between gap-2">
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
                                                         <i
-                                                            className={`fa-solid fa-comment text-sm sm:text-base ${
-                                                                chat.active
-                                                                    ? 'text-white'
-                                                                    : 'text-[#CCBDA3]'
-                                                            }`}
+                                                            className={`fa-solid fa-comment text-sm sm:text-base ${chat.active
+                                                                ? 'text-white'
+                                                                : 'text-[#CCBDA3]'
+                                                                }`}
                                                         ></i>
                                                         <span className="font-semibold text-xs sm:text-sm truncate">
                                                             {chat.title}
                                                         </span>
                                                     </div>
                                                     <div
-                                                        className={`text-xs flex items-center gap-2 ${
-                                                            chat.active
-                                                                ? 'text-white text-opacity-80'
-                                                                : 'text-gray-500'
-                                                        }`}
+                                                        className={`text-xs flex items-center gap-2 ${chat.active
+                                                            ? 'text-white text-opacity-80'
+                                                            : 'text-gray-500'
+                                                            }`}
                                                     >
                                                         <span>{chat.time}</span>
                                                         <span>•</span>
@@ -605,18 +565,16 @@ const AIConcierge: React.FC = () => {
                                                             e,
                                                         )
                                                     }
-                                                    className={`opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-lg ${
-                                                        chat.active
-                                                            ? 'hover:bg-white hover:bg-opacity-20'
-                                                            : 'hover:bg-red-50'
-                                                    }`}
+                                                    className={`opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-lg ${chat.active
+                                                        ? 'hover:bg-white hover:bg-opacity-20'
+                                                        : 'hover:bg-red-50'
+                                                        }`}
                                                 >
                                                     <i
-                                                        className={`fa-solid fa-trash text-sm ${
-                                                            chat.active
-                                                                ? 'text-white'
-                                                                : 'text-red-500 hover:text-red-600'
-                                                        }`}
+                                                        className={`fa-solid fa-trash text-sm ${chat.active
+                                                            ? 'text-white'
+                                                            : 'text-red-500 hover:text-red-600'
+                                                            }`}
                                                     ></i>
                                                 </button>
                                             </div>
@@ -729,27 +687,22 @@ const AIConcierge: React.FC = () => {
                                     {messages.map((message) => (
                                         <div
                                             key={message.id}
-                                            className={`flex gap-2 sm:gap-4 animate-fade-in ${
-                                                message.type === 'user' ? 'flex-row-reverse' : ''
-                                            }`}
+                                            className={`flex gap-2 sm:gap-4 animate-fade-in ${message.type === 'user' ? 'flex-row-reverse' : ''
+                                                }`}
                                         >
-                                            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-md ${
-                                                message.type === 'ai'
-                                                    ? 'bg-gradient-to-br from-[#CCBDA3] to-[#b8ac94] text-white'
-                                                    : 'bg-gradient-to-br from-gray-400 to-gray-500 text-white'
-                                            }`}>
-                                                <i className={`fa-solid text-xs sm:text-sm ${
-                                                    message.type === 'ai' ? 'fa-robot' : 'fa-user'
-                                                }`}></i>
-                                            </div>
-                                            <div className={`max-w-[90%] sm:max-w-[80%] ${
-                                                message.type === 'user' ? 'items-end' : ''
-                                            }`}>
-                                                <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-sm ${
-                                                    message.type === 'ai'
-                                                        ? 'bg-white border border-gray-100'
-                                                        : 'bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white'
+                                            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-md ${message.type === 'ai'
+                                                ? 'bg-gradient-to-br from-[#CCBDA3] to-[#b8ac94] text-white'
+                                                : 'bg-gradient-to-br from-gray-400 to-gray-500 text-white'
                                                 }`}>
+                                                <i className={`fa-solid text-xs sm:text-sm ${message.type === 'ai' ? 'fa-robot' : 'fa-user'
+                                                    }`}></i>
+                                            </div>
+                                            <div className={`max-w-[90%] sm:max-w-[80%] ${message.type === 'user' ? 'items-end' : ''
+                                                }`}>
+                                                <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-sm ${message.type === 'ai'
+                                                    ? 'bg-white border border-gray-100'
+                                                    : 'bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white'
+                                                    }`}>
                                                     <p className="whitespace-pre-line leading-relaxed text-sm sm:text-base">
                                                         {message.content}
                                                     </p>
@@ -768,7 +721,7 @@ const AIConcierge: React.FC = () => {
                                                                         <p className="font-bold text-[#CCBDA3] text-sm mt-1">{room.basePrice?.toLocaleString('vi-VN')} VND/đêm</p>
                                                                         <button
                                                                             onClick={() => {
-                                                                                setInputValue(`Tôi muốn đặt phòng ${room.typeName}`);
+                                                                                sendDirectMessage(`Tôi muốn đặt phòng ${room.typeName}`);
                                                                             }}
                                                                             className="mt-2 w-full py-1.5 bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white rounded-lg text-xs font-semibold hover:shadow-md transition-all"
                                                                         >Chọn phòng này</button>
@@ -786,7 +739,7 @@ const AIConcierge: React.FC = () => {
                                                                     key={opt.value}
                                                                     onClick={() => {
                                                                         setSelectedBookingType(opt.value);
-                                                                        setInputValue(`Tôi muốn đặt theo ${opt.label}`);
+                                                                        sendDirectMessage(`Tôi muốn đặt theo ${opt.label}`);
                                                                     }}
                                                                     className="flex-1 p-3 bg-white border-2 border-[#CCBDA3] rounded-xl text-center hover:bg-[#CCBDA3] hover:text-white transition-all"
                                                                 >
@@ -805,6 +758,11 @@ const AIConcierge: React.FC = () => {
                                                                     <div>
                                                                         <label className="text-xs font-semibold text-gray-600">Ngày nhận phòng</label>
                                                                         <input type="date" value={checkInDate} onChange={e => setCheckInDate(e.target.value)}
+                                                                            className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs font-semibold text-gray-600">Giờ nhận phòng</label>
+                                                                        <input type="time" value={checkInTime} onChange={e => setCheckInTime(e.target.value)}
                                                                             className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm" />
                                                                     </div>
                                                                     <div>
@@ -830,9 +788,9 @@ const AIConcierge: React.FC = () => {
                                                             <button
                                                                 onClick={() => {
                                                                     const msg = message.uiData?.bookingType === 'HOURLY'
-                                                                        ? `Nhận phòng ngày ${checkInDate}, thuê ${durationHours} giờ`
+                                                                        ? `Nhận phòng ngày ${checkInDate} lúc ${checkInTime}, thuê ${durationHours} giờ`
                                                                         : `Nhận phòng ngày ${checkInDate}, trả phòng ngày ${checkOutDate}`;
-                                                                    setInputValue(msg);
+                                                                    sendDirectMessage(msg);
                                                                 }}
                                                                 className="w-full py-2 bg-[#CCBDA3] text-white rounded-lg text-sm font-semibold hover:bg-[#b8ac94] transition-all"
                                                             >Xác nhận thời gian</button>
@@ -843,11 +801,10 @@ const AIConcierge: React.FC = () => {
                                                     {message.uiType === 'SERVICE_LIST' && message.uiData && (
                                                         <div className="mt-3 space-y-2">
                                                             {(message.uiData as any[]).map((svc: any) => (
-                                                                <div key={svc.serviceID} className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all ${
-                                                                    selectedServices.includes(svc.serviceID)
-                                                                        ? 'border-[#CCBDA3] bg-[#CCBDA3]/10'
-                                                                        : 'border-gray-200 hover:border-[#CCBDA3]'
-                                                                }`}
+                                                                <div key={svc.serviceID} className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all ${selectedServices.includes(svc.serviceID)
+                                                                    ? 'border-[#CCBDA3] bg-[#CCBDA3]/10'
+                                                                    : 'border-gray-200 hover:border-[#CCBDA3]'
+                                                                    }`}
                                                                     onClick={() => {
                                                                         setSelectedServices(prev =>
                                                                             prev.includes(svc.serviceID)
@@ -867,8 +824,8 @@ const AIConcierge: React.FC = () => {
                                                                 onClick={() => {
                                                                     const msg = selectedServices.length > 0
                                                                         ? `Tôi muốn thêm dịch vụ: ${selectedServices.join(', ')}`
-                                                                        : 'Tôi không cần thêm dịch vụ';
-                                                                    setInputValue(msg);
+                                                                        : 'Không đặt dịch vụ';
+                                                                    sendDirectMessage(msg);
                                                                 }}
                                                                 className="w-full py-2 bg-[#CCBDA3] text-white rounded-lg text-sm font-semibold hover:bg-[#b8ac94] transition-all mt-1"
                                                             >Tiếp tục</button>
@@ -890,11 +847,10 @@ const AIConcierge: React.FC = () => {
                                                                             </div>
                                                                         </div>
                                                                         <div className="text-right">
-                                                                            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                                                                                bk.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
+                                                                            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${bk.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
                                                                                 bk.status === 'WAITING' ? 'bg-yellow-100 text-yellow-700' :
-                                                                                'bg-gray-100 text-gray-700'
-                                                                            }`}>{bk.status}</span>
+                                                                                    'bg-gray-100 text-gray-700'
+                                                                                }`}>{bk.status}</span>
                                                                             <div className="font-bold text-[#CCBDA3] text-sm mt-1">{bk.totalAmount?.toLocaleString('vi-VN')} VND</div>
                                                                         </div>
                                                                     </div>
@@ -928,20 +884,30 @@ const AIConcierge: React.FC = () => {
                                                     {/* BOOKING CONFIRM button */}
                                                     {message.uiType === 'BOOKING_CONFIRM' && (
                                                         <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl">
-                                                            <p className="text-sm text-green-700 font-semibold mb-2">✅ Sẵn sàng đặt phòng!</p>
+                                                            <p className="text-sm text-green-700 font-semibold mb-2">Sẵn sàng đặt phòng!</p>
                                                             <button
-                                                                onClick={() => navigate('/customer/booking', { state: { bookingType: selectedBookingType, fromAI: true } })}
-                                                                className="w-full py-2.5 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 transition-all"
-                                                            >Đến trang đặt phòng &amp; thanh toán →</button>
+                                                                onClick={() => navigate('/customer/bookingPage', {
+                                                                    state: {
+                                                                        bookingType: selectedBookingType,
+                                                                        fromAI: true,
+                                                                        checkInDate: checkInDate,
+                                                                        checkOutDate: checkOutDate,
+                                                                        hourlyCheckInDate: checkInDate,
+                                                                        checkInTime: checkInTime,
+                                                                        duration: durationHours,
+                                                                        selectedServices: selectedServices
+                                                                    }
+                                                                })}
+                                                                className="w-full py-2.5 bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white rounded-lg text-sm font-bold hover:bg-green-700 transition-all"
+                                                            >Đến trang đặt phòng &amp; thanh toán</button>
                                                         </div>
                                                     )}
                                                 </div>
                                                 <span
-                                                    className={`text-xs text-gray-500 mt-1 sm:mt-2 block ${
-                                                        message.type === 'user'
-                                                            ? 'text-right'
-                                                            : ''
-                                                    }`}
+                                                    className={`text-xs text-gray-500 mt-1 sm:mt-2 block ${message.type === 'user'
+                                                        ? 'text-right'
+                                                        : ''
+                                                        }`}
                                                 >
                                                     {message.time}
                                                 </span>

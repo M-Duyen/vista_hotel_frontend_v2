@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ChevronRight, ArrowLeft } from "lucide-react";
 import BookingForm from "../../../components/booking/BookingForm";
 import Footer from "../../../components/Footer";
@@ -7,7 +7,14 @@ import Header from "../../../components/Header";
 
 function BookingPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
+
+  useEffect(() => {
+    if (location.state?.fromAI) {
+      setCurrentStep(4);
+    }
+  }, [location.state]);
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
