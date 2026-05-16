@@ -8,7 +8,7 @@ export const axiosInstance = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
-    timeout: 10000,
+    timeout: 60000,
 });
 
 // Optional: Thêm interceptors nếu cần xử lý token, error chung
