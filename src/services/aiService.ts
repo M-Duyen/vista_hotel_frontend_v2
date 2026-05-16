@@ -25,7 +25,7 @@ export interface ChatHistoryItem {
   messageCount: number;
 }
 
-// Default test userId if not available
+// Default test userId
 const DEFAULT_USER_ID = "user123";
 
 const getUserId = (): string => {
