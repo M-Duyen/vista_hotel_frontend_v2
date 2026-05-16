@@ -146,18 +146,25 @@ export default function BookingForm({
   const getStoredCustomerId = (): string | null => {
     try {
       const userDataStr = localStorage.getItem("user");
-      const userData = userDataStr ? JSON.parse(userDataStr) : null;
-      return (
-        userData?.data?.customerId ||
-        userData?.data?.customerID ||
-        userData?.data?.id ||
-        userData?.customerId ||
-        userData?.customerID ||
-        userData?.id ||
-        null
-      );
+      if (!userDataStr) return null;
+      const userData = JSON.parse(userDataStr);
+      
+      // Theo AuthService, data có thể nằm trực tiếp hoặc trong userData.data
+      const user = userData.data || userData;
+      return user.id || user.customerId || user.customerID || null;
     } catch (error) {
       console.error("Failed to parse user from localStorage:", error);
+      return null;
+    }
+  };
+
+  const getStoredCustomer = (): any => {
+    try {
+      const userDataStr = localStorage.getItem("user");
+      if (!userDataStr) return null;
+      const userData = JSON.parse(userDataStr);
+      return userData.data || userData;
+    } catch (error) {
       return null;
     }
   };
@@ -166,95 +173,71 @@ export default function BookingForm({
     (customer as any)?.customerID || customer?.id || getStoredCustomerId();
 
   const fetchedData = async () => {
-    try {
-      setLoading(true);
+    setLoading(true);
+    
+    // 1. LUÔN LUÔN lấy thông tin từ localStorage trước để hiển thị UI ngay lập tức
+    const customerId = getStoredCustomerId();
+    const storedCustomer = getStoredCustomer();
+    if (storedCustomer) {
+      setCustomer(storedCustomer);
+    }
 
+    // 2. Các API khác gọi riêng biệt, lỗi cái nào thì báo cái đó, không làm dừng cả hàm
+    try {
       const service = await getAll();
       setServices(service);
+    } catch (err) {
+      console.error("Failed to fetch services:", err);
+    }
 
-      // Fetch hourlyRate policies
+    try {
       if (bookingType === "HOURLY") {
-        try {
-          const policies = await getAllPolicyBaseRates();
-          setHourlyRatePolicies(policies);
-          console.log("Hourly rate policies loaded:", policies);
-        } catch (error) {
-          console.error("Failed to fetch hourly rate policies:", error);
-        }
+        const policies = await getAllPolicyBaseRates();
+        setHourlyRatePolicies(policies);
       }
+    } catch (err) {
+      console.error("Failed to fetch hourly policies:", err);
+    }
 
-      const customerId = getStoredCustomerId();
-
+    try {
       const selectedFromCart = (location.state as any)?.selectedRooms;
       let roomsToUse: string[] = [];
 
-      if (
-        selectedFromCart &&
-        Array.isArray(selectedFromCart) &&
-        selectedFromCart.length > 0
-      ) {
+      if (selectedFromCart && Array.isArray(selectedFromCart) && selectedFromCart.length > 0) {
         roomsToUse = selectedFromCart;
-        console.log("Using selected rooms from cart:", roomsToUse);
       } else if (customerId) {
-        // Fetch all cart items from CartBean API
-        try {
-          const cart = await getCartBeanByCustomerId(customerId);
-          if (cart?.items && cart.items.length > 0) {
-            roomsToUse = cart.items
-              .map((room) => room.roomNumber)
-              .filter((num): num is string => num !== undefined);
-          }
-          console.log("Using all cart items:", roomsToUse);
-        } catch (error) {
-          console.error("Failed to fetch cart:", error);
+        const cart = await getCartBeanByCustomerId(customerId);
+        if (cart?.items) {
+          roomsToUse = cart.items.map((room) => room.roomNumber).filter((num): num is string => !!num);
         }
       }
 
-      // Update selected room state
       setSelectedRoom(roomsToUse);
-
-      const roomPromises = roomsToUse.map((roomId) => getRoomById(roomId));
-      const roomsData = await Promise.all(roomPromises);
-      setRooms(roomsData);
-
-      // Fetch booked dates for all selected rooms (for daily booking calendar)
       if (roomsToUse.length > 0) {
-        try {
-          const bookedDatesPromises = roomsToUse.map((roomId) =>
-            overlapBookingExists(roomId),
-          );
-          const bookedDatesArrays = await Promise.all(bookedDatesPromises);
+        const roomsData = await Promise.all(roomsToUse.map((id) => getRoomById(id)));
+        setRooms(roomsData);
 
-          // Flatten and convert to Date objects
-          const allBookedDates = bookedDatesArrays
-            .flat()
-            .map((dateStr: any) => new Date(dateStr));
-
-          setBookedDates(allBookedDates);
-          console.log("Booked dates:", allBookedDates);
-        } catch (error) {
-          console.error("Failed to fetch booked dates:", error);
-        }
+        const bookedDatesArrays = await Promise.all(roomsToUse.map((id) => overlapBookingExists(id)));
+        setBookedDates(bookedDatesArrays.flat().map((d: any) => new Date(d)));
       }
+    } catch (err) {
+      console.error("Failed to fetch rooms/cart data:", err);
+    }
 
-      if (customerId) {
+    // 3. Cập nhật lại thông tin khách hàng từ API (nếu có thể)
+    if (customerId) {
+      try {
         const customerData = await getById(customerId);
-        setCustomer(customerData);
-
+        if (customerData) setCustomer(customerData);
+        
         const custVoucher = await getByCustomerIdAndStateTrue(customerId);
         setCustomerVouchers(custVoucher);
-      } else {
-        setError("User not logged in. Please log in to continue.");
+      } catch (err) {
+        console.warn("Could not sync customer data with server:", err);
       }
-
-      setLoading(false);
-      setError("");
-    } catch (err) {
-      console.error("Error fetching data:", err);
-      setError("Failed to fetch data: " + err);
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   const [booking] = useState({

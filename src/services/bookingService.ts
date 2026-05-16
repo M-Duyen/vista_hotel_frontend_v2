@@ -630,4 +630,9 @@ export default {
   checkRoomAvailability,
   getRemainingTimeForPayment,
   cancelBooking,
+  searchBookings,
+  processCheckout,
+  overlapBookingExists,
+  saveBookingWithDetails,
+  getBookingsByCustomerId,
 };

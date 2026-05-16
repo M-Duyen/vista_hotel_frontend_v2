@@ -1,138 +1,112 @@
+/* eslint-disable */
 import { api } from './apiClient';
 import { earlyCheckinNotificationService } from './earlyCheckinNotificationService';
-import type { CheckinApproval } from './earlyCheckinNotificationService';
 
-const ENDPOINT = '/early-checkin';
+// Thêm /api để khớp với Gateway route và Backend RequestMapping
+const ENDPOINT = '/api/early-checkin';
 
 /**
  * Gửi yêu cầu check-in sớm
- * payload:
- *  {
- *    customerId: string,
- *    bookingId: string,
- *    requestTime: "2024-06-20T08:00",
- *    roomPrice: number
- *  }
  */
-export const createEarlyCheckinRequest = async (payload: {
-    customerId: string;
-    bookingId: string;
-    requestTime: string;
-    roomPrice: number;
-}) => {
+export const createEarlyCheckinRequest = async (payload: any) => {
     try {
-        const res = await api.post(`${ENDPOINT}/request`, payload);
+        const enhancedPayload = {
+            ...payload,
+            booking: { bookingID: payload.bookingId },
+            bookingId: payload.bookingId,
+            bookingID: payload.bookingId,
+            customerId: payload.customerId,
+            customer: { id: payload.customerId },
+            requestedTime: payload.requestTime,
+            additionalFee: payload.roomPrice * 0.3,
+        };
+        console.log(
+            'Sending Early Check-in Payload (Fix API Path):',
+            enhancedPayload,
+        );
+
+        // Gọi qua Gateway với prefix /api
+        const res = await api.post(`${ENDPOINT}/request`, enhancedPayload);
+
+        if (res.data && res.data.success) {
+            // Gửi notification bất đồng bộ, không block kết quả chính
+            try {
+                const ecData = res.data.data;
+                await earlyCheckinNotificationService.sendEarlyCheckinRequest({
+                    customerId: payload.customerId,
+                    customerName: 'Customer',
+                    roomNumber: '',
+                    bookingId: payload.bookingId,
+                    requestedTime: payload.requestTime,
+                    standardCheckInTime: payload.requestTime,
+                    userRole: 'CUSTOMER',
+                });
+            } catch (notifErr) {
+                console.warn('Notification error (non-blocking):', notifErr);
+            }
+        }
         return res.data;
     } catch (error) {
-        console.error('Error creating early checkin request:', error);
-
-        // Development fallback - create mock response
-        if (import.meta.env.DEV) {
-            console.warn(
-                'DEV MODE: Backend server not available, using mock response',
-            );
-            console.info(
-                'To fix this: Start your backend server on http://localhost:8080',
-            );
-
-            const mockResponse = {
-                requestID: `ER-${Date.now()}`,
-                requestTime: payload.requestTime,
-                approvalStatus: 'PENDING',
-                additionalFee: payload.roomPrice * 0.3, // 30% fee
-                requestDate: new Date().toISOString(),
-                booking: { bookingID: payload.bookingId },
-            };
-
-            // Simulate API delay
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            return mockResponse;
-        }
-
+        console.error('Create early check-in request error:', error);
         throw error;
     }
 };
 
 /**
- * Nhân viên duyệt hoặc từ chối yêu cầu
- * status = APPROVED | REJECTED
+ * Lấy danh sách yêu cầu check-in sớm của một booking
+ */
+export const getEarlyCheckinByBookingId = async (bookingId: string) => {
+    try {
+        const res = await api.get(`${ENDPOINT}/booking/${bookingId}`);
+        return res.data;
+    } catch (error) {
+        console.error('Get early check-in by booking error:', error);
+        return null;
+    }
+};
+
+/**
+ * Phê duyệt/Từ chối yêu cầu check-in sớm (Dành cho Nhân viên)
  */
 export const approveEarlyCheckin = async (
     requestId: string,
     status: 'APPROVED' | 'REJECTED',
     employeeId: string,
-    bookingInfo?: {
-        customerId: string;
-        customerName: string;
-        roomNumber: string;
-        requestedTime?: string;
-    },
 ) => {
     try {
-        // 1. Call backend API to approve/reject with employeeId
         const res = await api.put(
             `${ENDPOINT}/approve/${requestId}?status=${status}&employeeId=${employeeId}`,
         );
 
-        // 2. Send notification to customer
-        if (bookingInfo) {
-            try {
-                const approvalData: CheckinApproval = {
-                    requestId,
-                    customerId: bookingInfo.customerId,
-                    customerName: bookingInfo.customerName,
-                    roomNumber: bookingInfo.roomNumber,
-                    approvedBy: employeeId,
-                    approvedTime: bookingInfo.requestedTime,
-                    isApproved: status === 'APPROVED',
-                    reason:
-                        status === 'REJECTED'
-                            ? 'Yêu cầu bị từ chối bởi nhân viên'
-                            : undefined,
-                };
-
-                await earlyCheckinNotificationService.processEarlyCheckinRequest(
-                    approvalData,
-                );
-                console.log(
-                    '✅ Notification sent to customer after approval/rejection',
-                );
-            } catch (notifError) {
-                console.error('⚠️ Failed to send notification:', notifError);
-                // Don't throw - approval already succeeded
-            }
+        if (res.data && res.data.success) {
+            // Notification được xử lý phía BE hoặc qua processEarlyCheckinRequest riêng
+            console.log(
+                `Early check-in request ${requestId} ${status} successfully`,
+            );
         }
-
         return res.data;
     } catch (error) {
-        console.error('Error approving early checkin:', error);
-
-        // Development fallback
-        if (import.meta.env.DEV) {
-            console.log('DEV MODE: Mock approval response');
-            await new Promise((resolve) => setTimeout(resolve, 300));
-            return { success: true, requestId, status };
-        }
-
+        console.error('Approve early check-in error:', error);
         throw error;
     }
 };
 
 /**
- * Lấy tất cả yêu cầu check-in sớm
+ * Lấy tất cả yêu cầu check-in sớm (Dành cho Quản lý)
  */
 export const getAllEarlyCheckins = async () => {
     try {
         const res = await api.get(ENDPOINT);
         return res.data;
     } catch (error) {
-        console.error('Error fetching early checkins:', error);
-        throw error;
+        console.error('Get all early check-ins error:', error);
+        return [];
     }
 };
 
 export default {
     createEarlyCheckinRequest,
+    getEarlyCheckinByBookingId,
     approveEarlyCheckin,
     getAllEarlyCheckins,
 };

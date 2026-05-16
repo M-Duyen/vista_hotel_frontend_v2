@@ -7,10 +7,11 @@ import TimePicker from '../common/Time';
 
 type Props = {
     onClose: () => void;
+    onSuccess?: () => void;
     booking: any;
 };
 
-export default function EarlyCheckinModal({ onClose, booking }: Props) {
+export default function EarlyCheckinModal({ onClose, onSuccess, booking }: Props) {
     const toast = useToastContext();
 
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -214,8 +215,8 @@ export default function EarlyCheckinModal({ onClose, booking }: Props) {
 
             if (res.success || res.requestID) {
                 toast.success('Yêu cầu check-in sớm đã được gửi!');
-                onClose();
-                setTimeout(() => window.location.reload(), 300);
+                if (onSuccess) onSuccess();
+                else onClose();
             } else {
                 toast.error(res.message || 'Không thể gửi yêu cầu.');
             }

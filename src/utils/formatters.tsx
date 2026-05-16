@@ -98,19 +98,19 @@
  * Định dạng ngày giờ đầy đủ (DD/MM/YYYY HH:mm)
  */
 export const formatDate = (date: string | Date | null | undefined): string => {
-    if (!date) return "N/A";
+    if (!date) return 'N/A';
 
     try {
-        const d = typeof date === "string" ? new Date(date) : date;
-        return new Intl.DateTimeFormat("vi-VN", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
+        const d = typeof date === 'string' ? new Date(date) : date;
+        return new Intl.DateTimeFormat('vi-VN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
         }).format(d);
     } catch {
-        return "N/A";
+        return 'N/A';
     }
 };
 
@@ -118,19 +118,19 @@ export const formatDate = (date: string | Date | null | undefined): string => {
  * Định dạng ngày ngắn (DD/MM/YYYY)
  */
 export const formatDateShort = (
-    date: string | Date | null | undefined
+    date: string | Date | null | undefined,
 ): string => {
-    if (!date) return "N/A";
+    if (!date) return 'N/A';
 
     try {
-        const d = typeof date === "string" ? new Date(date) : date;
-        return new Intl.DateTimeFormat("vi-VN", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
+        const d = typeof date === 'string' ? new Date(date) : date;
+        return new Intl.DateTimeFormat('vi-VN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
         }).format(d);
     } catch {
-        return "N/A";
+        return 'N/A';
     }
 };
 
@@ -139,11 +139,11 @@ export const formatDateShort = (
  * Ví dụ: 50000 → "50.000 ₫"
  */
 export const formatCurrency = (amount: number | null | undefined): string => {
-    if (amount === null || amount === undefined) return "N/A";
+    if (amount === null || amount === undefined) return 'N/A';
 
-    return new Intl.NumberFormat("vi-VN", {
-        style: "currency",
-        currency: "VND",
+    return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
     }).format(amount);
 };
 
@@ -152,11 +152,11 @@ export const formatCurrency = (amount: number | null | undefined): string => {
  * Ví dụ: null → "0 ₫"
  */
 export const formatVND = (amount: number | null | undefined): string => {
-    if (amount === null || amount === undefined) return "0 ₫";
+    if (amount === null || amount === undefined) return '0 ₫';
 
-    return new Intl.NumberFormat("vi-VN", {
-        style: "currency",
-        currency: "VND",
+    return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
     }).format(amount);
 };
 
@@ -165,7 +165,7 @@ export const formatVND = (amount: number | null | undefined): string => {
  * Ví dụ: 1000000 → "1.000.000"
  */
 export const formatNumber = (num: number | null | undefined): string => {
-    if (num === null || num === undefined) return "0";
+    if (num === null || num === undefined) return '0';
 
-    return new Intl.NumberFormat("vi-VN").format(num);
+    return new Intl.NumberFormat('vi-VN').format(num);
 };
