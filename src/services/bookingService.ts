@@ -276,9 +276,12 @@ export const getBookingsByCheckInDate = async (
   date: string,
 ): Promise<Booking[]> => {
   try {
-    const response = await bookingsApi.get(`/check-in-date?date=${date}`);
-    return await Promise.all(
-      response.data.map((res: any) => mappingBookings(res)),
+    const allBookings = await getAll();
+    const targetDate = new Date(date).toISOString().split("T")[0];
+    return allBookings.filter(
+      (b) =>
+        b.checkInDate &&
+        new Date(b.checkInDate).toISOString().split("T")[0] === targetDate,
     );
   } catch (error) {
     console.error("Get bookings by CheckInDate error:", error);
@@ -291,12 +294,17 @@ export const getBookingsByCheckInDateRange = async (
   endDate: string,
 ): Promise<Booking[]> => {
   try {
-    const response = await bookingsApi.get(
-      `/check-in-range?startDate=${startDate}&endDate=${endDate}`,
-    );
-    return await Promise.all(
-      response.data.map((res: any) => mappingBookings(res)),
-    );
+    const allBookings = await getAll();
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    return allBookings.filter((b) => {
+      if (!b.checkInDate) return false;
+      const checkInTime = new Date(b.checkInDate).getTime();
+      return checkInTime >= start.getTime() && checkInTime <= end.getTime();
+    });
   } catch (error) {
     console.error("Get bookings by CheckInDate range error:", error);
     throw error;
@@ -307,9 +315,12 @@ export const getBookingsByCheckOutDate = async (
   date: string,
 ): Promise<Booking[]> => {
   try {
-    const response = await bookingsApi.get(`/check-out-date?date=${date}`);
-    return await Promise.all(
-      response.data.map((res: any) => mappingBookings(res)),
+    const allBookings = await getAll();
+    const targetDate = new Date(date).toISOString().split("T")[0];
+    return allBookings.filter(
+      (b) =>
+        b.checkOutDate &&
+        new Date(b.checkOutDate).toISOString().split("T")[0] === targetDate,
     );
   } catch (error) {
     console.error("Get bookings by CheckOutDate error:", error);
@@ -322,12 +333,17 @@ export const getBookingsByCheckOutDateRange = async (
   endDate: string,
 ): Promise<Booking[]> => {
   try {
-    const response = await bookingsApi.get(
-      `/check-out-range?startDate=${startDate}&endDate=${endDate}`,
-    );
-    return await Promise.all(
-      response.data.map((res: any) => mappingBookings(res)),
-    );
+    const allBookings = await getAll();
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    return allBookings.filter((b) => {
+      if (!b.checkOutDate) return false;
+      const checkOutTime = new Date(b.checkOutDate).getTime();
+      return checkOutTime >= start.getTime() && checkOutTime <= end.getTime();
+    });
   } catch (error) {
     console.error("Get bookings by CheckOutDateRange error:", error);
     throw error;
