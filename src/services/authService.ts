@@ -9,8 +9,9 @@ import {
   passwordChangedTemplate,
 } from "../utils/emailTemplates/authEmails";
 import type { PasswordChangeRequest } from "../types/UserProfile";
+import type { User } from "../types/auth";
 
-export type StoredUser = AuthResponse["data"] | Record<string, unknown>;
+export type StoredUser = AuthResponse["data"] | User | Record<string, unknown>;
 
 const extractErrorMessage = (error: unknown, fallback: string): string => {
   if (
@@ -70,6 +71,9 @@ interface BackendAuthResponse {
   email?: string;
   message?: string;
   expiresIn?: number;
+  roles?: string[];
+  permissions?: string[];
+  isEnabled?: boolean;
 }
 
 export interface AuthResponse {
@@ -84,6 +88,9 @@ export interface AuthResponse {
     address: string;
     userRole: string;
     avatarUrl: string;
+    isEnabled?: boolean;
+    roles?: string[];
+    permissions?: string[];
   };
   token?: string;
   refreshToken?: string;
@@ -114,8 +121,11 @@ const toAuthResponse = (
           email: payload.email || "",
           phone: payload.phone || "",
           address: "",
-          userRole: "",
+          userRole: payload.roles?.[0] || "GUEST",
           avatarUrl: "",
+          isEnabled: payload.isEnabled ?? true,
+          roles: payload.roles || [],
+          permissions: payload.permissions || [],
         }
       : undefined,
   };
