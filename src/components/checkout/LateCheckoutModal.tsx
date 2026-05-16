@@ -17,9 +17,10 @@ import {
 type Props = {
     booking: any;
     onClose: () => void;
+    onSuccess?: () => void;
 };
 
-export default function LateCheckoutModal({ booking, onClose }: Props) {
+export default function LateCheckoutModal({ booking, onClose, onSuccess }: Props) {
     const toast = useToastContext();
     const [selectedTime, setSelectedTime] = useState('');
     const [fee, setFee] = useState<number | null>(null);
@@ -106,7 +107,8 @@ export default function LateCheckoutModal({ booking, onClose }: Props) {
             });
 
             toast.success('Late checkout request sent!');
-            onClose();
+            if (onSuccess) onSuccess();
+            else onClose();
         } catch (err) {
             console.error(err);
             toast.error('Failed to send request.');

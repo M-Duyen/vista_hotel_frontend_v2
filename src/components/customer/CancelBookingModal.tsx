@@ -363,10 +363,13 @@ export default function CancelBookingModal({
                         return;
                     }
                     refundMethodData = {
-                        method: paymentInfo.method,
-                        bankName: paymentInfo.bankName.trim(),
-                        accountNumber: paymentInfo.accountNumber.trim(),
-                        accountName: paymentInfo.accountName.trim(),
+                        refundMethod: {
+                            method: paymentInfo.method,
+                            bankName: paymentInfo.bankName.trim(),
+                            accountNumber: paymentInfo.accountNumber.trim(),
+                            accountName: paymentInfo.accountName.trim(),
+                        },
+                        refundAccountInfo: `Bank: ${paymentInfo.bankName.trim()}, Acc: ${paymentInfo.accountNumber.trim()}, Name: ${paymentInfo.accountName.trim()}`,
                         refundAmount: refundAmount,
                     };
                 } else {
@@ -379,8 +382,11 @@ export default function CancelBookingModal({
                         return;
                     }
                     refundMethodData = {
-                        method: paymentInfo.method,
-                        mobileNumber: paymentInfo.mobileNumber.trim(),
+                        refundMethod: {
+                            method: paymentInfo.method,
+                            mobileNumber: paymentInfo.mobileNumber.trim(),
+                        },
+                        refundAccountInfo: `Phone: ${paymentInfo.mobileNumber.trim()}`,
                         refundAmount: refundAmount,
                     };
                 }
@@ -424,7 +430,11 @@ export default function CancelBookingModal({
                 booking?.bookingID || '',
                 reason.trim(),
                 booking?.customer?.id || '',
-                refundMethodData,
+                refundMethodData || {
+                    refundMethod: { method: 'NONE' },
+                    refundAccountInfo: 'No refund required (Booking was not paid)',
+                    refundAmount: 0,
+                },
             );
 
             console.log('=== API RESPONSE (ENHANCED) ===');
@@ -587,27 +597,33 @@ export default function CancelBookingModal({
             'PERCENTAGE_30',
             'PERCENTAGE_50',
             'PAID',
+            'PARTIAL',
         ];
         const isPaid = paidStatuses.includes(booking.paymentStatus);
-        const isPending = booking.status === 'PENDING';
+        // Chỉ hoàn tiền nếu đã thanh toán (COMPLETED, PERCENTAGE_30, PERCENTAGE_50, PAID) và booking đang PENDING, WAITING hoặc CONFIRMED
+        const isRefundableStatus = booking.status === 'PENDING' || booking.status === 'WAITING' || (booking.status as string) === 'CONFIRMED';
 
-        console.log('Payment Status:', booking.paymentStatus);
-        console.log('Is Paid Status (in paid list):', isPaid);
-        console.log('Is Pending Booking:', isPending);
-        console.log('Paid statuses include:', paidStatuses);
+        if (isPaid && isRefundableStatus) {
+            // Xác định số tiền thực tế đã thanh toán
+            let paidAmount = booking.totalAmount;
+            if (booking.paymentStatus === 'PERCENTAGE_30') paidAmount = booking.totalAmount * 0.3;
+            else if (booking.paymentStatus === 'PERCENTAGE_50') paidAmount = booking.totalAmount * 0.5;
+            else if (booking.paymentStatus === 'PARTIAL') paidAmount = booking.totalAmount * 0.5; // Giả định Partial là 50% nếu không có trường paidAmount
 
-        // Chỉ hoàn tiền nếu đã thanh toán (COMPLETED, PERCENTAGE_30, PERCENTAGE_50, PAID) và booking đang PENDING
-        if (isPaid && isPending) {
             if (daysUntilCheckin >= 7) {
                 console.log(
-                    '-> 100% refund: >=7 days, Paid status, Pending booking',
+                    '-> 100% refund of paid amount:',
+                    paidAmount,
+                    ' (>=7 days)',
                 );
-                return booking.totalAmount; // Hoàn 100%
+                return paidAmount; // Hoàn 100% số tiền đã trả
             } else if (daysUntilCheckin >= 3) {
                 console.log(
-                    '-> 50% refund: 3-6 days, Paid status, Pending booking',
+                    '-> 50% refund of paid amount:',
+                    paidAmount * 0.5,
+                    ' (3-6 days)',
                 );
-                return booking.totalAmount * 0.5; // Hoàn 50%
+                return paidAmount * 0.5; // Hoàn 50% số tiền đã trả
             } else {
                 console.log('-> No refund: <3 days, even though paid');
                 return 0; // Không hoàn tiền
@@ -624,8 +640,8 @@ export default function CancelBookingModal({
         console.log(
             '  Booking Status Check:',
             booking.status,
-            '- Is pending?',
-            isPending,
+            '- Is refundable status?',
+            isRefundableStatus,
         );
         return 0;
     };
@@ -872,7 +888,15 @@ export default function CancelBookingModal({
                                             {booking.paymentStatus ===
                                                 'PAID' && (
                                                 <span className="text-[#b9ad96]">
+                                                    <i className="fas fa-check-circle mr-1"></i>
                                                     Paid in full
+                                                </span>
+                                            )}
+                                            {booking.paymentStatus ===
+                                                'PARTIAL' && (
+                                                <span className="text-[#b9ad96]">
+                                                    <i className="fas fa-adjust mr-1"></i>
+                                                    Partial payment
                                                 </span>
                                             )}
                                             {booking.paymentStatus ===
@@ -919,6 +943,7 @@ export default function CancelBookingModal({
                                             'PERCENTAGE_30',
                                             'PERCENTAGE_50',
                                             'PAID',
+                                            'PARTIAL',
                                         ].includes(booking.paymentStatus) && (
                                             <>
                                                 {refundPercentage === 100 && (
