@@ -778,14 +778,14 @@ export default function BookingDetailPage() {
                   {details.map(d => <option key={d.room.roomNumber} value={d.room.roomNumber}>Room {d.room.roomNumber} - {d.room.roomType?.typeName}</option>)}
                 </select>
               </div>
-              <div>
+              {/* <div>
                 <label className="block text-sm font-semibold mb-2">Scheduled Date</label>
                 <input type="date" value={serviceForm.scheduledDate} min={dateRange.min} max={dateRange.max} onChange={(e) => setServiceForm(p => ({ ...p, scheduledDate: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#c9b8a8]" />
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-2">Scheduled Time</label>
                 <input type="time" value={serviceForm.scheduledTime} onChange={(e) => setServiceForm(p => ({ ...p, scheduledTime: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#c9b8a8]" />
-              </div>
+              </div> */}
               <div className="bg-[#F5F0EB] p-4 rounded-lg">
                 <div className="flex justify-between items-center">
                   <span className="text-black/70">Estimated Total:</span>
