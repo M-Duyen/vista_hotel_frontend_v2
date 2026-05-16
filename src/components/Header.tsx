@@ -83,15 +83,18 @@ const Header: React.FC = () => {
     return parts.slice(-2).join(" "); // Lấy 2 từ cuối
   };
 
+  const getPrimaryRole = () =>
+    (user?.userRole || user?.roles?.[0] || "").toUpperCase();
+
   const getProfilePath = () => {
-    const role = user?.userRole || user?.roles?.[0];
+    const role = getPrimaryRole();
     if (role === "SUPER_ADMIN" || role === "ADMIN") return "/admin/profile";
     if (role === "EMPLOYEE") return "/employee/profile";
     return "/customer/profile";
   };
 
   const getUserMenuItems = () => {
-    const role = user?.userRole || user?.roles?.[0];
+    const role = getPrimaryRole();
     const roleItems =
       role === "SUPER_ADMIN" || role === "ADMIN"
         ? [

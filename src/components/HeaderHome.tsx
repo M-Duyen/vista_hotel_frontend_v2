@@ -58,7 +58,8 @@ const HeaderHome: React.FC = () => {
     { label: "Exclusive Offers", path: "/promotion-and-voucher" },
   ];
 
-  const getPrimaryRole = () => user?.userRole || user?.roles?.[0];
+  const getPrimaryRole = () =>
+    (user?.userRole || user?.roles?.[0] || "").toUpperCase();
 
   const getProfilePath = () => {
     const role = getPrimaryRole();

@@ -245,6 +245,7 @@ export const saveTokens = (token: string, refreshToken?: string) => {
   if (refreshToken) {
     localStorage.setItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
   }
+  window.dispatchEvent(new Event("authChanged"));
 };
 
 /**
@@ -252,6 +253,7 @@ export const saveTokens = (token: string, refreshToken?: string) => {
  */
 export const saveUser = (user: StoredUser) => {
   localStorage.setItem(API_CONFIG.STORAGE_KEYS.USER, JSON.stringify(user));
+  window.dispatchEvent(new Event("userDataUpdated"));
 };
 
 /**
@@ -266,7 +268,16 @@ export const getToken = (): string | null => {
  */
 export const getUser = (): StoredUser | null => {
   const user = localStorage.getItem(API_CONFIG.STORAGE_KEYS.USER);
-  return user ? (JSON.parse(user) as StoredUser) : null;
+  if (!user) return null;
+
+  try {
+    return JSON.parse(user) as StoredUser;
+  } catch {
+    localStorage.removeItem(API_CONFIG.STORAGE_KEYS.TOKEN);
+    localStorage.removeItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
+    localStorage.removeItem(API_CONFIG.STORAGE_KEYS.USER);
+    return null;
+  }
 };
 
 /**
@@ -331,6 +342,7 @@ export const refreshToken = async (): Promise<AuthResponse> => {
           data.refreshToken,
         );
       }
+      window.dispatchEvent(new Event("authChanged"));
     }
 
     return data;

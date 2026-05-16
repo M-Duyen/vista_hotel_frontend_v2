@@ -27,6 +27,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
+
+  if (!isInitialized) {
+    return fallback ? <>{fallback}</> : null;
+  }
 
   // Not authenticated
   if (!isAuthenticated || !user) {

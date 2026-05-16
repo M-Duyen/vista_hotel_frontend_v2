@@ -10,22 +10,39 @@ export type RoleCode =
 
 export type PermissionCode =
   | "BOOKING_VIEW"
+  | "booking_view"
   | "BOOKING_CREATE"
+  | "booking_create"
   | "BOOKING_EDIT"
+  | "booking_edit"
   | "BOOKING_DELETE"
+  | "booking_delete"
   | "BOOKING_CANCEL"
+  | "booking_cancel"
   | "EMPLOYEE_VIEW"
+  | "employee_view"
   | "EMPLOYEE_CREATE"
+  | "employee_create"
   | "EMPLOYEE_EDIT"
+  | "employee_edit"
   | "EMPLOYEE_DELETE"
+  | "employee_delete"
   | "REPORT_VIEW"
+  | "report_view"
   | "REPORT_CREATE"
+  | "report_create"
   | "REPORT_DELETE"
+  | "report_delete"
   | "CUSTOMER_VIEW"
+  | "customer_view"
   | "CUSTOMER_EDIT"
+  | "customer_edit"
   | "CUSTOMER_DELETE"
+  | "customer_delete"
   | "ROOM_VIEW"
-  | "ROOM_MANAGE";
+  | "room_view"
+  | "ROOM_MANAGE"
+  | "room_manage";
 
 export type EmployeeStatus = "ACTIVE" | "LEAVE" | "INACTIVE" | "RETIRED";
 

@@ -111,7 +111,7 @@ export const router = createBrowserRouter([
       {
         path: "room-management",
         element: (
-          <ProtectedRoute requiredPermissions={["ROOM_MANAGE"]}>
+          <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ADMIN", "EMPLOYEE"]}>
             <RoomManagement />
           </ProtectedRoute>
         ),
@@ -119,7 +119,7 @@ export const router = createBrowserRouter([
       {
         path: "room-type-management",
         element: (
-          <ProtectedRoute requiredPermissions={["ROOM_MANAGE"]}>
+          <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ADMIN", "EMPLOYEE"]}>
             <RoomTypeManagement />
           </ProtectedRoute>
         ),
@@ -150,7 +150,7 @@ export const router = createBrowserRouter([
       {
         path: "room-management",
         element: (
-          <ProtectedRoute requiredPermissions={["ROOM_MANAGE"]}>
+          <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ADMIN", "EMPLOYEE"]}>
             <RoomManagement />
           </ProtectedRoute>
         ),
@@ -158,7 +158,7 @@ export const router = createBrowserRouter([
       {
         path: "room-type-management",
         element: (
-          <ProtectedRoute requiredPermissions={["ROOM_MANAGE"]}>
+          <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ADMIN", "EMPLOYEE"]}>
             <RoomTypeManagement />
           </ProtectedRoute>
         ),

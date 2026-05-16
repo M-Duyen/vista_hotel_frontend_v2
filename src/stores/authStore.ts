@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
+import { API_CONFIG } from "@/config/api.config";
 import * as authService from "@/services/authService";
 import type {
   AuthResponse,
@@ -15,6 +16,7 @@ export interface AuthState {
   token: string | null;
   refreshToken: string | null;
   isLoading: boolean;
+  isInitialized: boolean;
   error: string | null;
   isAuthenticated: boolean;
 
@@ -28,19 +30,65 @@ export interface AuthState {
   loadFromStorage: () => void;
 }
 
+const toArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string");
+  }
+  if (value instanceof Set) {
+    return Array.from(value).filter(
+      (item): item is string => typeof item === "string",
+    );
+  }
+  return [];
+};
+
+const normalizeStoredUser = (
+  storedUser: authService.StoredUser | null,
+): User | null => {
+  if (!storedUser || typeof storedUser !== "object") return null;
+
+  const raw = storedUser as Record<string, unknown>;
+  const roles = toArray(raw.roles).map((role) => role.toUpperCase());
+
+  return {
+    id: String(raw.id ?? raw.userId ?? ""),
+    userName: String(raw.userName ?? raw.username ?? ""),
+    username: String(raw.username ?? raw.userName ?? ""),
+    fullName: String(raw.fullName ?? ""),
+    email: String(raw.email ?? ""),
+    phone: typeof raw.phone === "string" ? raw.phone : undefined,
+    address: typeof raw.address === "string" ? raw.address : undefined,
+    avatarUrl: typeof raw.avatarUrl === "string" ? raw.avatarUrl : null,
+    isEnabled: raw.isEnabled !== false,
+    roles,
+    permissions: toArray(raw.permissions),
+    userRole: roles[0] ?? "GUEST",
+  };
+};
+
+const getStoredAuthState = () => {
+  const token = authService.getToken();
+  const user = normalizeStoredUser(authService.getUser());
+
+  return {
+    user,
+    token,
+    refreshToken: localStorage.getItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN),
+    isAuthenticated: Boolean(token && user),
+    isInitialized: true,
+  };
+};
+
 /**
  * Auth Store - Manage authentication state with Zustand
  */
 export const useAuthStore = create<AuthState>()(
   devtools(
     (set) => ({
+      ...getStoredAuthState(),
       // Initial state
-      user: null,
-      token: null,
-      refreshToken: null,
       isLoading: false,
       error: null,
-      isAuthenticated: false,
 
       /**
        * Login action
@@ -73,12 +121,14 @@ export const useAuthStore = create<AuthState>()(
               token: response.token,
               refreshToken: response.refreshToken || null,
               isAuthenticated: true,
+              isInitialized: true,
               isLoading: false,
               error: null,
             });
           } else {
             set({
               isLoading: false,
+              isInitialized: true,
               error: response.message || "Login failed",
             });
           }
@@ -89,6 +139,7 @@ export const useAuthStore = create<AuthState>()(
             error instanceof Error ? error.message : "Login failed";
           set({
             isLoading: false,
+            isInitialized: true,
             error: errorMessage,
           });
           return {
@@ -134,12 +185,14 @@ export const useAuthStore = create<AuthState>()(
               token: response.token || null,
               refreshToken: response.refreshToken || null,
               isAuthenticated: Boolean(response.token),
+              isInitialized: true,
               isLoading: false,
               error: null,
             });
           } else {
             set({
               isLoading: false,
+              isInitialized: true,
               error: response.message || "Registration failed",
             });
           }
@@ -150,6 +203,7 @@ export const useAuthStore = create<AuthState>()(
             error instanceof Error ? error.message : "Registration failed";
           set({
             isLoading: false,
+            isInitialized: true,
             error: errorMessage,
           });
           return {
@@ -169,6 +223,7 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           refreshToken: null,
           isAuthenticated: false,
+          isInitialized: true,
           error: null,
           isLoading: false,
         });
@@ -211,19 +266,21 @@ export const useAuthStore = create<AuthState>()(
        */
       loadFromStorage: () => {
         const token = authService.getToken();
-        const user = authService.getUser();
+        const user = normalizeStoredUser(authService.getUser());
 
         if (token && user) {
           set({
             token,
-            user: user as User,
+            user,
             isAuthenticated: true,
+            isInitialized: true,
           });
         } else {
           set({
             token: null,
             user: null,
             isAuthenticated: false,
+            isInitialized: true,
           });
         }
       },
