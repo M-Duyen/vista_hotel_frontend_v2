@@ -97,6 +97,7 @@ export const router = createBrowserRouter([
       { path: "checkin", element: <CheckInManager /> },
       { path: "checkout", element: <CheckOutManager /> },
       { path: "info", element: <NewsList /> },
+      { path: "chat", element: <ChatSupport /> },
     ],
   },
 
