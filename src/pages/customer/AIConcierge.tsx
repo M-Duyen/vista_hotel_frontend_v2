@@ -1,5 +1,6 @@
 /* eslint-disable */
 import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import {
     sendChatMessage,
@@ -18,6 +19,9 @@ interface Message {
     content: string;
     time: string;
     roomCards?: RoomCard[];
+    uiType?: string;
+    uiData?: any;
+    intent?: string;
 }
 
 interface RoomCard {
@@ -43,17 +47,24 @@ interface User {
 }
 
 const AIConcierge: React.FC = () => {
+    const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [chatHistories, setChatHistories] = useState<ChatHistory[]>([]);
-    const [currentSessionId, setCurrentSessionId] = useState<string | null>(
-        null,
-    );
+    const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
     const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    // Booking confirm popup state
+    const [bookingPopup, setBookingPopup] = useState<any>(null);
+    const [selectedBookingType, setSelectedBookingType] = useState<'DAILY' | 'HOURLY'>('DAILY');
+    const [selectedServices, setSelectedServices] = useState<string[]>([]);
+    const [checkInDate, setCheckInDate] = useState('');
+    const [checkOutDate, setCheckOutDate] = useState('');
+    const [checkInTime, setCheckInTime] = useState('14:00');
+    const [durationHours, setDurationHours] = useState(3);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -189,19 +200,16 @@ const AIConcierge: React.FC = () => {
         }));
     };
 
-    const handleSend = async () => {
-        if (inputValue.trim() === '' || !user) {
-            console.warn(
-                'Cannot send message: user not logged in or empty input',
-            );
+    const sendDirectMessage = async (content: string) => {
+        if (!content.trim() || !user) {
+            console.warn('Cannot send message: user not logged in or empty input');
             return;
         }
 
-        const userMessageContent = inputValue;
         const newMessage: Message = {
             id: Date.now(),
             type: 'user',
-            content: userMessageContent,
+            content: content,
             time: new Date().toLocaleTimeString([], {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -209,17 +217,15 @@ const AIConcierge: React.FC = () => {
         };
 
         setMessages((prev) => [...prev, newMessage]);
-        setInputValue('');
         setIsTyping(true);
 
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-        }
-
         try {
-            const response = await sendChatMessage(user.id, userMessageContent);
-
+            const response = await sendChatMessage(user.id, content);
             setIsTyping(false);
+
+            if (response.uiType === 'BOOKING_CONFIRM') {
+                setBookingPopup(response.uiData);
+            }
 
             const botMessage: Message = {
                 id: Date.now() + 1,
@@ -229,23 +235,25 @@ const AIConcierge: React.FC = () => {
                     hour: '2-digit',
                     minute: '2-digit',
                 }),
-                roomCards: response.showRoomCards
+                roomCards: response.showRoomCards && (!response.uiType || response.uiType === 'ROOM_GRID')
                     ? convertRoomTypesToCards(roomTypes)
                     : undefined,
+                uiType: response.uiType,
+                uiData: response.uiData,
+                intent: response.intent,
             };
 
             setMessages((prev) => [...prev, botMessage]);
 
-            // Update chat history with new message
             if (currentSessionId) {
                 setChatHistories((prev) =>
                     prev.map((chat) =>
                         chat.sessionId === currentSessionId
                             ? {
-                                  ...chat,
-                                  time: 'Just now',
-                                  messageCount: chat.messageCount + 2,
-                              }
+                                ...chat,
+                                time: 'Just now',
+                                messageCount: chat.messageCount + 2,
+                            }
                             : chat,
                     ),
                 );
@@ -265,6 +273,16 @@ const AIConcierge: React.FC = () => {
             };
             setMessages((prev) => [...prev, errorMessage]);
         }
+    };
+
+    const handleSend = async () => {
+        if (inputValue.trim() === '') return;
+        const msg = inputValue;
+        setInputValue('');
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+        }
+        await sendDirectMessage(msg);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -287,43 +305,7 @@ const AIConcierge: React.FC = () => {
 
     const handleRoomSelect = async (roomName: string) => {
         if (!user) return;
-
-        const userMessage: Message = {
-            id: Date.now(),
-            type: 'user',
-            content: `I'd like to book the ${roomName}`,
-            time: new Date().toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-            }),
-        };
-
-        setMessages((prev) => [...prev, userMessage]);
-        setIsTyping(true);
-
-        try {
-            const response = await sendChatMessage(
-                user.id,
-                `I'd like to book the ${roomName}`,
-            );
-
-            setIsTyping(false);
-
-            const botMessage: Message = {
-                id: Date.now() + 1,
-                type: 'ai',
-                content: response.content,
-                time: new Date().toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                }),
-            };
-
-            setMessages((prev) => [...prev, botMessage]);
-        } catch (error) {
-            setIsTyping(false);
-            console.error('Error:', error);
-        }
+        await sendDirectMessage(`Tôi muốn đặt phòng ${roomName}`);
     };
 
     const handleNewChat = async () => {
@@ -498,19 +480,17 @@ const AIConcierge: React.FC = () => {
                             aria-label="Toggle sidebar"
                         >
                             <i
-                                className={`fa-solid ${
-                                    isSidebarOpen ? 'fa-times' : 'fa-bars'
-                                }`}
+                                className={`fa-solid ${isSidebarOpen ? 'fa-times' : 'fa-bars'
+                                    }`}
                             ></i>
                         </button>
 
                         {/* Sidebar */}
                         <div
-                            className={`${
-                                isSidebarOpen
-                                    ? 'translate-x-0'
-                                    : '-translate-x-full'
-                            } lg:translate-x-0 fixed lg:relative inset-y-0 left-0 z-40 w-72 sm:w-80 bg-gradient-to-b from-gray-50 to-white border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out`}
+                            className={`${isSidebarOpen
+                                ? 'translate-x-0'
+                                : '-translate-x-full'
+                                } lg:translate-x-0 fixed lg:relative inset-y-0 left-0 z-40 w-72 sm:w-80 bg-gradient-to-b from-gray-50 to-white border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out`}
                             style={{ height: '100%' }}
                         >
                             <div className="p-4 sm:p-6 border-b border-gray-200 bg-white">
@@ -545,32 +525,29 @@ const AIConcierge: React.FC = () => {
                                                     chat.sessionId,
                                                 )
                                             }
-                                            className={`p-3 sm:p-4 rounded-xl cursor-pointer transition-all group ${
-                                                chat.active
-                                                    ? 'bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white shadow-md'
-                                                    : 'bg-gray-50 hover:bg-gray-100 hover:shadow-sm'
-                                            }`}
+                                            className={`p-3 sm:p-4 rounded-xl cursor-pointer transition-all group ${chat.active
+                                                ? 'bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white shadow-md'
+                                                : 'bg-gray-50 hover:bg-gray-100 hover:shadow-sm'
+                                                }`}
                                         >
                                             <div className="flex items-start justify-between gap-2">
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
                                                         <i
-                                                            className={`fa-solid fa-comment text-sm sm:text-base ${
-                                                                chat.active
-                                                                    ? 'text-white'
-                                                                    : 'text-[#CCBDA3]'
-                                                            }`}
+                                                            className={`fa-solid fa-comment text-sm sm:text-base ${chat.active
+                                                                ? 'text-white'
+                                                                : 'text-[#CCBDA3]'
+                                                                }`}
                                                         ></i>
                                                         <span className="font-semibold text-xs sm:text-sm truncate">
                                                             {chat.title}
                                                         </span>
                                                     </div>
                                                     <div
-                                                        className={`text-xs flex items-center gap-2 ${
-                                                            chat.active
-                                                                ? 'text-white text-opacity-80'
-                                                                : 'text-gray-500'
-                                                        }`}
+                                                        className={`text-xs flex items-center gap-2 ${chat.active
+                                                            ? 'text-white text-opacity-80'
+                                                            : 'text-gray-500'
+                                                            }`}
                                                     >
                                                         <span>{chat.time}</span>
                                                         <span>•</span>
@@ -588,18 +565,16 @@ const AIConcierge: React.FC = () => {
                                                             e,
                                                         )
                                                     }
-                                                    className={`opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-lg ${
-                                                        chat.active
-                                                            ? 'hover:bg-white hover:bg-opacity-20'
-                                                            : 'hover:bg-red-50'
-                                                    }`}
+                                                    className={`opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-lg ${chat.active
+                                                        ? 'hover:bg-white hover:bg-opacity-20'
+                                                        : 'hover:bg-red-50'
+                                                        }`}
                                                 >
                                                     <i
-                                                        className={`fa-solid fa-trash text-sm ${
-                                                            chat.active
-                                                                ? 'text-white'
-                                                                : 'text-red-500 hover:text-red-600'
-                                                        }`}
+                                                        className={`fa-solid fa-trash text-sm ${chat.active
+                                                            ? 'text-white'
+                                                            : 'text-red-500 hover:text-red-600'
+                                                            }`}
                                                     ></i>
                                                 </button>
                                             </div>
@@ -712,110 +687,227 @@ const AIConcierge: React.FC = () => {
                                     {messages.map((message) => (
                                         <div
                                             key={message.id}
-                                            className={`flex gap-2 sm:gap-4 animate-fade-in ${
-                                                message.type === 'user'
-                                                    ? 'flex-row-reverse'
-                                                    : ''
-                                            }`}
+                                            className={`flex gap-2 sm:gap-4 animate-fade-in ${message.type === 'user' ? 'flex-row-reverse' : ''
+                                                }`}
                                         >
-                                            <div
-                                                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-md ${
-                                                    message.type === 'ai'
-                                                        ? 'bg-gradient-to-br from-[#CCBDA3] to-[#b8ac94] text-white'
-                                                        : 'bg-gradient-to-br from-gray-400 to-gray-500 text-white'
-                                                }`}
-                                            >
-                                                <i
-                                                    className={`fa-solid text-xs sm:text-sm ${
-                                                        message.type === 'ai'
-                                                            ? 'fa-robot'
-                                                            : 'fa-user'
-                                                    }`}
-                                                ></i>
+                                            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-md ${message.type === 'ai'
+                                                ? 'bg-gradient-to-br from-[#CCBDA3] to-[#b8ac94] text-white'
+                                                : 'bg-gradient-to-br from-gray-400 to-gray-500 text-white'
+                                                }`}>
+                                                <i className={`fa-solid text-xs sm:text-sm ${message.type === 'ai' ? 'fa-robot' : 'fa-user'
+                                                    }`}></i>
                                             </div>
-                                            <div
-                                                className={`max-w-[85%] sm:max-w-[75%] ${
-                                                    message.type === 'user'
-                                                        ? 'items-end'
-                                                        : ''
-                                                }`}
-                                            >
-                                                <div
-                                                    className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-sm ${
-                                                        message.type === 'ai'
-                                                            ? 'bg-white border border-gray-100'
-                                                            : 'bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white'
-                                                    }`}
-                                                >
+                                            <div className={`max-w-[90%] sm:max-w-[80%] ${message.type === 'user' ? 'items-end' : ''
+                                                }`}>
+                                                <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-sm ${message.type === 'ai'
+                                                    ? 'bg-white border border-gray-100'
+                                                    : 'bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white'
+                                                    }`}>
                                                     <p className="whitespace-pre-line leading-relaxed text-sm sm:text-base">
                                                         {message.content}
                                                     </p>
 
-                                                    {/* Room Cards */}
-                                                    {message.roomCards && (
-                                                        <div className="flex gap-3 sm:gap-4 overflow-x-auto py-3 sm:py-4 mt-3 sm:mt-4 -mx-2 px-2 snap-x snap-mandatory">
-                                                            {message.roomCards.map(
-                                                                (room) => (
-                                                                    <div
-                                                                        key={
-                                                                            room.id
-                                                                        }
-                                                                        className="min-w-[240px] sm:min-w-[280px] bg-gradient-to-b from-gray-50 to-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all border border-gray-100 snap-start"
-                                                                    >
-                                                                        <div className="h-32 sm:h-40 overflow-hidden relative group">
-                                                                            <img
-                                                                                src={
-                                                                                    room.image
-                                                                                }
-                                                                                alt={
-                                                                                    room.name
-                                                                                }
-                                                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                                                            />
-                                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                                    {/* === ROOM GRID UI === */}
+                                                    {message.uiType === 'ROOM_GRID' && message.uiData && (
+                                                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                            {(message.uiData as any[]).map((room: any) => (
+                                                                <div key={room.roomTypeID} className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all">
+                                                                    {room.roomTypeImage && (
+                                                                        <img src={room.roomTypeImage} alt={room.typeName} className="w-full h-32 object-cover" />
+                                                                    )}
+                                                                    <div className="p-3">
+                                                                        <h4 className="font-bold text-gray-800 text-sm">{room.typeName}</h4>
+                                                                        <p className="text-xs text-gray-500 mt-1">{room.maxOccupancy} khách • {room.area}m²</p>
+                                                                        <p className="font-bold text-[#CCBDA3] text-sm mt-1">{room.basePrice?.toLocaleString('vi-VN')} VND/đêm</p>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                sendDirectMessage(`Tôi muốn đặt phòng ${room.typeName}`);
+                                                                            }}
+                                                                            className="mt-2 w-full py-1.5 bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white rounded-lg text-xs font-semibold hover:shadow-md transition-all"
+                                                                        >Chọn phòng này</button>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {/* === BOOKING TYPE SELECT UI === */}
+                                                    {message.uiType === 'BOOKING_TYPE_SELECT' && message.uiData?.options && (
+                                                        <div className="mt-3 flex gap-2">
+                                                            {(message.uiData.options as any[]).map((opt: any) => (
+                                                                <button
+                                                                    key={opt.value}
+                                                                    onClick={() => {
+                                                                        setSelectedBookingType(opt.value);
+                                                                        sendDirectMessage(`Tôi muốn đặt theo ${opt.label}`);
+                                                                    }}
+                                                                    className="flex-1 p-3 bg-white border-2 border-[#CCBDA3] rounded-xl text-center hover:bg-[#CCBDA3] hover:text-white transition-all"
+                                                                >
+                                                                    <div className="font-bold text-sm">{opt.label}</div>
+                                                                    <div className="text-xs text-gray-500 mt-1">{opt.description}</div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {/* === DATE PICKER UI === */}
+                                                    {message.uiType === 'DATE_PICKER' && (
+                                                        <div className="mt-3 bg-gray-50 rounded-xl p-3 space-y-2">
+                                                            {(message.uiData?.bookingType === 'HOURLY') ? (
+                                                                <>
+                                                                    <div>
+                                                                        <label className="text-xs font-semibold text-gray-600">Ngày nhận phòng</label>
+                                                                        <input type="date" value={checkInDate} onChange={e => setCheckInDate(e.target.value)}
+                                                                            className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs font-semibold text-gray-600">Giờ nhận phòng</label>
+                                                                        <input type="time" value={checkInTime} onChange={e => setCheckInTime(e.target.value)}
+                                                                            className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs font-semibold text-gray-600">Số giờ thuê</label>
+                                                                        <input type="number" min="1" max="24" value={durationHours} onChange={e => setDurationHours(Number(e.target.value))}
+                                                                            className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm" />
+                                                                    </div>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <div>
+                                                                        <label className="text-xs font-semibold text-gray-600">Ngày nhận phòng</label>
+                                                                        <input type="date" value={checkInDate} onChange={e => setCheckInDate(e.target.value)}
+                                                                            className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs font-semibold text-gray-600">Ngày trả phòng</label>
+                                                                        <input type="date" value={checkOutDate} onChange={e => setCheckOutDate(e.target.value)}
+                                                                            className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm" />
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                            <button
+                                                                onClick={() => {
+                                                                    const msg = message.uiData?.bookingType === 'HOURLY'
+                                                                        ? `Nhận phòng ngày ${checkInDate} lúc ${checkInTime}, thuê ${durationHours} giờ`
+                                                                        : `Nhận phòng ngày ${checkInDate}, trả phòng ngày ${checkOutDate}`;
+                                                                    sendDirectMessage(msg);
+                                                                }}
+                                                                className="w-full py-2 bg-[#CCBDA3] text-white rounded-lg text-sm font-semibold hover:bg-[#b8ac94] transition-all"
+                                                            >Xác nhận thời gian</button>
+                                                        </div>
+                                                    )}
+
+                                                    {/* === SERVICE LIST UI === */}
+                                                    {message.uiType === 'SERVICE_LIST' && message.uiData && (
+                                                        <div className="mt-3 space-y-2">
+                                                            {(message.uiData as any[]).map((svc: any) => (
+                                                                <div key={svc.serviceID} className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all ${selectedServices.includes(svc.serviceID)
+                                                                    ? 'border-[#CCBDA3] bg-[#CCBDA3]/10'
+                                                                    : 'border-gray-200 hover:border-[#CCBDA3]'
+                                                                    }`}
+                                                                    onClick={() => {
+                                                                        setSelectedServices(prev =>
+                                                                            prev.includes(svc.serviceID)
+                                                                                ? prev.filter(id => id !== svc.serviceID)
+                                                                                : [...prev, svc.serviceID]
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    <div>
+                                                                        <div className="text-sm font-semibold text-gray-800">{svc.serviceName}</div>
+                                                                        <div className="text-xs text-gray-500">{svc.description}</div>
+                                                                    </div>
+                                                                    <div className="text-sm font-bold text-[#CCBDA3]">{svc.price?.toLocaleString('vi-VN')} VND</div>
+                                                                </div>
+                                                            ))}
+                                                            <button
+                                                                onClick={() => {
+                                                                    const msg = selectedServices.length > 0
+                                                                        ? `Tôi muốn thêm dịch vụ: ${selectedServices.join(', ')}`
+                                                                        : 'Không đặt dịch vụ';
+                                                                    sendDirectMessage(msg);
+                                                                }}
+                                                                className="w-full py-2 bg-[#CCBDA3] text-white rounded-lg text-sm font-semibold hover:bg-[#b8ac94] transition-all mt-1"
+                                                            >Tiếp tục</button>
+                                                        </div>
+                                                    )}
+
+                                                    {/* === INVOICE VIEW UI === */}
+                                                    {message.uiType === 'INVOICE_VIEW' && message.uiData && (
+                                                        <div className="mt-3 space-y-2">
+                                                            {(message.uiData as any[]).map((bk: any) => (
+                                                                <div key={bk.bookingID} className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                                                                    <div className="flex justify-between items-start">
+                                                                        <div>
+                                                                            <div className="font-bold text-sm text-gray-800">#{bk.bookingID}</div>
+                                                                            <div className="text-xs text-gray-500 mt-1">
+                                                                                {bk.checkInDate ? new Date(bk.checkInDate).toLocaleDateString('vi-VN') : ''}
+                                                                                {' → '}
+                                                                                {bk.checkOutDate ? new Date(bk.checkOutDate).toLocaleDateString('vi-VN') : ''}
+                                                                            </div>
                                                                         </div>
-                                                                        <div className="p-4 sm:p-5">
-                                                                            <h4 className="font-bold text-gray-800 mb-2 text-base sm:text-lg">
-                                                                                {
-                                                                                    room.name
-                                                                                }
-                                                                            </h4>
-                                                                            <p className="text-xs sm:text-sm text-gray-600 mb-3 flex items-center gap-2">
-                                                                                <i className="fa-solid fa-info-circle text-[#CCBDA3]"></i>
-                                                                                {
-                                                                                    room.features
-                                                                                }
-                                                                            </p>
-                                                                            <p className="font-bold text-[#CCBDA3] mb-3 sm:mb-4 text-base sm:text-lg">
-                                                                                {
-                                                                                    room.price
-                                                                                }
-                                                                            </p>
-                                                                            <button
-                                                                                onClick={() =>
-                                                                                    handleRoomSelect(
-                                                                                        room.name,
-                                                                                    )
-                                                                                }
-                                                                                className="w-full py-2.5 sm:py-3 bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white rounded-lg hover:shadow-lg transition-all font-semibold text-sm sm:text-base"
-                                                                            >
-                                                                                <i className="fa-solid fa-check-circle mr-2"></i>
-                                                                                Select
-                                                                                Room
-                                                                            </button>
+                                                                        <div className="text-right">
+                                                                            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${bk.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
+                                                                                bk.status === 'WAITING' ? 'bg-yellow-100 text-yellow-700' :
+                                                                                    'bg-gray-100 text-gray-700'
+                                                                                }`}>{bk.status}</span>
+                                                                            <div className="font-bold text-[#CCBDA3] text-sm mt-1">{bk.totalAmount?.toLocaleString('vi-VN')} VND</div>
                                                                         </div>
                                                                     </div>
-                                                                ),
-                                                            )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Legacy Room Cards */}
+                                                    {!message.uiType && message.roomCards && (
+                                                        <div className="flex gap-3 sm:gap-4 overflow-x-auto py-3 sm:py-4 mt-3 sm:mt-4 -mx-2 px-2 snap-x snap-mandatory">
+                                                            {message.roomCards.map((room) => (
+                                                                <div key={room.id} className="min-w-[240px] sm:min-w-[280px] bg-gradient-to-b from-gray-50 to-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all border border-gray-100 snap-start">
+                                                                    <div className="h-32 sm:h-40 overflow-hidden relative group">
+                                                                        <img src={room.image} alt={room.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                                    </div>
+                                                                    <div className="p-4 sm:p-5">
+                                                                        <h4 className="font-bold text-gray-800 mb-2">{room.name}</h4>
+                                                                        <p className="text-xs text-gray-600 mb-3">{room.features}</p>
+                                                                        <p className="font-bold text-[#CCBDA3] mb-3">{room.price}</p>
+                                                                        <button onClick={() => handleRoomSelect(room.name)}
+                                                                            className="w-full py-2 bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white rounded-lg text-sm font-semibold">
+                                                                            Chọn phòng
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {/* BOOKING CONFIRM button */}
+                                                    {message.uiType === 'BOOKING_CONFIRM' && (
+                                                        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl">
+                                                            <p className="text-sm text-green-700 font-semibold mb-2">Sẵn sàng đặt phòng!</p>
+                                                            <button
+                                                                onClick={() => navigate('/customer/bookingPage', {
+                                                                    state: {
+                                                                        bookingType: selectedBookingType,
+                                                                        fromAI: true,
+                                                                        checkInDate: checkInDate,
+                                                                        checkOutDate: checkOutDate,
+                                                                        hourlyCheckInDate: checkInDate,
+                                                                        checkInTime: checkInTime,
+                                                                        duration: durationHours,
+                                                                        selectedServices: selectedServices
+                                                                    }
+                                                                })}
+                                                                className="w-full py-2.5 bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white rounded-lg text-sm font-bold hover:bg-green-700 transition-all"
+                                                            >Đến trang đặt phòng &amp; thanh toán</button>
                                                         </div>
                                                     )}
                                                 </div>
                                                 <span
-                                                    className={`text-xs text-gray-500 mt-1 sm:mt-2 block ${
-                                                        message.type === 'user'
-                                                            ? 'text-right'
-                                                            : ''
-                                                    }`}
+                                                    className={`text-xs text-gray-500 mt-1 sm:mt-2 block ${message.type === 'user'
+                                                        ? 'text-right'
+                                                        : ''
+                                                        }`}
                                                 >
                                                     {message.time}
                                                 </span>

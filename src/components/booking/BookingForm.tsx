@@ -77,13 +77,23 @@ export default function BookingForm({
     (location.state as any)?.bookingType || "DAILY";
 
   // Daily booking states
-  const [checkInDate, setCheckInDate] = useState<Date | null>(null);
-  const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
+  const [checkInDate, setCheckInDate] = useState<Date | null>(
+    (location.state as any)?.checkInDate ? new Date((location.state as any).checkInDate) : null
+  );
+  const [checkOutDate, setCheckOutDate] = useState<Date | null>(
+    (location.state as any)?.checkOutDate ? new Date((location.state as any).checkOutDate) : null
+  );
 
   // Hourly booking states
-  const [hourlyCheckInDate, setHourlyCheckInDate] = useState<Date | null>(null);
-  const [checkInTime, setCheckInTime] = useState<string>("14:00");
-  const [duration, setDuration] = useState<number>(3);
+  const [hourlyCheckInDate, setHourlyCheckInDate] = useState<Date | null>(
+    (location.state as any)?.hourlyCheckInDate ? new Date((location.state as any).hourlyCheckInDate) : null
+  );
+  const [checkInTime, setCheckInTime] = useState<string>(
+    (location.state as any)?.checkInTime || "14:00"
+  );
+  const [duration, setDuration] = useState<number>(
+    (location.state as any)?.duration || 3
+  );
 
   // Special requests text (was missing — required by booking payload)
   const [specialRequests, setSpecialRequests] = useState<string>("");
@@ -98,7 +108,9 @@ export default function BookingForm({
   const [loading, setLoading] = useState(true);
 
   // selected services (ids) and per-service targets (roomNumbers array or 'ALL')
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [selectedServices, setSelectedServices] = useState<string[]>(
+    (location.state as any)?.selectedServices || []
+  );
   const [selectedServiceTargets, setSelectedServiceTargets] = useState<
     Record<string, string[] | "ALL">
   >({}); // e.g. { serviceId: "ALL" } or { serviceId: ["101","102"] }
@@ -106,7 +118,9 @@ export default function BookingForm({
   // Thêm state cho số lượng dịch vụ
   const [serviceQuantities, setServiceQuantities] = useState<
     Record<string, number>
-  >({});
+  >(
+    (location.state as any)?.serviceQuantities || {}
+  );
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethod>(PAYMENT_METHODS[0]);
@@ -635,10 +649,11 @@ export default function BookingForm({
       co = new Date(checkOutDate);
       co.setHours(0, 0, 0, 0);
 
-      if (ci < today) {
-        setError("Check-in cannot be before today.");
-        return;
-      }
+      //TODO: Chú thích tạm:))
+      // if (ci < today) {
+      //   setError("Check-in cannot be before today.");
+      //   return;
+      // }
       if (co <= ci) {
         setError("Check-out must be after check-in.");
         return;
@@ -796,22 +811,25 @@ export default function BookingForm({
       review: null,
     }));
 
-    // Dựa trên selectedServices và selectedServiceTargets để tạo bookingServices với thông tin phòng áp dụng
+    // Dựa trên selectedServices và selectedServiceTargets để tạo bookingServices với danh sách phòng áp dụng
     const bookingServicesWithRooms: any[] = [];
     getSelectedServiceObjects().forEach((s: Service) => {
       const targets = selectedServiceTargets[s.serviceID];
       const quantity = serviceQuantities[s.serviceID] || 1;
 
-      const roomCount =
-        !targets || targets === "ALL"
-          ? rooms.length || 1
-          : Array.isArray(targets)
-            ? targets.length || 1
-            : 1;
+      let roomNumbers: string[] = [];
+      if (!targets || targets === "ALL") {
+        roomNumbers = rooms.map((r: Room) => r.roomNumber!).filter(Boolean);
+      } else if (Array.isArray(targets)) {
+        roomNumbers = targets;
+      }
+
+      const roomCount = roomNumbers.length || 1;
 
       bookingServicesWithRooms.push({
         serviceId: s.serviceID,
         servicePrice: s.price,
+        roomNumber: roomNumbers, // Gửi dưới dạng list
         quantity: quantity * roomCount,
         totalAmount: s.price * quantity * roomCount,
         orderStatus: "PLACE",

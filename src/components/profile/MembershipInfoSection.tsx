@@ -56,10 +56,6 @@ const MembershipInfoSection: React.FC<MembershipInfoSectionProps> = ({
     ? (currentPoints / nextLevel.points) * 100
     : 100;
 
-  if (profile.userRole !== "CUSTOMER") {
-    return null;
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}

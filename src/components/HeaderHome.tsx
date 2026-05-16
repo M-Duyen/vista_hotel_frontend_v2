@@ -9,6 +9,7 @@ import {
   faSignOutAlt,
   faChartLine,
   faTasks,
+  faTicketAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, useNavigate } from "react-router-dom";
 import { handleLogout } from "../services/authService";
@@ -22,6 +23,7 @@ interface User {
   fullName?: string;
   email: string;
   userRole?: string;
+  roles?: string[];
   avatarUrl?: string | null;
 }
 
@@ -42,8 +44,9 @@ const HeaderHome: React.FC = () => {
     if (result.success) {
       toast.success(result.message || "Logged out successfully!");
     }
+    setUser(null);
     setShowLogoutDialog(false);
-    navigate("/auth/login");
+    navigate("/auth/login", { replace: true });
   };
 
   const navItems = [
@@ -55,38 +58,40 @@ const HeaderHome: React.FC = () => {
     { label: "Exclusive Offers", path: "/promotion-and-voucher" },
   ];
 
-  // Menu items based on user role
-  const roleMenuItems = {
-    ADMIN: [
-      { label: "Dashboard", path: "/admin", icon: faChartLine },
-      {
-        label: "Management",
-        path: "/admin/room-management",
-        icon: faTasks,
-      },
-      { label: "Profile", path: "/customer/profile", icon: faUserCircle },
-    ],
-    EMPLOYEE: [
-      {
-        label: "Dashboard",
-        path: "/employee/dashboard",
-        icon: faChartLine,
-      },
-      {
-        label: "Booking Management",
-        path: "/employee/booking-management",
-        icon: faTasks,
-      },
-      { label: "Profile", path: "/customer/profile", icon: faUserCircle },
-    ],
-    CUSTOMER: [
-      { label: "Profile", path: "/customer/profile", icon: faUserCircle },
-      {
-        label: "My Booking",
-        path: "/customer/mybooking",
-        icon: faBookmark,
-      },
-    ],
+  const getPrimaryRole = () => user?.userRole || user?.roles?.[0];
+
+  const getProfilePath = () => {
+    const role = getPrimaryRole();
+    if (role === "SUPER_ADMIN" || role === "ADMIN") return "/admin/profile";
+    if (role === "EMPLOYEE") return "/employee/profile";
+    return "/customer/profile";
+  };
+
+  const getUserMenuItems = () => {
+    const role = getPrimaryRole();
+    const roleItems =
+      role === "SUPER_ADMIN" || role === "ADMIN"
+        ? [
+            { label: "Dashboard", path: "/admin", icon: faChartLine },
+            { label: "Management", path: "/admin/room-management", icon: faTasks },
+          ]
+        : role === "EMPLOYEE"
+          ? [
+              { label: "Dashboard", path: "/employee/customers", icon: faChartLine },
+              {
+                label: "Booking Management",
+                path: "/employee/bookingPage",
+                icon: faTasks,
+              },
+            ]
+          : [];
+
+    return [
+      ...roleItems,
+      { label: "Profile", path: getProfilePath(), icon: faUserCircle },
+      { label: "My Booking", path: "/customer/mybooking", icon: faBookmark },
+      { label: "My Vouchers", path: `${getProfilePath()}?tab=vouchers`, icon: faTicketAlt },
+    ];
   };
 
   const getLastTwoWords = (name: string): string => {
@@ -108,6 +113,8 @@ const HeaderHome: React.FC = () => {
           console.error("Error parsing user data:", error);
           localStorage.removeItem("user");
         }
+      } else {
+        setUser(null);
       }
     };
 
@@ -115,7 +122,13 @@ const HeaderHome: React.FC = () => {
 
     // Listen for storage changes (when user logs in/out in another tab)
     window.addEventListener("storage", checkUserStatus);
-    return () => window.removeEventListener("storage", checkUserStatus);
+    window.addEventListener("authChanged", checkUserStatus);
+    window.addEventListener("userDataUpdated", checkUserStatus);
+    return () => {
+      window.removeEventListener("storage", checkUserStatus);
+      window.removeEventListener("authChanged", checkUserStatus);
+      window.removeEventListener("userDataUpdated", checkUserStatus);
+    };
   }, []);
 
   return (
@@ -234,19 +247,16 @@ const HeaderHome: React.FC = () => {
                       <p className="text-sm text-white font-serif truncate">
                         {getLastTwoWords(user.fullName || user.userName)}
                       </p>
-                      {user.userRole && (
+                      {getPrimaryRole() && (
                         <p className="text-xs text-gray-400 font-serif">
-                          {user.userRole}
+                          {getPrimaryRole()}
                         </p>
                       )}
                     </div>
                   </div>
 
                   {/* Dynamic menu items based on user role */}
-                  {user.userRole &&
-                    roleMenuItems[
-                      user.userRole as keyof typeof roleMenuItems
-                    ]?.map((item) => (
+                  {getUserMenuItems().map((item) => (
                       <Link
                         key={item.path}
                         to={item.path}

@@ -40,6 +40,7 @@ export interface ProfileUpdateRequest {
   email?: string;
   phone?: string;
   address?: string;
+  avatarUrl?: string | null;
   birthDate?: string;
   gender?: "MALE" | "FEMALE" | "OTHER";
 }

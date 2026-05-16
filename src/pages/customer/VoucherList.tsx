@@ -16,7 +16,19 @@ const VoucherList: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState<string>("");
 
   // Lấy customerId từ localStorage hoặc session
-  const customerId = localStorage.getItem("customerId") || "CU0FE3D8";
+  const getCustomerId = () => {
+    try {
+      const userData = localStorage.getItem("user");
+      if (!userData) return localStorage.getItem("customerId");
+      const user = JSON.parse(userData);
+      return user?.userRole === "CUSTOMER" ? user.id : null;
+    } catch (error) {
+      console.error("Error reading customer ID:", error);
+      return localStorage.getItem("customerId");
+    }
+  };
+
+  const customerId = getCustomerId();
 
   useEffect(() => {
     if (!customerId) {
@@ -33,10 +45,11 @@ const VoucherList: React.FC = () => {
 
     try {
       setLoading(true);
-      const data = await getVouchersByCustomerId("CU0FE3D8");
+      const data = await getVouchersByCustomerId(customerId);
       setVouchers(data);
     } catch (error) {
       console.error("Error loading vouchers:", error);
+      setVouchers([]);
     } finally {
       setLoading(false);
     }
@@ -121,7 +134,7 @@ const VoucherList: React.FC = () => {
                 const { status, label } = getVoucherStatus(voucher.endDate);
                 return (
                   <VoucherCard
-                    key={`${voucher.voucherID}-${index}`}
+                    key={`${voucher.voucherId}-${index}`}
                     voucher={voucher}
                     index={index}
                     status={status}
