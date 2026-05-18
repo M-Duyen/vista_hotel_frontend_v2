@@ -24,6 +24,30 @@ interface EmployeeFormData {
     userRole: 'ADMIN' | 'EMPLOYEE';
 }
 
+const DEPARTMENTS = [
+    'Front Office',
+    'Housekeeping',
+    'Food & Beverage',
+    'Sales & Marketing',
+    'Human Resources',
+    'IT & Systems',
+    'Security',
+    'Finance & Accounting'
+];
+
+const POSITIONS = [
+    'General Manager',
+    'Department Manager',
+    'Receptionist',
+    'Housekeeper',
+    'Chef',
+    'Waiter/Waitress',
+    'Security Officer',
+    'Accountant',
+    'IT Administrator',
+    'Marketing Coordinator'
+];
+
 export default function EditEmployeeModal({
     show,
     employee,
@@ -53,7 +77,7 @@ export default function EditEmployeeModal({
     useEffect(() => {
         if (show && employee) {
             setFormData({
-                userName: employee.userName || '',
+                userName: employee.username || employee.userName || '',
                 fullName: employee.fullName || '',
                 email: employee.email || '',
                 phone: employee.phone || '',
@@ -63,8 +87,12 @@ export default function EditEmployeeModal({
                 hireDate: employee.hireDate || '',
                 address: employee.address || '',
                 userRole:
-                    (employee.userRole as 'ADMIN' | 'EMPLOYEE') || 'EMPLOYEE',
-                status: (employee.status as 'ACTIVE' | 'INACTIVE') || 'ACTIVE',
+                    (employee.userRole as 'ADMIN' | 'EMPLOYEE') ||
+                    (employee.roles?.includes('ADMIN') ? 'ADMIN' : 'EMPLOYEE'),
+                status:
+                    (employee.employeeStatus as 'ACTIVE' | 'INACTIVE') ||
+                    (employee.status as 'ACTIVE' | 'INACTIVE') ||
+                    'ACTIVE',
             });
             setErrors({});
         }
@@ -93,39 +121,39 @@ export default function EditEmployeeModal({
         const newErrors: Partial<EmployeeFormData> = {};
 
         if (!formData.userName.trim()) {
-            newErrors.userName = 'Vui lòng nhập tên đăng nhập';
+            newErrors.userName = 'Please enter a username';
         }
 
         if (!formData.fullName.trim()) {
-            newErrors.fullName = 'Vui lòng nhập họ tên';
+            newErrors.fullName = 'Please enter full name';
         }
 
         if (
             formData.email &&
             !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
         ) {
-            newErrors.email = 'Email không hợp lệ';
+            newErrors.email = 'Invalid email address';
         }
 
         if (
             formData.phone &&
             !/^[0-9]{10,11}$/.test(formData.phone.replace(/\s/g, ''))
         ) {
-            newErrors.phone = 'Số điện thoại không hợp lệ';
+            newErrors.phone = 'Invalid phone number';
         }
 
         if (!formData.position.trim()) {
-            newErrors.position = 'Vui lòng nhập chức vụ';
+            newErrors.position = 'Please select job position';
         }
 
         if (!formData.department.trim()) {
-            newErrors.department = 'Vui lòng nhập phòng ban';
+            newErrors.department = 'Please select department';
         }
 
         if (!formData.salary.trim()) {
-            newErrors.salary = 'Vui lòng nhập lương';
+            newErrors.salary = 'Please enter salary';
         } else if (isNaN(Number(formData.salary.replace(/,/g, '')))) {
-            newErrors.salary = 'Lương phải là số';
+            newErrors.salary = 'Salary must be a number';
         }
 
         setErrors(newErrors);
@@ -136,7 +164,7 @@ export default function EditEmployeeModal({
     const handleSubmit = async () => {
         if (!validate() || !employee || !employee.id) {
             console.error('Missing employee or employee ID:', employee);
-            toast.error('Không tìm thấy thông tin nhân viên để cập nhật');
+            toast.error('Unable to find employee information to update');
             return;
         }
 
@@ -144,6 +172,7 @@ export default function EditEmployeeModal({
 
         try {
             const updatedEmployee: Partial<Employee> = {
+                username: formData.userName,
                 userName: formData.userName,
                 fullName: formData.fullName,
                 email: formData.email.trim() || null,
@@ -154,8 +183,8 @@ export default function EditEmployeeModal({
                 hireDate: formData.hireDate || null,
                 address: formData.address.trim() || null,
                 userRole: formData.userRole,
+                employeeStatus: formData.status,
                 status: formData.status,
-                // Không truyền password để giữ nguyên mật khẩu hiện tại
             };
 
             console.log(
@@ -164,12 +193,12 @@ export default function EditEmployeeModal({
                 updatedEmployee,
             );
             await update(employee.id, updatedEmployee);
-            toast.success('Cập nhật thông tin nhân viên thành công!');
+            toast.success('Employee updated successfully!');
             onSuccess();
             onClose();
         } catch (error) {
             console.error('Update employee error:', error);
-            toast.error('Có lỗi xảy ra khi cập nhật thông tin nhân viên');
+            toast.error('An error occurred while updating employee');
         } finally {
             setIsSubmitting(false);
         }
@@ -189,6 +218,19 @@ export default function EditEmployeeModal({
         return null;
     }
 
+    // Dynamic selection lists to guarantee no data loss if existing records are named differently
+    const departmentsToRender = DEPARTMENTS.includes(formData.department)
+        ? DEPARTMENTS
+        : formData.department
+        ? [...DEPARTMENTS, formData.department]
+        : DEPARTMENTS;
+
+    const positionsToRender = POSITIONS.includes(formData.position)
+        ? POSITIONS
+        : formData.position
+        ? [...POSITIONS, formData.position]
+        : POSITIONS;
+
     return (
         <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-[9999]">
             {/* Click to close overlay */}
@@ -200,7 +242,7 @@ export default function EditEmployeeModal({
             >
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-gray-900">
-                        Chỉnh sửa thông tin nhân viên
+                        Edit Employee Information
                     </h2>
                     <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-lg">
                         ID: {employee.id}
@@ -214,7 +256,7 @@ export default function EditEmployeeModal({
                         {/* Username */}
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Tên đăng nhập *
+                                Username *
                             </label>
                             <input
                                 type="text"
@@ -227,7 +269,7 @@ export default function EditEmployeeModal({
                                         ? 'border-red-500'
                                         : 'border-gray-200 hover:border-gray-400 focus:border-blue-500'
                                 }`}
-                                placeholder="Nhập tên đăng nhập"
+                                placeholder="Enter username"
                             />
                             {errors.userName && (
                                 <p className="text-red-500 text-sm mt-1">
@@ -239,7 +281,7 @@ export default function EditEmployeeModal({
                         {/* Full Name */}
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Họ và tên *
+                                Full Name *
                             </label>
                             <input
                                 type="text"
@@ -252,7 +294,7 @@ export default function EditEmployeeModal({
                                         ? 'border-red-500'
                                         : 'border-gray-200 hover:border-gray-400 focus:border-blue-500'
                                 }`}
-                                placeholder="Nhập họ và tên"
+                                placeholder="Enter full name"
                             />
                             {errors.fullName && (
                                 <p className="text-red-500 text-sm mt-1">
@@ -290,7 +332,7 @@ export default function EditEmployeeModal({
 
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Số điện thoại
+                                Phone Number
                             </label>
                             <input
                                 type="tel"
@@ -317,10 +359,9 @@ export default function EditEmployeeModal({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Chức vụ *
+                                Job Position *
                             </label>
-                            <input
-                                type="text"
+                            <select
                                 value={formData.position}
                                 onChange={(e) =>
                                     handleChange('position', e.target.value)
@@ -329,9 +370,15 @@ export default function EditEmployeeModal({
                                     errors.position
                                         ? 'border-red-500'
                                         : 'border-gray-200 hover:border-gray-400 focus:border-blue-500'
-                                }`}
-                                placeholder="Ví dụ: Lễ tân, Quản lý, Kế toán..."
-                            />
+                                } bg-white`}
+                            >
+                                <option value="" disabled>Select a position</option>
+                                {positionsToRender.map((pos) => (
+                                    <option key={pos} value={pos}>
+                                        {pos}
+                                    </option>
+                                ))}
+                            </select>
                             {errors.position && (
                                 <p className="text-red-500 text-sm mt-1">
                                     {errors.position}
@@ -341,10 +388,9 @@ export default function EditEmployeeModal({
 
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Phòng ban *
+                                Department *
                             </label>
-                            <input
-                                type="text"
+                            <select
                                 value={formData.department}
                                 onChange={(e) =>
                                     handleChange('department', e.target.value)
@@ -353,9 +399,15 @@ export default function EditEmployeeModal({
                                     errors.department
                                         ? 'border-red-500'
                                         : 'border-gray-200 hover:border-gray-400 focus:border-blue-500'
-                                }`}
-                                placeholder="Ví dụ: Lễ tân, Housekeeping, Kế toán..."
-                            />
+                                } bg-white`}
+                            >
+                                <option value="" disabled>Select a department</option>
+                                {departmentsToRender.map((dept) => (
+                                    <option key={dept} value={dept}>
+                                        {dept}
+                                    </option>
+                                ))}
+                            </select>
                             {errors.department && (
                                 <p className="text-red-500 text-sm mt-1">
                                     {errors.department}
@@ -368,7 +420,7 @@ export default function EditEmployeeModal({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Lương (VNĐ) *
+                                Salary (VND) *
                             </label>
                             <input
                                 type="text"
@@ -395,33 +447,33 @@ export default function EditEmployeeModal({
 
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Vai trò
+                                Role
                             </label>
                             <select
                                 value={formData.userRole}
                                 onChange={(e) =>
                                     handleChange('userRole', e.target.value)
                                 }
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl hover:border-gray-400 focus:border-blue-500 transition-colors"
+                                className="w-full p-3 border-2 border-gray-200 rounded-xl hover:border-gray-400 focus:border-blue-500 transition-colors bg-white"
                             >
-                                <option value="EMPLOYEE">Nhân viên</option>
-                                <option value="ADMIN">Quản trị viên</option>
+                                <option value="EMPLOYEE">Employee</option>
+                                <option value="ADMIN">Administrator</option>
                             </select>
                         </div>
 
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Trạng thái
+                                Status
                             </label>
                             <select
                                 value={formData.status}
                                 onChange={(e) =>
                                     handleChange('status', e.target.value)
                                 }
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl hover:border-gray-400 focus:border-blue-500 transition-colors"
+                                className="w-full p-3 border-2 border-gray-200 rounded-xl hover:border-gray-400 focus:border-blue-500 transition-colors bg-white"
                             >
-                                <option value="ACTIVE">Hoạt động</option>
-                                <option value="INACTIVE">Tạm nghỉ</option>
+                                <option value="ACTIVE">Active</option>
+                                <option value="INACTIVE">Inactive</option>
                             </select>
                         </div>
                     </div>
@@ -429,7 +481,7 @@ export default function EditEmployeeModal({
                     {/* Date & Address */}
                     <div>
                         <label className="text-sm font-medium text-gray-700 mb-2 block">
-                            Ngày tuyển dụng
+                            Hire Date
                         </label>
                         <input
                             type="date"
@@ -437,13 +489,13 @@ export default function EditEmployeeModal({
                             onChange={(e) =>
                                 handleChange('hireDate', e.target.value)
                             }
-                            className="w-full p-3 border-2 border-gray-200 rounded-xl hover:border-gray-400 focus:border-blue-500 transition-colors"
+                            className="w-full p-3 border-2 border-gray-200 rounded-xl hover:border-gray-400 focus:border-blue-500 transition-colors bg-white"
                         />
                     </div>
 
                     <div>
                         <label className="text-sm font-medium text-gray-700 mb-2 block">
-                            Địa chỉ
+                            Address
                         </label>
                         <textarea
                             value={formData.address}
@@ -451,7 +503,7 @@ export default function EditEmployeeModal({
                                 handleChange('address', e.target.value)
                             }
                             className="w-full p-3 border-2 border-gray-200 rounded-xl hover:border-gray-400 focus:border-blue-500 transition-colors"
-                            placeholder="Nhập địa chỉ"
+                            placeholder="Enter address"
                             rows={3}
                         />
                     </div>
@@ -460,17 +512,17 @@ export default function EditEmployeeModal({
                 {/* Info Box */}
                 <div className="bg-gray-50 p-4 rounded-xl mt-6">
                     <h3 className="font-medium text-gray-800 mb-2">
-                        Thông tin hệ thống
+                        System Information
                     </h3>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                            <span className="text-gray-600">Mã nhân viên:</span>
+                            <span className="text-gray-600">Employee ID:</span>
                             <span className="ml-2 font-medium">
                                 {employee.id}
                             </span>
                         </div>
                         <div>
-                            <span className="text-gray-600">Mật khẩu:</span>
+                            <span className="text-gray-600">Password:</span>
                             <span className="ml-2 text-gray-400">••••••••</span>
                         </div>
                     </div>
@@ -483,7 +535,7 @@ export default function EditEmployeeModal({
                         onClick={onClose}
                         disabled={isSubmitting}
                     >
-                        Hủy
+                        Cancel
                     </button>
 
                     <button
@@ -494,7 +546,7 @@ export default function EditEmployeeModal({
                         {isSubmitting && (
                             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         )}
-                        {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật'}
+                        {isSubmitting ? 'Updating...' : 'Update'}
                     </button>
                 </div>
             </div>

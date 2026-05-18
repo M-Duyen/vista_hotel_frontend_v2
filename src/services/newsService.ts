@@ -1,36 +1,58 @@
 /* eslint-disable */
-import { api } from './apiClient';
+import { newsApi } from './apiClient';
 import type { News } from '../types/News';
 
-const ENDPOINT = '/news';
+const ENDPOINT = '';
 
-// Lấy tất cả
 export const getAll = async () => {
-    const response = await api.get(ENDPOINT);
-    return response.data;
+    try {
+        const response = await newsApi.get(ENDPOINT);
+        const data = response.data?.data || response.data;
+        return Array.isArray(data) ? data : [];
+    } catch (error) {
+        console.error('Error fetching news:', error);
+        return [];
+    }
 };
 
 // Lấy tin nổi bật
 export const getHighlighted = async () => {
-    const response = await api.get(`${ENDPOINT}/highlight`);
-    return response.data;
+    try {
+        const response = await newsApi.get(`${ENDPOINT}/highlight`);
+        const data = response.data?.data || response.data;
+        return Array.isArray(data) ? data : [];
+    } catch (error) {
+        console.error('Error fetching highlighted news:', error);
+        return [];
+    }
 };
 
-// Lấy tin theo newsId
-export const getNewsById = async (newsId: string): Promise<News> => {
-    const response = await api.get(`${ENDPOINT}/${newsId}`);
-    return response.data;
+// Lấy theo ID
+export const getNewsById = async (newsId: string): Promise<News | null> => {
+    try {
+        const response = await newsApi.get(`${ENDPOINT}/${newsId}`);
+        return response.data?.data || response.data;
+    } catch (error) {
+        console.error(`Error fetching news ${newsId}:`, error);
+        return null;
+    }
 };
 
 // Thêm tin tức
 export const createNews = async (data: any) => {
-    const response = await api.post(`${ENDPOINT}/create`, data);
+    const response = await newsApi.post(`${ENDPOINT}/create`, data);
     return response.data;
 };
 
 // Cập nhật tin tức
 export const updateNews = async (newsId: string, data: any) => {
-    const response = await api.put(`${ENDPOINT}/update/${newsId}`, data);
+    const response = await newsApi.put(`${ENDPOINT}/update/${newsId}`, data);
+    return response.data;
+};
+
+// Xóa tin tức
+export const deleteNews = async (newsId: string) => {
+    const response = await newsApi.delete(`${ENDPOINT}/delete/${newsId}`);
     return response.data;
 };
 
@@ -40,4 +62,5 @@ export default {
     getNewsById,
     createNews,
     updateNews,
+    deleteNews,
 };

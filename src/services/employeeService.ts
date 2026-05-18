@@ -1,112 +1,113 @@
-import { api } from './apiClient';
+/* eslint-disable */
+import { usersApi } from './apiClient';
 import type { Employee } from '../types/Employee';
 
-const ENDPOINT = '/employees';
+// Endpoint để lấy danh sách nhân viên từ User Service
+const ENDPOINT = '/role/EMPLOYEE';
+
+const normalizeEmployeePayload = (employee: Partial<Employee>) => {
+    const username = employee.username || employee.userName || '';
+    const employeeStatus = employee.employeeStatus || employee.status || 'ACTIVE';
+
+    return {
+        username,
+        email: employee.email,
+        fullName: employee.fullName,
+        password: employee.password,
+        phone: employee.phone,
+        address: employee.address,
+        avatarUrl: (employee as any).avatarUrl,
+        department: employee.department,
+        position: employee.position,
+        salary: employee.salary,
+        hireDate: employee.hireDate,
+        employeeStatus,
+        adminLevel:
+            employee.userRole === 'ADMIN' || employee.roles?.includes('ADMIN')
+                ? 1
+                : undefined,
+    };
+};
 
 // Lấy danh sách tất cả nhân viên
 export const getAll = async (): Promise<Employee[]> => {
     try {
-        const response = await api.get(ENDPOINT);
-        return response.data;
+        const response = await usersApi.get(ENDPOINT);
+        // Backend trả về { total: x, data: [...] }
+        return response.data?.data || response.data || [];
     } catch (error) {
         console.error('Error fetching employees:', error);
-        throw error;
+        return [];
     }
 };
 
-// Tìm kiếm nhân viên theo tên
+// Tìm kiếm nhân viên theo tên (Nếu backend có endpoint search theo role thì dùng, nếu không thì lọc ở FE)
 export const searchEmployees = async (name: string): Promise<Employee[]> => {
     try {
-        const response = await api.get(`${ENDPOINT}/search`, {
-            params: { name },
+        const response = await usersApi.get(`${ENDPOINT}`, {
+            params: { name }, // Giả định backend hỗ trợ query param name ở endpoint role
         });
-        return response.data;
+        return response.data?.data || response.data || [];
     } catch (error) {
         console.error('Error searching employees:', error);
-        throw error;
+        return [];
     }
 };
 
 // Lấy thông tin nhân viên theo ID
-export const getById = async (id: string): Promise<Employee> => {
+export const getById = async (id: string): Promise<Employee | null> => {
     try {
-        const response = await api.get(`${ENDPOINT}/${id}`);
+        const response = await usersApi.get(`/${id}`);
         return response.data;
     } catch (error) {
-        console.error('Error fetching employee by ID:', error);
-        throw error;
+        console.error(`Error fetching employee ${id}:`, error);
+        return null;
     }
 };
 
-// Thêm nhân viên mới
-export const create = async (
-    employee: Partial<Employee>,
-): Promise<Employee> => {
+// Lưu nhân viên mới
+export const saveEmployee = async (employee: Partial<Employee>): Promise<Employee | null> => {
     try {
-        console.log('Creating new employee:', employee);
-        const response = await api.post(`${ENDPOINT}/save`, employee);
+        const response = await usersApi.post('', normalizeEmployeePayload(employee));
         return response.data;
-    } catch (error) {
-        console.error('Error creating employee:', error);
-        throw error;
-    }
-};
-
-// Cập nhật thông tin nhân viên
-export const update = async (
-    id: string,
-    employee: Partial<Employee>,
-): Promise<Employee> => {
-    try {
-        console.log('Updating employee with ID:', id, 'Data:', employee);
-        // Bao gồm ID trong employee data để backend biết đây là update
-        const employeeWithId = { ...employee, id };
-        const response = await api.post(`${ENDPOINT}/save`, employeeWithId);
-        return response.data;
-    } catch (error) {
-        console.error('Error updating employee with ID:', id, error);
-        throw error;
-    }
-};
-
-// Thêm hoặc cập nhật nhân viên (để tương thích ngược)
-export const createOrUpdate = async (
-    employee: Partial<Employee>,
-): Promise<Employee> => {
-    try {
-        if (employee.id) {
-            return await update(employee.id, employee);
-        } else {
-            return await create(employee);
-        }
     } catch (error) {
         console.error('Error saving employee:', error);
         throw error;
     }
 };
 
-// Xóa nhân viên
-export const deleteEmployee = async (id: string): Promise<void> => {
+export const create = saveEmployee;
+
+// Cập nhật nhân viên
+export const updateEmployee = async (id: string, employee: Partial<Employee>): Promise<Employee | null> => {
     try {
-        await api.delete(`${ENDPOINT}/${id}`);
+        const response = await usersApi.put(`/${id}`, normalizeEmployeePayload(employee));
+        return response.data;
     } catch (error) {
-        console.error('Error deleting employee:', error);
+        console.error(`Error updating employee ${id}:`, error);
         throw error;
     }
 };
 
-// Cập nhật trạng thái nhân viên
-export const updateStatus = async (
-    id: string,
-    status: 'ACTIVE' | 'INACTIVE',
-): Promise<Employee> => {
+export const update = updateEmployee;
+
+// Xóa nhân viên
+export const deleteEmployee = async (id: string): Promise<void> => {
     try {
-        const response = await api.patch(`${ENDPOINT}/${id}/status`, {
-          status,
-        });
-        return response.data;
+        await usersApi.delete(`/${id}`);
     } catch (error) {
-        console.error('Error updating employee status:', error);
+        console.error(`Error deleting employee ${id}:`, error);
         throw error;
     }
+};
+
+export default {
+    getAll,
+    getById,
+    create,
+    saveEmployee,
+    update,
+    updateEmployee,
+    deleteEmployee,
+    searchEmployees,
 };

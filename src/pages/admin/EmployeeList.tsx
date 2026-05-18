@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import type { Employee } from '../../types/Employee';
 import { getAll, deleteEmployee } from '../../services/employeeService';
 import AddEmployeeModal from '../../components/employee/AddEmployeeModal';
+import EmployeeDetailModal from '../../components/employee/EmployeeDetailModal';
 import EditEmployeeModal from '../../components/employee/EditEmployeeModal';
 import { useToastContext } from '../../hooks/useToastContext';
 
-/* ---------------------------- Stat Card ---------------------------- */
 type StatCardProps = {
     icon: string;
     label: string;
@@ -44,6 +44,7 @@ export default function EmployeeList() {
 
     const [showModal, setShowModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showDetailModal, setShowDetailModal] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
         null,
     );
@@ -55,22 +56,28 @@ export default function EmployeeList() {
         console.log('Opening edit modal for employee:', emp);
         if (!emp.id) {
             console.error('Employee missing ID:', emp);
-            toast.error('Nhân viên không có ID hợp lệ');
+            toast.error('Employee does not have a valid ID');
             return;
         }
         setSelectedEmployee(emp);
         setShowEditModal(true);
     };
 
+    const handleViewEmployee = (emp: Employee) => {
+        setSelectedEmployee(emp);
+        setShowDetailModal(true);
+    };
+
     const handleDeleteEmployee = async (employeeId: string) => {
-        if (!confirm('Bạn có chắc chắn muốn xóa nhân viên này?')) return;
+        if (!confirm('Are you sure you want to delete this employee?')) return;
 
         try {
             await deleteEmployee(employeeId);
             setEmployees((prev) => prev.filter((e) => e.id !== employeeId));
+            toast.success('Employee deleted successfully');
         } catch (error) {
             console.error('Delete employee error:', error);
-            toast.error('Không thể xóa nhân viên');
+            toast.error('Unable to delete employee');
         }
     };
 
@@ -81,7 +88,7 @@ export default function EmployeeList() {
             setEmployees(data ?? []);
         } catch (error) {
             console.error('Load employees error:', error);
-            toast.error('Không thể tải danh sách nhân viên');
+            toast.error('Unable to load employee list');
         }
     };
 
@@ -122,7 +129,7 @@ export default function EmployeeList() {
     if (loading)
         return (
             <div className="flex justify-center items-center h-screen text-gray-700 text-xl">
-                Đang tải dữ liệu nhân viên...
+                Loading employee data...
             </div>
         );
 
@@ -143,10 +150,10 @@ export default function EmployeeList() {
                     {/* Title */}
                     <div className="mb-6">
                         <h1 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">
-                            Quản lý nhân viên
+                            Employee Management
                         </h1>
                         <p className="text-sm text-gray-600 font-light">
-                            Quản lý dữ liệu nhân viên một cách hiệu quả
+                            Manage employee data efficiently
                         </p>
                     </div>
 
@@ -154,13 +161,13 @@ export default function EmployeeList() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
                         <StatCard
                             icon="fa-users"
-                            label="Tổng nhân viên"
+                            label="Total Employees"
                             value={employees.length}
                             color="bg-gray-900"
                         />
                         <StatCard
                             icon="fa-building"
-                            label="Bộ phận"
+                            label="Departments"
                             value={
                                 [...new Set(employees.map((e) => e.department))]
                                     .length
@@ -169,7 +176,7 @@ export default function EmployeeList() {
                         />
                         <StatCard
                             icon="fa-id-badge"
-                            label="Vị trí công việc"
+                            label="Job Positions"
                             value={
                                 [...new Set(employees.map((e) => e.position))]
                                     .length
@@ -178,7 +185,7 @@ export default function EmployeeList() {
                         />
                         <StatCard
                             icon="fa-dollar-sign"
-                            label="Tổng lương"
+                            label="Total Payroll"
                             value={employees
                                 .reduce((t, e) => t + (e.salary ?? 0), 0)
                                 .toLocaleString()}
@@ -193,7 +200,7 @@ export default function EmployeeList() {
                                 <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                                 <input
                                     type="text"
-                                    placeholder="Tìm theo tên, email, mã, bộ phận..."
+                                    placeholder="Search by name, email, ID, department..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 transition bg-gray-50 hover:bg-white text-sm"
@@ -205,7 +212,7 @@ export default function EmployeeList() {
                                 className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-semibold transition shadow-md hover:shadow-lg text-sm flex items-center gap-2"
                             >
                                 <i className="fa-solid fa-plus text-sm"></i>
-                                Thêm nhân viên
+                                Add Employee
                             </button>
                         </div>
                     </div>
@@ -216,6 +223,9 @@ export default function EmployeeList() {
                             <table className="w-full">
                                 <thead className="bg-[#F5F0EB] border-b border-gray-300">
                                     <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-900 uppercase">
+                                            No.
+                                        </th>
                                         <th className="px-4 py-3 text-left text-xs font-bold text-gray-900 uppercase">
                                             ID
                                         </th>
@@ -238,17 +248,20 @@ export default function EmployeeList() {
                                             Address
                                         </th>
                                         <th className="px-4 py-3 text-center text-xs font-bold text-gray-900 uppercase">
-                                            Thao tác
+                                            Actions
                                         </th>
                                     </tr>
                                 </thead>
 
                                 <tbody className="divide-y divide-gray-200">
-                                    {currentEmployees.map((e) => (
+                                    {currentEmployees.map((e, index) => (
                                         <tr
                                             key={e.id}
                                             className="hover:bg-[#F5F0EB] transition group"
                                         >
+                                            <td className="px-4 py-3 text-sm text-gray-600 font-medium">
+                                                {startIndex + index + 1}
+                                            </td>
                                             <td className="px-4 py-3 font-bold text-gray-900 text-sm">
                                                 {e.id}
                                             </td>
@@ -281,12 +294,23 @@ export default function EmployeeList() {
                                             </td>
 
                                             <td className="px-4 py-3 text-center">
-                                                <div className="flex gap-2 transition">
-                                                    <button className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition">
+                                                <div className="flex gap-2 transition justify-center">
+                                                    <button
+                                                        type="button"
+                                                        aria-label="View details"
+                                                        onClick={() =>
+                                                            handleViewEmployee(
+                                                                e,
+                                                            )
+                                                        }
+                                                        className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition"
+                                                    >
                                                         <i className="fa-solid fa-eye text-sm"></i>
                                                     </button>
 
                                                     <button
+                                                        type="button"
+                                                        aria-label="Edit"
                                                         onClick={() =>
                                                             handleEditEmployee(
                                                                 e,
@@ -307,9 +331,9 @@ export default function EmployeeList() {
                         {/* Footer */}
                         <div className="px-4 py-3 border-t bg-[#F5F0EB] text-sm flex justify-between">
                             <span>
-                                Hiển thị {startIndex + 1}–
+                                Showing {startIndex + 1}–
                                 {Math.min(endIndex, filtered.length)} /{' '}
-                                {filtered.length} nhân viên
+                                {filtered.length} employees
                             </span>
 
                             {/* Pagination */}
@@ -375,6 +399,15 @@ export default function EmployeeList() {
                 onSuccess={() => {
                     setShowModal(false);
                     loadEmployees();
+                }}
+            />
+
+            <EmployeeDetailModal
+                show={showDetailModal}
+                employee={selectedEmployee}
+                onClose={() => {
+                    setShowDetailModal(false);
+                    setSelectedEmployee(null);
                 }}
             />
 

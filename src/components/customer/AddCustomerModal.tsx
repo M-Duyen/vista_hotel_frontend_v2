@@ -5,7 +5,7 @@ interface CustomerModalProps {
     show: boolean;
     onClose: () => void;
     onSave: (data: Partial<Customer>) => void;
-    initialData?: Partial<Customer>; // dùng cho edit
+    initialData?: Partial<Customer>;
 }
 
 const AddCustomerModal: React.FC<CustomerModalProps> = ({
@@ -18,10 +18,10 @@ const AddCustomerModal: React.FC<CustomerModalProps> = ({
         fullName: '',
         email: '',
         phone: '',
+        address: '',
         birthDate: '',
         gender: 'MALE',
         memberShipLevel: 'SILVER',
-        loyaltyPoints: 0,
     });
 
     useEffect(() => {
@@ -34,15 +34,13 @@ const AddCustomerModal: React.FC<CustomerModalProps> = ({
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-8 relative">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                    {initialData
-                        ? 'Chỉnh sửa khách hàng'
-                        : 'Thêm khách hàng mới'}
+                    {initialData ? 'Edit Customer' : 'Add New Customer'}
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="text-sm font-medium text-gray-700">
-                            Họ tên
+                            Full Name
                         </label>
                         <input
                             type="text"
@@ -68,7 +66,7 @@ const AddCustomerModal: React.FC<CustomerModalProps> = ({
                     </div>
                     <div>
                         <label className="text-sm font-medium text-gray-700">
-                            Điện thoại
+                            Phone
                         </label>
                         <input
                             type="text"
@@ -81,7 +79,7 @@ const AddCustomerModal: React.FC<CustomerModalProps> = ({
                     </div>
                     <div>
                         <label className="text-sm font-medium text-gray-700">
-                            Ngày sinh
+                            Date of Birth
                         </label>
                         <input
                             type="date"
@@ -92,9 +90,22 @@ const AddCustomerModal: React.FC<CustomerModalProps> = ({
                             className="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm"
                         />
                     </div>
+                    <div className="md:col-span-2">
+                        <label className="text-sm font-medium text-gray-700">
+                            Address
+                        </label>
+                        <input
+                            type="text"
+                            value={form.address ?? ''}
+                            onChange={(e) =>
+                                setForm({ ...form, address: e.target.value })
+                            }
+                            className="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                    </div>
                     <div>
                         <label className="text-sm font-medium text-gray-700">
-                            Giới tính
+                            Gender
                         </label>
                         <select
                             value={form.gender ?? 'MALE'}
@@ -107,13 +118,13 @@ const AddCustomerModal: React.FC<CustomerModalProps> = ({
                             }
                             className="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm"
                         >
-                            <option value="MALE">Nam</option>
-                            <option value="FEMALE">Nữ</option>
+                            <option value="MALE">Male</option>
+                            <option value="FEMALE">Female</option>
                         </select>
                     </div>
                     <div>
                         <label className="text-sm font-medium text-gray-700">
-                            Hạng thành viên
+                            Membership Level
                         </label>
                         <select
                             value={form.memberShipLevel ?? 'SILVER'}
@@ -131,22 +142,6 @@ const AddCustomerModal: React.FC<CustomerModalProps> = ({
                             <option value="PLATINUM">Platinum</option>
                         </select>
                     </div>
-                    <div className="md:col-span-2">
-                        <label className="text-sm font-medium text-gray-700">
-                            Điểm tích lũy
-                        </label>
-                        <input
-                            type="number"
-                            value={form.loyaltyPoints ?? 0}
-                            onChange={(e) =>
-                                setForm({
-                                    ...form,
-                                    loyaltyPoints: Number(e.target.value),
-                                })
-                            }
-                            className="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm"
-                        />
-                    </div>
                 </div>
 
                 <div className="mt-8 flex justify-end gap-3">
@@ -154,13 +149,13 @@ const AddCustomerModal: React.FC<CustomerModalProps> = ({
                         onClick={onClose}
                         className="px-5 py-2 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-100 transition"
                     >
-                        Hủy
+                        Cancel
                     </button>
                     <button
                         onClick={() => onSave(form)}
                         className="px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 transition"
                     >
-                        Lưu
+                        Save
                     </button>
                 </div>
             </div>

@@ -2,11 +2,12 @@
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import AddCustomerModal from '../../components/customer/AddCustomerModal';
+import CustomerDetailModal from '../../components/customer/CustomerDetailModal';
 import EditCustomerModal from '../../components/customer/EditCustomerModal';
 import type { Customer } from '../../types/Customer';
-import { getAll } from '../../services/customerService';
+import { getAll, saveCustomer, updateCustomer } from '../../services/customerService';
 
-// Component thống kê nhỏ
+// Small statistics card component
 type StatCardProps = {
     icon: string;
     label: string;
@@ -39,7 +40,7 @@ type FilterSectionProps = {
 const FilterSection: React.FC<FilterSectionProps> = ({ onFilterChange }) => {
     const [active, setActive] = useState('all');
     const filters = [
-        { id: 'all', label: 'Tất cả', icon: 'fa-list' },
+        { id: 'all', label: 'All', icon: 'fa-list' },
         { id: 'bronze', label: 'Bronze', icon: 'fa-medal' },
         { id: 'silver', label: 'Silver', icon: 'fa-certificate' },
         { id: 'gold', label: 'Gold', icon: 'fa-star' },
@@ -49,7 +50,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({ onFilterChange }) => {
     return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
             <h3 className="text-sm font-bold text-gray-900 mb-3">
-                Lọc khách hàng
+                Filter Customers
             </h3>
             <div className="flex flex-wrap gap-2">
                 {filters.map((f) => (
@@ -82,6 +83,7 @@ export default function CustomerList() {
     const [error, setError] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showDetailModal, setShowDetailModal] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
         null,
     );
@@ -93,34 +95,45 @@ export default function CustomerList() {
         setShowEditModal(true);
     };
 
-    const handleSaveEdit = (updated: Customer) => {
-        setCustomers((prev) =>
-            prev.map((c) => (c.id === updated.id ? updated : c)),
-        );
+    const handleViewCustomer = (customer: Customer) => {
+        setSelectedCustomer(customer);
+        setShowDetailModal(true);
     };
 
-    const handleAddCustomer = (data: Partial<Customer>) => {
-        const newId =
-            'CUST' + (customers.length + 1).toString().padStart(3, '0');
-        const newCustomer: Customer = {
-            id: newId,
-            userName: data.email?.split('@')[0] || 'user' + newId,
-            password: '123456',
-            email: data.email ?? '',
-            phone: data.phone ?? '',
-            avatartUrl: data.avatartUrl ?? '',
-            fullName: data.fullName ?? '',
-            address: data.address ?? '',
-            userRole: 'CUSTOMER',
-            birthDate: data.birthDate ?? '',
-            gender: data.gender ?? '',
-            joinedDate: new Date().toISOString().split('T')[0],
-            loyaltyPoints: data.loyaltyPoints ?? 0,
-            memberShipLevel: data.memberShipLevel ?? 'SILVER',
-            reputationPoint: data.reputationPoint ?? 0,
-        };
-        setCustomers((prev) => [...prev, newCustomer]);
-        setShowModal(false);
+    const handleSaveEdit = async (updated: Customer) => {
+        try {
+            const data = await updateCustomer(updated.id, updated);
+            setCustomers((prev) =>
+                prev.map((c) => (c.id === updated.id ? data : c)),
+            );
+            setShowEditModal(false);
+        } catch (err: any) {
+            alert(err.message || 'Error updating customer');
+        }
+    };
+
+    const handleAddCustomer = async (data: Partial<Customer>) => {
+        try {
+            // Prepare new customer data
+            const customerToSave = {
+                ...data,
+                userName: data.email?.split('@')[0] || 'user' + Date.now(),
+                password: '123456',
+                userRole: 'CUSTOMER',
+                joinedDate: new Date().toISOString().split('T')[0],
+                loyaltyPoints: data.loyaltyPoints ?? 100,
+                memberShipLevel: data.memberShipLevel ?? 'BRONZE',
+                reputationPoint: data.reputationPoint ?? 100,
+            } as Customer;
+
+            const saved = await saveCustomer(customerToSave);
+            if (saved) {
+                setCustomers((prev) => [...prev, saved]);
+            }
+            setShowModal(false);
+        } catch (err: any) {
+            alert(err.message || 'Error adding customer');
+        }
     };
 
     useEffect(() => {
@@ -129,7 +142,7 @@ export default function CustomerList() {
                 const data = await getAll();
                 setCustomers(data ?? []);
             } catch (err) {
-                setError('Không thể tải danh sách khách hàng');
+                setError('Unable to load customer list');
             } finally {
                 setLoading(false);
             }
@@ -151,13 +164,13 @@ export default function CustomerList() {
         );
     });
 
-    // Tính toán phân trang
+    // Pagination calculations
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const currentCustomers = filtered.slice(startIndex, endIndex);
 
-    // Reset về trang 1 khi filter hoặc search thay đổi
+    // Reset to page 1 when filter or search changes
     useEffect(() => {
         setCurrentPage(1);
     }, [search, filter]);
@@ -165,7 +178,7 @@ export default function CustomerList() {
     if (loading)
         return (
             <div className="flex justify-center items-center h-screen text-gray-700 text-xl">
-                Đang tải dữ liệu khách hàng...
+                Loading customer data...
             </div>
         );
 
@@ -182,25 +195,24 @@ export default function CustomerList() {
                 <div className="max-w-7xl mx-auto">
                     <div className="mb-6">
                         <h1 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">
-                            Quản lý khách hàng
+                            Customer Management
                         </h1>
                         <p className="text-sm text-gray-600 font-light">
-                            Quản lý thông tin và dữ liệu khách hàng một cách
-                            hiệu quả
+                            Manage customer information and data efficiently
                         </p>
                     </div>
 
-                    {/* Thống kê */}
+                    {/* Stats */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
                         <StatCard
                             icon="fa-users"
-                            label="Tổng khách hàng"
+                            label="Total Customers"
                             value={customers.length.toString()}
                             color="bg-gray-900"
                         />
                         <StatCard
                             icon="fa-medal"
-                            label="Thành viên Bronze"
+                            label="Bronze Members"
                             value={customers
                                 .filter((c) => c.memberShipLevel === 'BRONZE')
                                 .length.toString()}
@@ -208,7 +220,7 @@ export default function CustomerList() {
                         />
                         <StatCard
                             icon="fa-certificate"
-                            label="Thành viên Silver"
+                            label="Silver Members"
                             value={customers
                                 .filter((c) => c.memberShipLevel === 'SILVER')
                                 .length.toString()}
@@ -216,7 +228,7 @@ export default function CustomerList() {
                         />
                         <StatCard
                             icon="fa-star"
-                            label="Thành viên Gold"
+                            label="Gold Members"
                             value={customers
                                 .filter((c) => c.memberShipLevel === 'GOLD')
                                 .length.toString()}
@@ -224,7 +236,7 @@ export default function CustomerList() {
                         />
                         <StatCard
                             icon="fa-gem"
-                            label="Thành viên Platinum"
+                            label="Platinum Members"
                             value={customers
                                 .filter((c) => c.memberShipLevel === 'PLATINUM')
                                 .length.toString()}
@@ -232,17 +244,17 @@ export default function CustomerList() {
                         />
                     </div>
 
-                    {/* Bộ lọc */}
+                    {/* Filter Section */}
                     <FilterSection onFilterChange={setFilter} />
 
-                    {/* Thanh tìm kiếm */}
+                    {/* Search bar */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
                         <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
                             <div className="relative flex-1 w-full">
                                 <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                                 <input
                                     type="text"
-                                    placeholder="Tìm kiếm khách hàng theo tên, mã, email..."
+                                    placeholder="Search customers by name, ID, email..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition bg-gray-50 hover:bg-white text-sm"
@@ -253,46 +265,52 @@ export default function CustomerList() {
                                 className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-semibold transition duration-200 flex items-center gap-2 shadow-md hover:shadow-lg text-sm whitespace-nowrap"
                             >
                                 <i className="fa-solid fa-plus text-sm"></i>{' '}
-                                Thêm khách hàng
+                                Add Customer
                             </button>
                         </div>
                     </div>
 
-                    {/* Bảng dữ liệu */}
+                    {/* Data Table */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead className="bg-[#F5F0EB] border-b border-gray-300">
                                     <tr>
                                         <th className="px-4 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wide">
-                                            Mã KH
+                                            No.
                                         </th>
                                         <th className="px-4 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wide">
-                                            Họ tên
+                                            Customer ID
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wide">
+                                            Full Name
                                         </th>
                                         <th className="px-4 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wide">
                                             Email
                                         </th>
                                         <th className="px-4 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wide">
-                                            Điện thoại
+                                            Phone
                                         </th>
                                         <th className="px-4 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wide">
-                                            Hạng thành viên
+                                            Membership Tier
                                         </th>
                                         <th className="px-4 py-3 text-left text-xs font-bold text-gray-900 uppercase tracking-wide">
-                                            Uy tín
+                                            Reputation
                                         </th>
                                         <th className="px-4 py-3 text-center text-xs font-bold text-gray-900 uppercase tracking-wide">
-                                            Thao tác
+                                            Actions
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {currentCustomers.map((c) => (
+                                    {currentCustomers.map((c, idx) => (
                                         <tr
                                             key={c.id}
                                             className="hover:bg-[#F5F0EB] transition duration-150 group"
                                         >
+                                            <td className="px-4 py-3 text-sm text-gray-600 font-medium">
+                                                {startIndex + idx + 1}
+                                            </td>
                                             <td className="px-4 py-3 font-bold text-gray-900 text-sm">
                                                 {c.id}
                                             </td>
@@ -339,7 +357,12 @@ export default function CustomerList() {
                                                 <div className="flex items-center justify-center gap-2 transition duration-200">
                                                     <button
                                                         type="button"
-                                                        aria-label="Xem chi tiết"
+                                                        aria-label="View details"
+                                                        onClick={() =>
+                                                            handleViewCustomer(
+                                                                c,
+                                                            )
+                                                        }
                                                         className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition hover:scale-110"
                                                     >
                                                         <i className="fa-solid fa-eye text-sm"></i>
@@ -347,7 +370,7 @@ export default function CustomerList() {
 
                                                     <button
                                                         type="button"
-                                                        aria-label="Chỉnh sửa"
+                                                        aria-label="Edit"
                                                         onClick={() =>
                                                             handleEditCustomer(
                                                                 c,
@@ -367,12 +390,12 @@ export default function CustomerList() {
 
                         <div className="px-4 py-3 border-t border-gray-200 bg-[#F5F0EB] text-sm text-gray-700 font-medium flex justify-between items-center">
                             <span>
-                                Hiển thị {startIndex + 1}-
+                                Showing {startIndex + 1}-
                                 {Math.min(endIndex, filtered.length)} /{' '}
-                                {filtered.length} khách hàng
+                                {filtered.length} customers
                             </span>
 
-                            {/* Phân trang */}
+                            {/* Pagination */}
                             {totalPages > 1 && (
                                 <div className="flex items-center gap-2">
                                     <button
@@ -439,10 +462,21 @@ export default function CustomerList() {
                 onClose={() => setShowModal(false)}
                 onSave={handleAddCustomer}
             />
+            <CustomerDetailModal
+                show={showDetailModal}
+                customer={selectedCustomer}
+                onClose={() => {
+                    setShowDetailModal(false);
+                    setSelectedCustomer(null);
+                }}
+            />
             <EditCustomerModal
                 show={showEditModal}
                 customer={selectedCustomer}
-                onClose={() => setShowEditModal(false)}
+                onClose={() => {
+                    setShowEditModal(false);
+                    setSelectedCustomer(null);
+                }}
                 onSave={handleSaveEdit}
             />
         </div>

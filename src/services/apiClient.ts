@@ -17,6 +17,24 @@ const createApiClient = (baseURL: string): AxiosInstance => {
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+
+      const method = config.method?.toUpperCase();
+      const shouldSendAuditHeader = ["POST", "PUT", "PATCH", "DELETE"].includes(
+        method || "",
+      );
+
+      const userRaw = localStorage.getItem(API_CONFIG.STORAGE_KEYS.USER);
+      if (shouldSendAuditHeader && userRaw) {
+        try {
+          const user = JSON.parse(userRaw) as { id?: string };
+          if (user.id) {
+            config.headers["X-User-Id"] = user.id;
+          }
+        } catch (error) {
+          console.error("Error parsing current user for audit header:", error);
+        }
+      }
+
       return config;
     },
     (error) => Promise.reject(error),
@@ -121,6 +139,9 @@ export const checkinCheckoutPolicyRulesApi = createApiClient(
 );
 export const hourlyRatePoliciesApi = createApiClient(
   `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.HOURLY_RATE_POLICIES}`,
+);
+export const newsApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.NEWS}`,
 );
 
 

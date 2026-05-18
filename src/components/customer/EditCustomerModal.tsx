@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import type { Customer } from '../../types/Customer';
-import { saveCustomer } from '../../services/customerService';
 
 interface EditCustomerModalProps {
     show: boolean;
@@ -17,7 +16,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
 }) => {
     const [form, setForm] = useState<Partial<Customer>>({});
 
-    // Cập nhật form khi mở modal với dữ liệu khách hàng
+    // Update form when modal opens with customer data
     useEffect(() => {
         if (customer) setForm(customer);
     }, [customer]);
@@ -28,20 +27,8 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
         setForm((prev) => ({ ...prev, [field]: value as never }));
     };
 
-    const handleSubmit = async () => {
-        try {
-            const updated = await saveCustomer(form as Customer); // gọi BE để lưu
-            if (updated) {
-                onSave(updated); // cập nhật lại danh sách ở FE
-                alert('✅ Cập nhật khách hàng thành công!');
-            } else {
-                alert('❌ Không thể lưu khách hàng (BE không trả dữ liệu)');
-            }
-            onClose();
-        } catch (error) {
-            console.error('Error saving customer:', error);
-            alert('❌ Lỗi khi lưu khách hàng!');
-        }
+    const handleSubmit = () => {
+        onSave({ ...customer, ...form } as Customer);
     };
 
     return (
@@ -49,13 +36,13 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-8 relative animate-fadeIn">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                     <i className="fa-solid fa-pen-to-square text-amber-600"></i>
-                    Cập nhật thông tin khách hàng
+                    Update Customer Information
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="text-sm font-medium text-gray-700">
-                            Họ tên
+                            Full Name
                         </label>
                         <input
                             type="text"
@@ -69,7 +56,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
 
                     <div>
                         <label className="text-sm font-medium text-gray-700">
-                            Ngày sinh
+                            Date of Birth
                         </label>
                         <input
                             type="date"
@@ -83,7 +70,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
 
                     <div>
                         <label className="text-sm font-medium text-gray-700">
-                            Số điện thoại
+                            Phone Number
                         </label>
                         <input
                             type="text"
@@ -111,7 +98,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
 
                     <div className="md:col-span-2">
                         <label className="text-sm font-medium text-gray-700">
-                            Địa chỉ
+                            Address
                         </label>
                         <input
                             type="text"
@@ -125,7 +112,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
 
                     <div className="md:col-span-2">
                         <label className="text-sm font-medium text-gray-700">
-                            Giới tính
+                            Gender
                         </label>
                         <div className="flex items-center gap-6 mt-2">
                             <label className="flex items-center gap-2">
@@ -138,7 +125,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                                         handleChange('gender', 'MALE')
                                     }
                                 />
-                                <span>Nam</span>
+                                <span>Male</span>
                             </label>
                             <label className="flex items-center gap-2">
                                 <input
@@ -150,7 +137,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                                         handleChange('gender', 'FEMALE')
                                     }
                                 />
-                                <span>Nữ</span>
+                                <span>Female</span>
                             </label>
                         </div>
                     </div>
@@ -161,17 +148,17 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                         onClick={onClose}
                         className="px-5 py-2 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-100 transition"
                     >
-                        Hủy
+                        Cancel
                     </button>
                     <button
                         onClick={handleSubmit}
                         className="px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 transition"
                     >
-                        Lưu thay đổi
+                        Save Changes
                     </button>
                 </div>
 
-                {/* Icon đóng modal */}
+                {/* Close modal icon */}
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 text-gray-500 hover:text-gray-800"

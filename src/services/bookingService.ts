@@ -25,8 +25,8 @@ const mappingBookings = async (res: any) => {
       ? api.get(`/late-checkouts/booking/${res.bookingID}`).catch(() => null)
       : Promise.resolve(null),
     res.cancellationID
-      ? api
-        .get(`/booking-cancellations/booking/${res.bookingID}`)
+      ? bookingsApi
+        .get(`/${res.bookingID}/cancellation`)
         .catch(() => null)
       : Promise.resolve(null),
     Promise.all(
