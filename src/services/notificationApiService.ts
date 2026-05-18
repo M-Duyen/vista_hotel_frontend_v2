@@ -52,11 +52,48 @@ interface BackendNotification {
 }
 
 class NotificationApiService {
+  private getCurrentUser() {
+    try {
+      const raw = localStorage.getItem(API_CONFIG.STORAGE_KEYS.USER);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private getPrimaryRole(user: any): "CUSTOMER" | "ADMIN" | "EMPLOYEE" {
+    const role =
+      user?.userRole ||
+      (Array.isArray(user?.roles) ? user.roles[0] : undefined) ||
+      "CUSTOMER";
+    const normalizedRole = String(role).toUpperCase();
+    if (normalizedRole.includes("ADMIN")) return "ADMIN";
+    if (normalizedRole.includes("EMPLOYEE")) return "EMPLOYEE";
+    return "CUSTOMER";
+  }
+
+  private getCurrentUserId(user: any): string {
+    return (
+      user?.id ||
+      user?.customerId ||
+      user?.customerID ||
+      user?.employeeId ||
+      user?.employeeID ||
+      user?.adminId ||
+      user?.adminID ||
+      ""
+    );
+  }
+
   private getAuthHeaders() {
     const token = localStorage.getItem(API_CONFIG.STORAGE_KEYS.TOKEN);
+    const user = this.getCurrentUser();
+    const role = this.getPrimaryRole(user);
     return {
       "Content-Type": "application/json",
       Authorization: token ? `Bearer ${token}` : "",
+      "X-User-Id": this.getCurrentUserId(user),
+      "X-User-Role": role,
     };
   }
 
@@ -77,7 +114,7 @@ class NotificationApiService {
       }
 
       const response = await fetch(
-        `${API_BASE_URL}/notifications?page=${page}&size=${size}`,
+        `${API_BASE_URL}/api/notifications?page=${page}&size=${size}`,
         {
           method: "GET",
           headers: this.getAuthHeaders(),
@@ -125,7 +162,7 @@ class NotificationApiService {
         };
       }
 
-      const response = await fetch(`${API_BASE_URL}/notifications/unread`, {
+      const response = await fetch(`${API_BASE_URL}/api/notifications/unread`, {
         method: "GET",
         headers: this.getAuthHeaders(),
       });
@@ -156,7 +193,7 @@ class NotificationApiService {
   async getUnreadCount(): Promise<ApiResponse<number>> {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/notifications/unread/count`,
+        `${API_BASE_URL}/api/notifications/unread/count`,
         {
           method: "GET",
           headers: this.getAuthHeaders(),
@@ -180,7 +217,7 @@ class NotificationApiService {
   ): Promise<ApiResponse<BackendNotification>> {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/notifications/${notificationId}/read`,
+        `${API_BASE_URL}/api/notifications/${notificationId}/read`,
         {
           method: "PUT",
           headers: this.getAuthHeaders(),
@@ -201,7 +238,7 @@ class NotificationApiService {
   // Đánh dấu tất cả đã đọc
   async markAllAsRead(): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/notifications/read-all`, {
+      const response = await fetch(`${API_BASE_URL}/api/notifications/read-all`, {
         method: "PUT",
         headers: this.getAuthHeaders(),
       });
@@ -221,7 +258,7 @@ class NotificationApiService {
   async deleteNotification(notificationId: string): Promise<ApiResponse> {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/notifications/${notificationId}`,
+        `${API_BASE_URL}/api/notifications/${notificationId}`,
         {
           method: "DELETE",
           headers: this.getAuthHeaders(),
@@ -244,10 +281,19 @@ class NotificationApiService {
     notification: Partial<BackendNotification>,
   ): Promise<ApiResponse<BackendNotification>> {
     try {
-      const response = await fetch(`${API_BASE_URL}/notifications`, {
+      const user = this.getCurrentUser();
+      const role = this.getPrimaryRole(user);
+      const payload = {
+        fromUserId: this.getCurrentUserId(user),
+        fromUserName: user?.fullName || user?.userName || user?.username,
+        fromUserType: role,
+        ...notification,
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/notifications`, {
         method: "POST",
         headers: this.getAuthHeaders(),
-        body: JSON.stringify(notification),
+        body: JSON.stringify(payload),
       });
 
       console.log(

@@ -5,8 +5,6 @@ import {
     getAllLateCheckouts,
     approveLateCheckout,
 } from '../../services/lateCheckoutService';
-import { earlyCheckinNotificationService } from '../../services/earlyCheckinNotificationService';
-import type { CheckoutApproval } from '../../services/earlyCheckinNotificationService';
 
 type LateCheckoutResponse = {
     requestID: string;
@@ -50,7 +48,6 @@ const LateCheckoutTab = ({ onViewDetails }: LateCheckoutTabProps) => {
     ) => {
         setProcessingId(id);
         try {
-            // Find the request to get booking info
             const request = requests.find((req) => req.requestID === id);
 
             if (!request) {
@@ -58,39 +55,8 @@ const LateCheckoutTab = ({ onViewDetails }: LateCheckoutTabProps) => {
                 return;
             }
 
-            // Call backend to approve/reject
             await approveLateCheckout(id, status);
 
-            // Send notification to customer
-            try {
-                const approvalData: CheckoutApproval = {
-                    requestId: id,
-                    customerId: request.booking?.customer?.id || '',
-                    customerName:
-                        request.booking?.customer?.fullName || 'Khách hàng',
-                    roomNumber:
-                        request.booking?.bookingDetails?.[0]?.room
-                            ?.roomNumber || 'N/A',
-                    approvedBy: 'Staff',
-                    approvedTime: request.requestTime,
-                    isApproved: status === 'APPROVED',
-                    reason:
-                        status === 'REJECTED'
-                            ? 'Yêu cầu bị từ chối bởi nhân viên'
-                            : undefined,
-                };
-
-                await earlyCheckinNotificationService.processLateCheckoutRequest(
-                    approvalData,
-                );
-                console.log(
-                    '✅ Notification sent to customer after late checkout approval/rejection',
-                );
-            } catch (notifError) {
-                console.error('⚠️ Failed to send notification:', notifError);
-            }
-
-            // Update UI
             setRequests((prev) =>
                 prev.map((req) =>
                     req.requestID === id

@@ -92,6 +92,34 @@ export const useAuthStore = create<AuthState>()(
             authService.saveTokens(response.token, response.refreshToken);
             authService.saveUser(user as StoredUser);
 
+            void import("@/services/notificationApiService")
+              .then(({ notificationApiService }) =>
+                notificationApiService.createNotification({
+                  type: "INFO",
+                  category: "OTHER",
+                  title: "Vista Hotel xin chào",
+                  message: `Xin chào ${user.fullName || user.userName}, chúc bạn có một trải nghiệm tuyệt vời tại Vista Hotel.`,
+                  toUserId: user.id,
+                  toUserType: user.userRole?.includes("EMPLOYEE")
+                    ? "EMPLOYEE"
+                    : user.userRole?.includes("ADMIN")
+                      ? "ADMIN"
+                      : "CUSTOMER",
+                  priority: "NORMAL",
+                  needsAction: false,
+                  status: "SENT",
+                  isRealtime: true,
+                  isRead: false,
+                  dataJson: JSON.stringify({
+                    eventType: "LOGIN_WELCOME",
+                    loggedInAt: new Date().toISOString(),
+                  }),
+                }),
+              )
+              .catch((error) =>
+                console.warn("Could not create login notification:", error),
+              );
+
             set({
               user,
               token: response.token,

@@ -1,4 +1,5 @@
-import { api } from './apiClient';
+import { requestApi } from './apiClient';
+import { earlyCheckinNotificationService } from './earlyCheckinNotificationService';
 
 const ENDPOINT = '/late-checkout';
 
@@ -9,13 +10,42 @@ export const createLateCheckoutRequest = async (payload: {
     bookingId: string;
     requestTime: string;
     roomPrice: number;
+    customerId?: string;
+    customerName?: string;
+    roomNumber?: string;
+    standardCheckoutTime?: string;
+    reason?: string;
 }) => {
     try {
-        const res = await api.post(`${ENDPOINT}/request`, payload);
-        return res.data.data; // ⭐ BE trả { success, message, data }
+        const res = await requestApi.post(`${ENDPOINT}/request`, payload);
+        if (res.data?.success === false) {
+            throw new Error(
+                res.data.message || 'Booking da gui yeu cau late check-out',
+            );
+        }
+
+        if (res.data?.success && payload.customerId) {
+            try {
+                await earlyCheckinNotificationService.sendLateCheckoutRequest({
+                    customerId: payload.customerId,
+                    customerName: payload.customerName || 'Customer',
+                    roomNumber: payload.roomNumber || 'N/A',
+                    bookingId: payload.bookingId,
+                    requestedTime: payload.requestTime,
+                    standardCheckoutTime:
+                        payload.standardCheckoutTime || payload.requestTime,
+                    reason: payload.reason,
+                    userRole: 'CUSTOMER',
+                });
+            } catch (notifErr) {
+                console.warn('Notification error (non-blocking):', notifErr);
+            }
+        }
+
+        return res.data.data;
     } catch (error) {
         console.error('Error creating late checkout request:', error);
-        throw error;
+        return [];
     }
 };
 
@@ -32,8 +62,8 @@ export const approveLateCheckout = async (
             ? `${ENDPOINT}/approve/${requestId}?status=${status}&employeeId=${employeeId}`
             : `${ENDPOINT}/approve/${requestId}?status=${status}`;
 
-        const res = await api.put(url);
-        return res.data.data; // ⭐ BE trả { success, message, data }
+        const res = await requestApi.put(url);
+        return res.data.data;
     } catch (error) {
         console.error('Error approving late checkout:', error);
         throw error;
@@ -45,8 +75,8 @@ export const approveLateCheckout = async (
  */
 export const getAllLateCheckouts = async () => {
     try {
-        const res = await api.get(ENDPOINT);
-        return res.data; // ⭐ BE trả list DTO
+        const res = await requestApi.get(ENDPOINT);
+        return res.data;
     } catch (error) {
         console.error('Error fetching all late checkouts:', error);
         throw error;
@@ -62,10 +92,10 @@ export const calculateLateCheckoutFee = async (
     roomPrice: number,
 ) => {
     try {
-        const res = await api.get(`${ENDPOINT}/calculate-fee`, {
+        const res = await requestApi.get(`${ENDPOINT}/calculate-fee`, {
             params: { bookingId, requestTime, roomPrice },
         });
-        return res.data.fee; // ⭐ BE trả { success, fee }
+        return res.data.fee;
     } catch (error) {
         console.error('Error calculating late checkout fee:', error);
         throw error;
@@ -77,13 +107,13 @@ export const calculateLateCheckoutFee = async (
  */
 export const getLateCheckoutByBookingId = async (bookingId: string) => {
     try {
-        const res = await api.get(`${ENDPOINT}/by-booking`, {
+        const res = await requestApi.get(`${ENDPOINT}/by-booking`, {
             params: { bookingId },
         });
-        return res.data.data; // ⭐ BE trả { success, data }
+        return res.data.data;
     } catch (error) {
         console.error('Error fetching late checkout by booking ID:', error);
-        throw error;
+        return null;
     }
 };
 

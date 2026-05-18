@@ -82,7 +82,8 @@ class EarlyCheckinNotificationService {
         console.log('Sending early checkin request:', request);
         try {
             // Thông báo xác nhận cho khách hàng
-            console.log('Creating customer notification...');
+            // (Thông báo cho nhân viên được xử lý bởi backend qua Kafka - BOOKING_EARLY_CHECKIN_REQUESTED)
+            console.log('Creating customer confirmation notification...');
             const customerResponse =
                 await notificationApiService.createNotification({
                     type: 'INFO',
@@ -107,46 +108,8 @@ class EarlyCheckinNotificationService {
                 });
             console.log('Customer notification created:', customerResponse);
 
-            // Thông báo yêu cầu cho tất cả nhân viên (role EMPLOYEE)
-            console.log('Creating employee notification...');
-
-            const employeeResponse =
-                await notificationApiService.createNotification({
-                    type: 'REQUEST',
-                    category: 'EARLY_CHECKIN',
-                    title: 'New Early Check-in Request',
-                    message: `Customer ${request.customerName} has requested early check-in for room ${request.roomNumber}. Requested time: ${request.requestedTime}`,
-                    // Gửi cho tất cả nhân viên
-                    toUserType: 'EMPLOYEE',
-                    priority: 'HIGH',
-                    needsAction: true,
-                    status: 'PENDING',
-                    isRealtime: true,
-                    isRead: false,
-                    dataJson: JSON.stringify({
-                        requestType: 'EARLY_CHECKIN_EMPLOYEE_ACTION_REQUIRED',
-                        customerId: request.customerId,
-                        customerName: request.customerName,
-                        bookingId: request.bookingId,
-                        roomNumber: request.roomNumber,
-                        requestedTime: request.requestedTime,
-                        standardCheckInTime: request.standardCheckInTime,
-                        reason: request.reason,
-                        requestTime: new Date().toISOString(),
-                    }),
-                });
-            console.log('Employee notification response:', employeeResponse);
-
-            // Check if notification was created successfully
-            if (!employeeResponse.success) {
-                console.error(
-                    'Failed to create employee notification:',
-                    employeeResponse.message,
-                );
-            }
-
             console.log(
-                'Early checkin request notifications sent successfully',
+                'Early checkin request customer notification sent successfully',
             );
         } catch (error) {
             console.error(
@@ -196,6 +159,27 @@ class EarlyCheckinNotificationService {
                         originalRequestId: approval.requestId,
                     }),
                 });
+                await notificationApiService.createNotification({
+                    type: 'INFO',
+                    category: 'EARLY_CHECKIN',
+                    title: 'Early check-in request approved',
+                    message: `Employee ${approval.approvedBy} approved early check-in for customer ${approval.customerName}, room ${approval.roomNumber}.`,
+                    toUserType: 'EMPLOYEE',
+                    priority: 'NORMAL',
+                    needsAction: false,
+                    status: 'APPROVED',
+                    isRealtime: true,
+                    isRead: false,
+                    dataJson: JSON.stringify({
+                        requestType: 'EARLY_CHECKIN_APPROVED_EMPLOYEE_CONFIRMATION',
+                        customerId: approval.customerId,
+                        customerName: approval.customerName,
+                        roomNumber: approval.roomNumber,
+                        approvedBy: approval.approvedBy,
+                        approvedTime: approval.approvedTime,
+                        originalRequestId: approval.requestId,
+                    }),
+                });
             } else {
                 // Từ chối
                 await notificationApiService.createNotification({
@@ -212,6 +196,27 @@ class EarlyCheckinNotificationService {
                     isRead: false,
                     dataJson: JSON.stringify({
                         requestType: 'EARLY_CHECKIN_REJECTED',
+                        roomNumber: approval.roomNumber,
+                        rejectedBy: approval.approvedBy,
+                        reason: approval.reason,
+                        originalRequestId: approval.requestId,
+                    }),
+                });
+                await notificationApiService.createNotification({
+                    type: 'ALERT',
+                    category: 'EARLY_CHECKIN',
+                    title: 'Early check-in request rejected',
+                    message: `Employee ${approval.approvedBy} rejected early check-in for customer ${approval.customerName}, room ${approval.roomNumber}.`,
+                    toUserType: 'EMPLOYEE',
+                    priority: 'NORMAL',
+                    needsAction: false,
+                    status: 'REJECTED',
+                    isRealtime: true,
+                    isRead: false,
+                    dataJson: JSON.stringify({
+                        requestType: 'EARLY_CHECKIN_REJECTED_EMPLOYEE_CONFIRMATION',
+                        customerId: approval.customerId,
+                        customerName: approval.customerName,
                         roomNumber: approval.roomNumber,
                         rejectedBy: approval.approvedBy,
                         reason: approval.reason,
@@ -501,6 +506,27 @@ class EarlyCheckinNotificationService {
                         originalRequestId: approval.requestId,
                     }),
                 });
+                await notificationApiService.createNotification({
+                    type: 'INFO',
+                    category: 'LATE_CHECKOUT',
+                    title: 'Late checkout request approved',
+                    message: `Employee ${approval.approvedBy} approved late checkout for customer ${approval.customerName}, room ${approval.roomNumber}.`,
+                    toUserType: 'EMPLOYEE',
+                    priority: 'NORMAL',
+                    needsAction: false,
+                    status: 'APPROVED',
+                    isRealtime: true,
+                    isRead: false,
+                    dataJson: JSON.stringify({
+                        requestType: 'LATE_CHECKOUT_APPROVED_EMPLOYEE_CONFIRMATION',
+                        customerId: approval.customerId,
+                        customerName: approval.customerName,
+                        roomNumber: approval.roomNumber,
+                        approvedBy: approval.approvedBy,
+                        approvedTime: approval.approvedTime,
+                        originalRequestId: approval.requestId,
+                    }),
+                });
             } else {
                 await notificationApiService.createNotification({
                     type: 'ALERT',
@@ -516,6 +542,27 @@ class EarlyCheckinNotificationService {
                     isRead: false,
                     dataJson: JSON.stringify({
                         requestType: 'LATE_CHECKOUT_REJECTED',
+                        roomNumber: approval.roomNumber,
+                        rejectedBy: approval.approvedBy,
+                        reason: approval.reason,
+                        originalRequestId: approval.requestId,
+                    }),
+                });
+                await notificationApiService.createNotification({
+                    type: 'ALERT',
+                    category: 'LATE_CHECKOUT',
+                    title: 'Late checkout request rejected',
+                    message: `Employee ${approval.approvedBy} rejected late checkout for customer ${approval.customerName}, room ${approval.roomNumber}.`,
+                    toUserType: 'EMPLOYEE',
+                    priority: 'NORMAL',
+                    needsAction: false,
+                    status: 'REJECTED',
+                    isRealtime: true,
+                    isRead: false,
+                    dataJson: JSON.stringify({
+                        requestType: 'LATE_CHECKOUT_REJECTED_EMPLOYEE_CONFIRMATION',
+                        customerId: approval.customerId,
+                        customerName: approval.customerName,
                         roomNumber: approval.roomNumber,
                         rejectedBy: approval.approvedBy,
                         reason: approval.reason,

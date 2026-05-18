@@ -1,12 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import React, { useEffect, useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import {
-    faCheckCircle,
-    faExclamationCircle,
-    faInfoCircle,
-    faTimesCircle,
-    faTimes,
-} from '@fortawesome/free-solid-svg-icons';
+    FaBell,
+    FaTimes,
+} from 'react-icons/fa';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 export type ToastPosition =
@@ -20,208 +17,129 @@ export type ToastPosition =
 export interface ToastProps {
     id: string;
     message: string;
+    title?: string;
     type?: ToastType;
-    duration?: number; // milliseconds
+    duration?: number;
     position?: ToastPosition;
     onClose?: (id: string) => void;
     showCloseButton?: boolean;
     pauseOnHover?: boolean;
 }
 
+const BROWN = {
+    border: 'border-[#b9ad96]',
+    bar: 'bg-[#b9ad96]',
+    dot: 'bg-[#b9ad96]',
+    icon: <FaBell className="text-[#b9ad96]" size={15} />,
+};
+
+const TOAST_CONFIGS = {
+    info:    BROWN,
+    success: BROWN,
+    warning: BROWN,
+    error:   BROWN,
+};
+
 const Toast: React.FC<ToastProps> = ({
     id,
     message,
+    title,
     type = 'info',
-    duration = 3000,
+    duration = 5000,
     onClose,
     showCloseButton = true,
     pauseOnHover = true,
 }) => {
-    const [isVisible, setIsVisible] = useState(false);
-    const [isExiting, setIsExiting] = useState(false);
-    const [isPaused, setIsPaused] = useState(false);
-    const progressRef = useRef<HTMLDivElement>(null);
-    const startTimeRef = useRef<number>(Date.now());
-    const remainingTimeRef = useRef<number>(duration);
-    const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
-        undefined,
-    );
+    const [progress, setProgress] = useState(100);
+    const [paused, setPaused] = useState(false);
 
-    useEffect(() => {
-        // Trigger slide-in animation
-        requestAnimationFrame(() => {
-            setIsVisible(true);
-        });
-
-        return () => {
-            if (timerRef.current) {
-                clearTimeout(timerRef.current);
-            }
-        };
-    }, []);
-
-    const handleClose = React.useCallback(() => {
-        setIsExiting(true);
-        setTimeout(() => {
-            onClose?.(id);
-        }, 400); // Match animation duration
+    const handleClose = useCallback(() => {
+        onClose?.(id);
     }, [id, onClose]);
 
     useEffect(() => {
         if (duration <= 0) return;
 
-        const scheduleClose = () => {
-            if (timerRef.current) {
-                clearTimeout(timerRef.current);
-            }
+        let startTime = Date.now();
+        let remaining = duration;
+        let rafId: number;
+        let timerId: ReturnType<typeof setTimeout>;
 
-            timerRef.current = setTimeout(() => {
-                handleClose();
-            }, remainingTimeRef.current);
+        const tick = () => {
+            if (!paused) {
+                const elapsed = Date.now() - startTime;
+                const pct = Math.max(0, 100 - (elapsed / remaining) * 100);
+                setProgress(pct);
+                if (pct > 0) {
+                    rafId = requestAnimationFrame(tick);
+                }
+            } else {
+                rafId = requestAnimationFrame(tick);
+            }
         };
 
-        if (!isPaused) {
-            startTimeRef.current = Date.now();
-            scheduleClose();
-
-            // Animate progress bar with CSS
-            if (progressRef.current) {
-                progressRef.current.style.transition = `width ${remainingTimeRef.current}ms linear`;
-                progressRef.current.style.width = '0%';
-            }
-        } else {
-            // Pause
-            if (timerRef.current) {
-                clearTimeout(timerRef.current);
-            }
-
-            // Calculate remaining time
-            const elapsed = Date.now() - startTimeRef.current;
-            remainingTimeRef.current = Math.max(
-                0,
-                remainingTimeRef.current - elapsed,
-            );
-
-            // Pause progress bar
-            if (progressRef.current) {
-                const computedStyle = window.getComputedStyle(
-                    progressRef.current,
-                );
-                const currentWidth = computedStyle.width;
-                progressRef.current.style.transition = 'none';
-                progressRef.current.style.width = currentWidth;
-            }
-        }
+        rafId = requestAnimationFrame(tick);
+        timerId = setTimeout(handleClose, duration);
 
         return () => {
-            if (timerRef.current) {
-                clearTimeout(timerRef.current);
-            }
+            cancelAnimationFrame(rafId);
+            clearTimeout(timerId);
         };
-    }, [isPaused, duration, handleClose]);
+    }, [duration, paused, handleClose]);
 
-    const getTypeConfig = () => {
-        switch (type) {
-            case 'success':
-                return {
-                    icon: faCheckCircle,
-                    iconColor: 'text-green-500',
-                    iconBg: 'bg-green-50',
-                    borderColor: 'border-green-200',
-                    progressColor: 'bg-green-500',
-                    accentColor: 'bg-green-500',
-                };
-            case 'error':
-                return {
-                    icon: faTimesCircle,
-                    iconColor: 'text-red-500',
-                    iconBg: 'bg-red-50',
-                    borderColor: 'border-red-200',
-                    progressColor: 'bg-red-500',
-                    accentColor: 'bg-red-500',
-                };
-            case 'warning':
-                return {
-                    icon: faExclamationCircle,
-                    iconColor: 'text-amber-500',
-                    iconBg: 'bg-amber-50',
-                    borderColor: 'border-amber-200',
-                    progressColor: 'bg-amber-500',
-                    accentColor: 'bg-amber-500',
-                };
-            case 'info':
-            default:
-                return {
-                    icon: faInfoCircle,
-                    iconColor: 'text-blue-500',
-                    iconBg: 'bg-blue-50',
-                    borderColor: 'border-blue-200',
-                    progressColor: 'bg-blue-500',
-                    accentColor: 'bg-blue-500',
-                };
-        }
-    };
-
-    const config = getTypeConfig();
+    const c = TOAST_CONFIGS[type] || TOAST_CONFIGS.info;
+    const toastTitle = title || (type === 'success' ? 'Thành công' : type === 'error' ? 'Lỗi' : type === 'warning' ? 'Cảnh báo' : 'Thông báo');
 
     return (
-        <div
-            className={`
-        relative flex items-start gap-3 min-w-[320px] max-w-[450px] p-4
-        rounded-xl shadow-lg
-        bg-white
-        border-l-4 ${config.borderColor}
-        ${isExiting ? 'toast-exit' : isVisible ? 'toast-enter' : 'opacity-0'}
-        hover:shadow-xl
-        transition-all duration-200
-      `}
-            onMouseEnter={() => pauseOnHover && setIsPaused(true)}
-            onMouseLeave={() => pauseOnHover && setIsPaused(false)}
+        <motion.div
+            layout
+            initial={{ opacity: 0, x: 60, scale: 0.92 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 60, scale: 0.92 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+            className={`relative w-[340px] rounded-2xl shadow-2xl border bg-white overflow-hidden ${c.border}`}
+            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.13)' }}
+            onMouseEnter={() => pauseOnHover && setPaused(true)}
+            onMouseLeave={() => pauseOnHover && setPaused(false)}
             role="alert"
         >
-            {/* Icon with background */}
-            <div
-                className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg ${config.iconBg}`}
-            >
-                <FontAwesomeIcon
-                    icon={config.icon}
-                    className={`text-xl ${config.iconColor}`}
-                />
+            {/* Top accent */}
+            <div className={`absolute top-0 left-0 right-0 h-[3px] ${c.dot} opacity-80`} />
+
+            {/* Content */}
+            <div className="flex items-start gap-3 px-4 pt-5 pb-4">
+                <div className="mt-0.5 flex-shrink-0">{c.icon}</div>
+
+                <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 text-sm leading-tight mb-1">
+                        {toastTitle}
+                    </p>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                        {message}
+                    </p>
+                </div>
+
+                {showCloseButton && (
+                    <button
+                        onClick={handleClose}
+                        className="flex-shrink-0 mt-0.5 text-gray-400 hover:text-gray-700 transition-colors"
+                        aria-label="Đóng"
+                    >
+                        <FaTimes size={12} />
+                    </button>
+                )}
             </div>
 
-            {/* Message */}
-            <div className="flex-1 text-gray-800 text-sm font-medium leading-relaxed pt-1.5 pr-2">
-                {message}
-            </div>
-
-            {/* Close Button */}
-            {showCloseButton && (
-                <button
-                    onClick={handleClose}
-                    className="
-            flex-shrink-0 w-7 h-7 flex items-center justify-center
-            rounded-lg text-gray-400
-            hover:bg-gray-100 hover:text-gray-600
-            active:bg-gray-200
-            transition-all duration-200 mt-0.5
-          "
-                    aria-label="Close notification"
-                >
-                    <FontAwesomeIcon icon={faTimes} className="text-sm" />
-                </button>
-            )}
-
-            {/* Progress Bar */}
+            {/* Progress bar */}
             {duration > 0 && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 rounded-b-xl overflow-hidden">
+                <div className="h-[3px] bg-gray-100 mx-4 mb-3 rounded-full overflow-hidden">
                     <div
-                        ref={progressRef}
-                        className={`h-full ${config.progressColor}`}
-                        style={{ width: '100%' }}
+                        className={`h-full ${c.bar} rounded-full transition-none`}
+                        style={{ width: `${progress}%` }}
                     />
                 </div>
             )}
-        </div>
+        </motion.div>
     );
 };
 

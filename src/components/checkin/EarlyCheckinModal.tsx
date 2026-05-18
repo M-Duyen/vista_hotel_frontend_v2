@@ -201,20 +201,28 @@ export default function EarlyCheckinModal({ onClose, onSuccess, booking }: Props
     /** Submit */
     const handleSubmit = async () => {
         if (!validate()) return;
+        if (booking?.earlyCheckin || booking?.lateCheckout || booking?.status === 'CANCELLED') {
+            toast.error('Booking nay da co yeu cau hoac da huy, khong the thao tac.');
+            return;
+        }
 
         try {
             const finalDate = selectedDate.toISOString().split('T')[0];
             const payload = {
                 customerId: booking.customer.id,
+                customerName: booking.customer.fullName || 'Customer',
                 bookingId: booking.bookingID,
+                roomNumber:
+                    booking.bookingDetails?.[0]?.room?.roomNumber || 'N/A',
                 requestTime: `${finalDate}T${time}`,
+                standardCheckInTime: `${finalDate}T12:00`,
                 roomPrice,
             };
 
             const res = await createEarlyCheckinRequest(payload);
 
             if (res.success || res.requestID) {
-                toast.success('Yêu cầu check-in sớm đã được gửi!');
+
                 if (onSuccess) onSuccess();
                 else onClose();
             } else {

@@ -541,16 +541,12 @@ export default function CancelBookingModal({
                 // Không fail toàn bộ process nếu email lỗi
             }
 
-            // Thông báo thành công
-            toast.success('Booking is cancelled successfully!!!');
             onSuccess();
         } catch (error) {
             console.error('Error cancelling booking:', error);
             // Thông báo lỗi
             if (onError) {
                 onError('Có lỗi xảy ra khi hủy booking');
-            } else {
-                toast.error('Có lỗi xảy ra khi hủy booking');
             }
         } finally {
             setIsSubmitting(false);

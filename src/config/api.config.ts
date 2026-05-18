@@ -14,6 +14,7 @@ export const API_CONFIG = {
         CUSTOMER: '/api/customers',
         CART: '/api/cart-beans',
         BOOKINGS: '/api/bookings',
+        REQUESTS: '/api',
         PAYMENTS: '/api/payments',
         ROOMS: '/api/rooms',
         ROOMTYPES: '/api/room-types',

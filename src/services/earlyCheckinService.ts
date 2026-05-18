@@ -2,11 +2,11 @@
 import { api } from './apiClient';
 import { earlyCheckinNotificationService } from './earlyCheckinNotificationService';
 
-// Thêm /api để khớp với Gateway route và Backend RequestMapping
 const ENDPOINT = '/api/early-checkin';
 
 /**
- * Gửi yêu cầu check-in sớm
+ * Submit an early check-in request.
+ * Frontend creates the customer confirmation and employee action notification.
  */
 export const createEarlyCheckinRequest = async (payload: any) => {
     try {
@@ -20,31 +20,35 @@ export const createEarlyCheckinRequest = async (payload: any) => {
             requestedTime: payload.requestTime,
             additionalFee: payload.roomPrice * 0.3,
         };
+
         console.log(
             'Sending Early Check-in Payload (Fix API Path):',
             enhancedPayload,
         );
 
-        // Gọi qua Gateway với prefix /api
-        const res = await api.post(`${ENDPOINT}/request`, enhancedPayload);
+        const res = await api.post(`${ENDPOINT}/request`, enhancedPayload, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem('token')}`,
+            },
+        });
 
         if (res.data && res.data.success) {
-            // Gửi notification bất đồng bộ, không block kết quả chính
             try {
-                const ecData = res.data.data;
                 await earlyCheckinNotificationService.sendEarlyCheckinRequest({
                     customerId: payload.customerId,
-                    customerName: 'Customer',
-                    roomNumber: '',
+                    customerName: payload.customerName || 'Customer',
+                    roomNumber: payload.roomNumber || 'N/A',
                     bookingId: payload.bookingId,
                     requestedTime: payload.requestTime,
-                    standardCheckInTime: payload.requestTime,
+                    standardCheckInTime: payload.standardCheckInTime || payload.requestTime,
+                    reason: payload.reason,
                     userRole: 'CUSTOMER',
                 });
             } catch (notifErr) {
                 console.warn('Notification error (non-blocking):', notifErr);
             }
         }
+
         return res.data;
     } catch (error) {
         console.error('Create early check-in request error:', error);
@@ -53,7 +57,7 @@ export const createEarlyCheckinRequest = async (payload: any) => {
 };
 
 /**
- * Lấy danh sách yêu cầu check-in sớm của một booking
+ * Get the latest early check-in request of a booking.
  */
 export const getEarlyCheckinByBookingId = async (bookingId: string) => {
     try {
@@ -66,7 +70,7 @@ export const getEarlyCheckinByBookingId = async (bookingId: string) => {
 };
 
 /**
- * Phê duyệt/Từ chối yêu cầu check-in sớm (Dành cho Nhân viên)
+ * Approve or reject an early check-in request.
  */
 export const approveEarlyCheckin = async (
     requestId: string,
@@ -79,11 +83,11 @@ export const approveEarlyCheckin = async (
         );
 
         if (res.data && res.data.success) {
-            // Notification được xử lý phía BE hoặc qua processEarlyCheckinRequest riêng
             console.log(
                 `Early check-in request ${requestId} ${status} successfully`,
             );
         }
+
         return res.data;
     } catch (error) {
         console.error('Approve early check-in error:', error);
@@ -92,7 +96,7 @@ export const approveEarlyCheckin = async (
 };
 
 /**
- * Lấy tất cả yêu cầu check-in sớm (Dành cho Quản lý)
+ * Get all early check-in requests.
  */
 export const getAllEarlyCheckins = async () => {
     try {

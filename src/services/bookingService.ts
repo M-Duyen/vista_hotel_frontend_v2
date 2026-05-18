@@ -1,9 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { api, bookingsApi, customerApi, roomsApi, usersApi } from "./apiClient";
+import { api, bookingsApi, customerApi, roomsApi, usersApi, requestApi } from "./apiClient";
 import type { Booking, RoomBooking } from "../types/Booking";
 import type { BookingDetail } from "../types/BookingDetail";
 
 const mappingBookings = async (res: any) => {
+  const bookingId = res.bookingID || res.bookingId || res.id;
+  const bookingDetailsSource = Array.isArray(res.bookingDetails)
+    ? res.bookingDetails
+    : [];
+
   const [
     customerRes,
     employeeRes,
@@ -18,11 +23,11 @@ const mappingBookings = async (res: any) => {
     res.employeeID
       ? usersApi.get(`/users/${res.employeeID}`).catch(() => null)
       : Promise.resolve(null),
-    res.earlyCheckinID
-      ? api.get(`/early-checkins/booking/${res.bookingID}`).catch(() => null)
+    res.earlyCheckinID && bookingId
+      ? requestApi.get(`/early-checkins/booking/${bookingId}`).catch(() => null)
       : Promise.resolve(null),
-    res.lateCheckoutID
-      ? api.get(`/late-checkouts/booking/${res.bookingID}`).catch(() => null)
+    res.lateCheckoutID && bookingId
+      ? requestApi.get(`/late-checkouts/booking/${bookingId}`).catch(() => null)
       : Promise.resolve(null),
     res.cancellationID
       ? bookingsApi
@@ -30,7 +35,9 @@ const mappingBookings = async (res: any) => {
         .catch(() => null)
       : Promise.resolve(null),
     Promise.all(
-      res.bookingDetails.map((detail: any) => mappingBookingDetails(detail)),
+      bookingDetailsSource.map((detail: any) =>
+        mappingBookingDetails(detail, bookingId),
+      ),
     ),
   ]);
 
@@ -45,12 +52,15 @@ const mappingBookings = async (res: any) => {
   };
 };
 
-const mappingBookingDetails = async (res: any) => {
+const mappingBookingDetails = async (res: any, parentBookingId?: string) => {
+  const bookingId = res.bookingID || res.bookingId || parentBookingId;
   const [roomRes, reviewRes] = await Promise.all([
     roomsApi.get(`/${res.roomNumber}`),
-    api
-      .get(`/reviews/booking/${res.bookingID}/room/${res.roomNumber}`)
-      .catch(() => null),
+    bookingId
+      ? api
+        .get(`/reviews/booking/${bookingId}/room/${res.roomNumber}`)
+        .catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   return {

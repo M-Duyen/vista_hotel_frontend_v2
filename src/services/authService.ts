@@ -235,6 +235,7 @@ export const saveTokens = (token: string, refreshToken?: string) => {
   if (refreshToken) {
     localStorage.setItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
   }
+  window.dispatchEvent(new Event("authChanged"));
 };
 
 /**
@@ -242,6 +243,8 @@ export const saveTokens = (token: string, refreshToken?: string) => {
  */
 export const saveUser = (user: StoredUser) => {
   localStorage.setItem(API_CONFIG.STORAGE_KEYS.USER, JSON.stringify(user));
+  window.dispatchEvent(new Event("authChanged"));
+  window.dispatchEvent(new Event("userDataUpdated"));
 };
 
 /**
@@ -481,4 +484,7 @@ export const handleOAuthSuccess = (
   if (refreshToken) {
     localStorage.setItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
   }
+
+  window.dispatchEvent(new Event("authChanged"));
+  window.dispatchEvent(new Event("userDataUpdated"));
 };

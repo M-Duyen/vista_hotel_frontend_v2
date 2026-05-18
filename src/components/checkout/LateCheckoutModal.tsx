@@ -93,6 +93,14 @@ export default function LateCheckoutModal({ booking, onClose, onSuccess }: Props
             alert('Please choose a time!');
             return;
         }
+        if (booking?.status !== 'CHECKED_IN') {
+            toast.error('Chỉ có thể gửi yêu cầu checkout muộn khi booking đang ở trạng thái Check-in.');
+            return;
+        }
+        if (booking?.lateCheckout) {
+            toast.error('Booking này đã có yêu cầu checkout muộn, không thể gửi thêm.');
+            return;
+        }
 
         setSubmitting(true);
 
@@ -104,9 +112,19 @@ export default function LateCheckoutModal({ booking, onClose, onSuccess }: Props
                 bookingId: booking.bookingID,
                 requestTime: requestDateTime,
                 roomPrice,
+                customerId:
+                    booking.customer?.id ||
+                    booking.customer?.customerId ||
+                    booking.customer?.customerID ||
+                    booking.customerID ||
+                    booking.customerId,
+                customerName: booking.customer?.fullName || 'Customer',
+                roomNumber:
+                    booking.bookingDetails?.[0]?.room?.roomNumber || 'N/A',
+                standardCheckoutTime: `${baseDate}T12:00`,
             });
 
-            toast.success('Late checkout request sent!');
+
             if (onSuccess) onSuccess();
             else onClose();
         } catch (err) {

@@ -43,7 +43,15 @@ const EarlyTab = ({ onViewDetails }: EarlyTabProps) => {
     ) => {
         setProcessingId(id);
         try {
+            const request = requests.find((req) => req.requestID === id);
+
+            if (!request) {
+                console.error('Request not found:', id);
+                return;
+            }
+
             await approveEarlyCheckin(id, status, 'Staff');
+
             setRequests((prev) =>
                 prev.map((req) =>
                     req.requestID === id

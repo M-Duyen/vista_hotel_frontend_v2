@@ -1,7 +1,8 @@
 /* eslint-disable */
 import { Client } from '@stomp/stompjs';
 import type { IMessage } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
+// SockJS removed: native WebSocket is used instead (via brokerURL).
+// SockJS was causing cross-origin session-cookie failures with the notification-service.
 
 const WS_URL = import.meta.env.VITE_WS_URL;
 console.log('WebSocket using WS_URL:', WS_URL);
@@ -25,6 +26,10 @@ class WebSocketService {
     private connected = false;
     private handlers: ((msg: NotificationMessage) => void)[] = [];
     private subscriptions: Map<string, any> = new Map();
+    private currentUserId: string | null = null;
+    private currentUserType: string | null = null;
+    private connectionPromise: Promise<void> | null = null;
+    private disconnectTimeout: any = null;
 
     // constructor() {
     //     console.log('WebSocket Service initialized');
@@ -34,24 +39,44 @@ class WebSocketService {
         userId: string,
         userType: 'CUSTOMER' | 'EMPLOYEE' | 'ADMIN',
     ): Promise<void> {
-        return new Promise((resolve, reject) => {
-            if (this.client?.connected) {
-                console.log('WebSocket already connected');
-                resolve();
-                return;
+        if (this.disconnectTimeout) {
+            clearTimeout(this.disconnectTimeout);
+            this.disconnectTimeout = null;
+        }
+
+        if (this.client && this.currentUserId === userId && this.currentUserType === userType) {
+            if (this.connected) {
+                return Promise.resolve();
             }
+            if (this.connectionPromise) {
+                return this.connectionPromise;
+            }
+        }
 
-            // console.log(`WebSocket connecting as ${userId} (${userType})`);
+        if (this.client) {
+            this.disconnectImmediately();
+        }
 
-            const sock = new SockJS(WS_URL);
+        this.currentUserId = userId;
+        this.currentUserType = userType;
+
+        this.connectionPromise = new Promise((resolve, reject) => {
+            console.log(`WebSocket connecting as ${userId} (${userType}) using WS_URL:`, WS_URL);
 
             this.client = new Client({
-                webSocketFactory: () => sock,
+                // Native WebSocket via brokerURL (ws:// or wss://).
+                // SockJS was replaced because its session-cookie management
+                // fails reliably in cross-origin browser → backend connections.
+                brokerURL: WS_URL,
+                connectHeaders: {
+                    userId,
+                    userType,
+                },
                 reconnectDelay: 3000,
-                debug: () => {},
+                debug: (str) => console.log('[STOMP]', str),
 
                 onConnect: () => {
-                    console.log('WebSocket Connected!');
+                    console.log('WebSocket Connected successfully!');
                     this.connected = true;
 
                     this.subscribeUserQueue(userId);
@@ -77,16 +102,27 @@ class WebSocketService {
 
             this.client.activate();
         });
+
+        return this.connectionPromise;
     }
 
     private subscribeUserQueue(userId: string) {
         if (!this.client) return;
 
-        const dest = `/user/${userId}/queue/notifications`;
+        // Spring resolves /user/queue/* to the current session user
+        const dest = `/user/queue/notifications`;
         console.log('Subscribing to', dest);
 
         const sub = this.client.subscribe(dest, (msg) => this.handle(msg));
         this.subscriptions.set('user', sub);
+
+        const directDest = `/topic/notifications/user/${userId}`;
+        console.log('Subscribing to', directDest);
+
+        const directSub = this.client.subscribe(directDest, (msg) =>
+            this.handle(msg),
+        );
+        this.subscriptions.set('user-direct', directSub);
     }
 
     private subscribeBroadcast(userType: 'CUSTOMER' | 'EMPLOYEE' | 'ADMIN') {
@@ -136,16 +172,30 @@ class WebSocketService {
     }
 
     disconnect() {
+        if (this.disconnectTimeout) {
+            clearTimeout(this.disconnectTimeout);
+        }
+
+        this.disconnectTimeout = setTimeout(() => {
+            this.disconnectTimeout = null;
+            this.disconnectImmediately();
+        }, 1000); // 1s delay
+    }
+
+    private disconnectImmediately() {
         if (!this.client) return;
 
-        // console.log('Disconnecting WebSocket...');
+        console.log('Disconnecting WebSocket immediately for user:', this.currentUserId);
         this.subscriptions.forEach((s) => s.unsubscribe());
         this.subscriptions.clear();
 
         this.client.deactivate();
         this.client = null;
         this.connected = false;
-      
+        this.currentUserId = null;
+        this.currentUserType = null;
+        this.connectionPromise = null;
+
         console.log('WebSocket disconnected');
     }
 

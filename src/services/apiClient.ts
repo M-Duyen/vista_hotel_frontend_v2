@@ -77,6 +77,9 @@ export const api = createApiClient(API_CONFIG.BASE_URL);
 export const authApi = createApiClient(
   `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH}`,
 );
+export const requestApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REQUESTS}`,
+);
 export const usersApi = createApiClient(
   `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}`,
 );

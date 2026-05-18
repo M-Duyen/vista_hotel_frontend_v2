@@ -8,6 +8,9 @@ import {
     type NotificationMessage,
 } from '../services/websocketService';
 import { API_CONFIG } from '@/config/api.config';
+import { useAuthStore } from '../stores/authStore';
+import ToastContainer from '../components/ToastContainer';
+import type { ToastProps } from '../components/Toast';
 
 // ============================
 // Frontend Notification Interface
@@ -53,10 +56,15 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     children,
 }) => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
+    const authUser = useAuthStore((state) => state.user);
 
-    // Load user from localStorage
-    const savedUser = localStorage.getItem(API_CONFIG.STORAGE_KEYS.USER);
-    const parsedUser = savedUser ? JSON.parse(savedUser) : null;
+    const loadUser = () => {
+        const saved = localStorage.getItem(API_CONFIG.STORAGE_KEYS.USER);
+        return saved ? JSON.parse(saved) : null;
+    };
+
+    const [storedUser, setStoredUser] = useState(loadUser);
+    const parsedUser = authUser || storedUser;
 
     const userId =
         parsedUser?.customerId ||
@@ -65,7 +73,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         parsedUser?.id ||
         null;
 
-    let rawRole = parsedUser?.role || '';
+    let rawRole =
+        parsedUser?.role ||
+        parsedUser?.userRole ||
+        parsedUser?.roles?.[0] ||
+        '';
     rawRole = rawRole.toUpperCase();
 
     let userType: 'CUSTOMER' | 'EMPLOYEE' | 'ADMIN' = 'CUSTOMER';
@@ -75,28 +87,74 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     else userType = 'CUSTOMER';
 
     useEffect(() => {
+        const syncUser = () => {
+            setStoredUser(loadUser());
+        };
+
+        window.addEventListener('storage', syncUser);
+        window.addEventListener('authChanged', syncUser as EventListener);
+        window.addEventListener('userDataUpdated', syncUser as EventListener);
+
+        return () => {
+            window.removeEventListener('storage', syncUser);
+            window.removeEventListener(
+                'authChanged',
+                syncUser as EventListener,
+            );
+            window.removeEventListener(
+                'userDataUpdated',
+                syncUser as EventListener,
+            );
+        };
+    }, []);
+
+    // ============================
+    // Toast state
+    // ============================
+    const [toasts, setToasts] = useState<ToastProps[]>([]);
+
+    const addToast = useCallback((notif: ToastProps) => {
+        setToasts((prev) => {
+            // Không thêm trùng
+            if (prev.some((t) => t.id === notif.id)) return prev;
+            return [...prev, notif];
+        });
+    }, []);
+
+    const dismissToast = useCallback((id: string) => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, []);
+
+    useEffect(() => {
         if (!userId) {
             console.warn('[WebSocket] No userId → skip WebSocket');
             return;
         }
 
+        let unsubscribe: (() => void) | undefined;
+        let isMounted = true;
+
         websocketService
             .connect(userId, userType)
             .then(() => {
+                if (!isMounted) return;
+
                 console.log('[WebSocket] Connected successfully');
 
-                const unsubscribe = websocketService.onMessage(
+                unsubscribe = websocketService.onMessage(
                     (notification: NotificationMessage) => {
+                        const toastType =
+                            notification.type === 'ALERT'
+                                ? 'error'
+                                : notification.type === 'REQUEST'
+                                  ? 'warning'
+                                  : 'info';
+
                         const frontendNotif: Notification = {
                             id: notification.id,
                             title: notification.title,
                             message: notification.message,
-                            type:
-                                notification.type === 'ALERT'
-                                    ? 'error'
-                                    : notification.type === 'REQUEST'
-                                    ? 'warning'
-                                    : 'info',
+                            type: toastType,
                             timestamp: notification.createdAt,
                             isRead: notification.isRead,
                             category: notification.category,
@@ -104,20 +162,38 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
                             needsAction: false,
                         };
 
-                        setNotifications((prev) => [frontendNotif, ...prev]);
+                        // Thêm vào danh sách notification
+                        setNotifications((prev) => {
+                            if (prev.some((item) => item.id === frontendNotif.id)) {
+                                return prev;
+                            }
+                            return [frontendNotif, ...prev];
+                        });
+
+                        // Hiển thị toast popup 5 giây (góc trên phải, dưới header)
+                        addToast({
+                            id: notification.id,
+                            title: notification.title,
+                            message: notification.message,
+                            type: toastType,
+                            duration: 5000,
+                            onClose: dismissToast,
+                        });
                     },
                 );
 
-                return unsubscribe;
             })
             .catch((error) => {
                 console.error('WebSocket connection failed:', error);
             });
 
         return () => {
+            isMounted = false;
+            unsubscribe?.();
             websocketService.disconnect();
         };
-    }, [userId, userType]);
+    }, [userId, userType, addToast]);
+
 
     const convertBackendToFrontend = (
         backendNotif: BackendNotification,
@@ -169,7 +245,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
             const unread =
                 await notificationApiService.getUnreadNotifications();
             if (unread.success && Array.isArray(unread.data)) {
-                setNotifications(unread.data.map(convertBackendToFrontend));
+                const mapped = unread.data.map(convertBackendToFrontend);
+                setNotifications(mapped);
                 return;
             }
 
@@ -182,6 +259,15 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     useEffect(() => {
         refreshNotifications();
     }, [refreshNotifications]);
+
+    useEffect(() => {
+        if (!userId) {
+            setNotifications([]);
+            return;
+        }
+
+        refreshNotifications();
+    }, [userId, refreshNotifications]);
 
     const addNotification = useCallback(
         (data: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => {
@@ -251,6 +337,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
             }}
         >
             {children}
+            {/* Real-time notification toast popup - góc trên phải, dưới header, 5 giây */}
+            <ToastContainer toasts={toasts} position="top-right" onRemove={dismissToast} />
         </NotificationContext.Provider>
     );
 };
