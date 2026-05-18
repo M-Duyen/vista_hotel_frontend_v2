@@ -23,7 +23,7 @@ export default defineConfig({
             // (Netty/reactive) cannot reliably proxy WebSocket to Tomcat (servlet)
             // backends with SockJS. Vite's Node.js proxy handles this correctly.
             '/ws': {
-                target: 'http://localhost:8092',
+                target: 'http://localhost:8080',
                 ws: true,
                 changeOrigin: true,
             },
