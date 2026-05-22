@@ -32,6 +32,7 @@ export const API_CONFIG = {
     CHECKIN_CHECKOUT_POLICIES: "/api/principle/checkin-checkout-policies",
     CHECKIN_CHECKOUT_POLICY_RULES: "/api/principle/checkin-checkout-policy-rules",
     HOURLY_RATE_POLICIES: "/api/principle/hourly-rate-policies",
+    REPORTS: "/api/reports",
   
   },
 

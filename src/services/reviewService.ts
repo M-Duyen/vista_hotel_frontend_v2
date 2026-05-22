@@ -1,7 +1,7 @@
 import type { Review } from "../types/Review";
 import { api } from "./apiClient";
 
-const ENDPOINT = "/reviews";
+const ENDPOINT = "/api/reviews";
 
 export const getReviewsByRoomNumber = async (id: string) => {
   try {
@@ -57,7 +57,7 @@ export const getBookingByReviewId = async (reviewID: string) => {
 // Category Ratings API
 export const getCategoryRatings = async () => {
   try {
-    const response = await api.get(`${ENDPOINT}/ratings/category`);
+    const response = await api.get(`/api/reports/reviews/ratings/category`);
     return response.data;
   } catch (error) {
     console.error('Error fetching category ratings:', error);
@@ -68,7 +68,7 @@ export const getCategoryRatings = async () => {
 // Sentiment API
 export const getSentimentStats = async () => {
   try {
-    const response = await api.get(`${ENDPOINT}/ratings/sentiment`);
+    const response = await api.get(`/api/reports/reviews/ratings/sentiment`);
     return response.data;
   } catch (error) {
     console.error('Error fetching sentiment stats:', error);
@@ -79,7 +79,7 @@ export const getSentimentStats = async () => {
 // Rating Trend by Month API (line chart)
 export const getRatingTrend = async () => {
   try {
-    const response = await api.get(`${ENDPOINT}/ratings/trend`);
+    const response = await api.get(`/api/reports/reviews/ratings/trend`);
     return response.data;
   } catch (error) {
     console.error('Error fetching rating trend:', error);

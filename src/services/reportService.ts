@@ -9,11 +9,7 @@ import type {
   RoomOccupancyData,
 } from "../types/Report";
 
-// =======================
-// DASHBOARD
-// =======================
-
-const ENDPOINT = "/report";
+const ENDPOINT = "/api/reports";
 
 export interface DashboardStats {
   totalRevenue: number;
@@ -98,8 +94,8 @@ export const reportService = {
     startDate: string,
     endDate: string
   ): Promise<RevenueData[]> => {
-    const response = await api.get("/report/revenue", {
-      params: { startDate, endDate },
+    const response = await api.get(`${ENDPOINT}/revenue/by-date-range`, {
+      params: { fromDate: startDate, toDate: endDate },
     });
     return response.data;
   },
@@ -109,7 +105,7 @@ export const reportService = {
     startDate: string,
     endDate: string
   ): Promise<OccupancyData[]> => {
-    const response = await api.get("/report/occupancy", {
+    const response = await api.get(`${ENDPOINT}/occupancy`, {
       params: { startDate, endDate },
     });
     return response.data;
@@ -121,7 +117,7 @@ export const reportService = {
     endDate: string,
     period: string = "MONTHLY"
   ): Promise<LoyaltyData[]> => {
-    const response = await api.get("/report/loyalty", {
+    const response = await api.get(`${ENDPOINT}/loyalty`, {
       params: { startDate, endDate, period },
     });
     return response.data;
@@ -132,7 +128,7 @@ export const reportService = {
     startDate: string,
     endDate: string
   ): Promise<ReviewData[]> => {
-    const response = await api.get("/report/reviews", {
+    const response = await api.get(`${ENDPOINT}/reviews`, {
       params: { startDate, endDate },
     });
     return response.data;
@@ -144,7 +140,7 @@ export const reportService = {
     endDate: string,
     period: string = "MONTHLY"
   ): Promise<BookingData[]> => {
-    const response = await api.get("/report/booking", {
+    const response = await api.get(`${ENDPOINT}/booking`, {
       params: { startDate, endDate, period },
     });
     return response.data;
@@ -154,7 +150,7 @@ export const reportService = {
     startDate: string,
     endDate: string
   ): Promise<ServiceData[]> => {
-    const response = await api.get("/report/services", {
+    const response = await api.get(`${ENDPOINT}/services`, {
       params: { startDate, endDate },
     });
     return response.data;
@@ -165,7 +161,7 @@ export const reportService = {
     endDate: string,
     period: string = "monthly"
   ): Promise<ServiceReportData[]> => {
-    const response = await api.get("/report/services/chart", {
+    const response = await api.get(`${ENDPOINT}/services/chart`, {
       params: { startDate, endDate, period },
     });
     return response.data;
@@ -182,7 +178,7 @@ export const reportService = {
     endDate: string,
     period: string = "monthly"
   ): Promise<ServiceReportData[]> => {
-    const response = await api.get<ServiceReportData[]>("/report/services", {
+    const response = await api.get<ServiceReportData[]>(`${ENDPOINT}/services`, {
       params: {
         startDate,
         endDate,
@@ -197,7 +193,7 @@ export const reportService = {
     period: string = "MONTHLY"
   ): Promise<RoomOccupancyData[]> => {
     const response = await api.get<RoomOccupancyData[]>(
-      "/report/room-occupancy",
+      `${ENDPOINT}/room-occupancy`,
       {
         params: {
           startDate,

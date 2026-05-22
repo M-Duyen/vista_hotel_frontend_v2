@@ -1,16 +1,7 @@
 import type { RevenueData, ReportPeriod } from '../types/Report';
 import { api } from './apiClient';
 
-const ENDPOINT = '/revenue';
-
-// Map frontend period → backend type
-const periodToType: Record<ReportPeriod, string> = {
-    daily: 'DAILY',
-    weekly: 'WEEKLY',
-    monthly: 'MONTHLY',
-    quarterly: 'QUARTERLY',
-    yearly: 'YEARLY',
-};
+const ENDPOINT = '/api/reports/revenue';
 
 interface RevenueReportProjection {
     year: number;
@@ -72,6 +63,7 @@ const transformProjectionToRevenueData = (
     type: string,
 ): RevenueData[] => {
     return projections.map((item) => ({
+        label: formatDateLabel(item, type),
         date: formatDateLabel(item, type),
         roomRevenue: item.roomRevenue ?? 0,
         serviceRevenue: item.serviceRevenue ?? 0,
@@ -102,6 +94,7 @@ const transformRevenueData = (data: any[]): RevenueData[] => {
 export const getRevenueByDateRange = async (
     fromDate: string,
     toDate: string,
+    _period?: ReportPeriod,
 ): Promise<RevenueData[]> => {
     const response = await api.get(`${ENDPOINT}/by-date-range`, {
         params: { fromDate, toDate },
@@ -121,7 +114,7 @@ export const getRevenueData = async (): Promise<RevenueData[]> => {
         fromDateObj.setFullYear(fromDateObj.getFullYear() - 1);
         const fromDate = fromDateObj.toISOString().split('T')[0];
 
-        return await getRevenueByDateRange(fromDate, toDate, 'MONTHLY');
+        return await getRevenueByDateRange(fromDate, toDate, 'monthly');
     } catch (error) {
         console.error('Error fetching default revenue data:', error);
         throw error;

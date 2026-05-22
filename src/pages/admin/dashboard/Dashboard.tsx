@@ -36,9 +36,7 @@ import {
   Line,
 } from "recharts";
 import { motion } from "framer-motion";
-import reportService, {
-  getDashboardStats,
-} from "../../../services/reportService";
+import { getDashboardStats } from "../../../services/reportService";
 
 interface DashboardStats {
   totalRevenue: number;
@@ -541,11 +539,11 @@ const Dashboard: React.FC = () => {
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={roomTypeData}
+                data={roomTypeData as any[]}
                 cx="50%"
                 cy="50%"
                 labelLine={true}
-                label={({ name, percent }) =>
+                label={({ name, percent = 0 }) =>
                   `${name}: ${(percent * 100).toFixed(0)}%`
                 }
                 outerRadius={70}
