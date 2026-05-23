@@ -6,8 +6,9 @@ import {
   FaCalendarAlt,
   FaUsers,
   FaChartLine,
-  FaCog,
   FaExclamationTriangle,
+  FaChevronLeft,
+  FaChevronRight,
 } from "react-icons/fa";
 import { MdMeetingRoom, MdRateReview } from "react-icons/md";
 import { RiInfoCardFill, RiDiscountPercentFill } from "react-icons/ri";
@@ -25,13 +26,21 @@ import { createPortal } from "react-dom";
 
 interface SidebarProps {
   className?: string;
+  isExpanded: boolean;
+  setIsExpanded: React.Dispatch<React.SetStateAction<boolean>>;
+  onNavigate?: () => void;
 }
 
 interface User {
   userRole?: string;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ className }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  className,
+  isExpanded,
+  setIsExpanded,
+  onNavigate,
+}) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const [user, setUser] = useState<User | null>(null);
@@ -45,142 +54,42 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   }, []);
 
   const adminMenuItems = [
-    {
-      icon: <FaTachometerAlt />,
-      label: "Dashboard",
-      path: "/admin",
-    },
-    {
-      icon: <MdMeetingRoom />,
-      label: "Rooms",
-      path: "/admin/room-management",
-    },
-    {
-      icon: <BiSolidCategory />,
-      label: "Room Types",
-      path: "/admin/room-type-management",
-    },
-    {
-      icon: <BiSolidDollarCircle />,
-      label: "Pricing",
-      path: "/admin/pricing",
-    },
-    {
-      icon: <RiInfoCardFill />,
-      label: "Information",
-      path: "/admin/info",
-    },
-    {
-      icon: <LuMapPinCheckInside />,
-      label: "Check-in",
-      path: "/admin/checkin",
-    },
-    {
-      icon: <IoBagCheckOutline />,
-      label: "Check-out",
-      path: "/admin/checkout",
-    },
-    {
-      icon: <FaUsers />,
-      label: "Employees",
-      path: "/admin/employees",
-    },
-    {
-      icon: <FaCalendarAlt />,
-      label: "Reservations",
-      path: "/admin/reservations",
-    },
-    {
-      icon: <FaUsers />,
-      label: "Customers",
-      path: "/admin/customers",
-    },
-    {
-      icon: <MdRoomService />,
-      label: "Services",
-      path: "/admin/services",
-    },
-    {
-      icon: <MdRateReview />,
-      label: "Reviews",
-      path: "/admin/reviews",
-    },
-    {
-      icon: <FaExclamationTriangle />,
-      label: "Incidents",
-      path: "/admin/incidents",
-    },
-    {
-      icon: <RiDiscountPercentFill />,
-      label: "Promotions",
-      path: "/admin/promotion-management",
-    },
-    {
-      icon: <MdDiscount />,
-      label: "Promotion Types",
-      path: "/admin/promotion-type-management",
-    },
-    {
-      icon: <BiSolidDiscount />,
-      label: "Vouchers",
-      path: "/admin/voucher-management",
-    },
-    {
-      icon: <FaChartLine />,
-      label: "Reports",
-      path: "/admin/reports",
-    },
+    { icon: <FaTachometerAlt />, label: "Dashboard", path: "/admin" },
+    { icon: <MdMeetingRoom />, label: "Rooms", path: "/admin/room-management" },
+    { icon: <BiSolidCategory />, label: "Room Types", path: "/admin/room-type-management" },
+    { icon: <BiSolidDollarCircle />, label: "Pricing", path: "/admin/pricing" },
+    { icon: <RiInfoCardFill />, label: "Information", path: "/admin/info" },
+    { icon: <LuMapPinCheckInside />, label: "Check-in", path: "/admin/checkin" },
+    { icon: <IoBagCheckOutline />, label: "Check-out", path: "/admin/checkout" },
+    { icon: <FaUsers />, label: "Employees", path: "/admin/employees" },
+    { icon: <FaCalendarAlt />, label: "Reservations", path: "/admin/reservations" },
+    { icon: <FaUsers />, label: "Customers", path: "/admin/customers" },
+    { icon: <MdRoomService />, label: "Services", path: "/admin/services" },
+    { icon: <MdRateReview />, label: "Reviews", path: "/admin/reviews" },
+    { icon: <FaExclamationTriangle />, label: "Incidents", path: "/admin/incidents" },
+    { icon: <RiDiscountPercentFill />, label: "Promotions", path: "/admin/promotion-management" },
+    { icon: <MdDiscount />, label: "Promotion Types", path: "/admin/promotion-type-management" },
+    { icon: <BiSolidDiscount />, label: "Vouchers", path: "/admin/voucher-management" },
+    { icon: <FaChartLine />, label: "Reports", path: "/admin/reports" },
   ];
 
   const employeeMenuItems = [
-    {
-      icon: <MdMeetingRoom />,
-      label: "Rooms",
-      path: "/employee/room-management",
-    },
-    {
-      icon: <BiSolidCategory />,
-      label: "Room Types",
-      path: "/employee/room-type-management",
-    },
+    { icon: <MdMeetingRoom />, label: "Rooms", path: "/employee/room-management" },
+    { icon: <BiSolidCategory />, label: "Room Types", path: "/employee/room-type-management" },
     { icon: <MdRoomService />, label: "Services", path: "/employee/services" },
-    {
-      icon: <RiInfoCardFill />,
-      label: "Information",
-      path: "/employee/info",
-    },
-    {
-      icon: <LuMapPinCheckInside />,
-      label: "Check-in",
-      path: "/employee/checkin",
-    },
-    {
-      icon: <IoBagCheckOutline />,
-      label: "Check-out",
-      path: "/employee/checkout",
-    },
-    {
-      icon: <FaUsers />,
-      label: "Customers",
-      path: "/employee/customers",
-    },
-    {
-      icon: <FaCalendarAlt />,
-      label: "Daily Work",
-      path: "/employee/daily",
-    },
-    {
-      icon: <MdRateReview />,
-      label: "Reviews",
-      path: "/employee/reviews",
-    },
+    { icon: <RiInfoCardFill />, label: "Information", path: "/employee/info" },
+    { icon: <LuMapPinCheckInside />, label: "Check-in", path: "/employee/checkin" },
+    { icon: <IoBagCheckOutline />, label: "Check-out", path: "/employee/checkout" },
+    { icon: <FaUsers />, label: "Customers", path: "/employee/customers" },
+    { icon: <FaCalendarAlt />, label: "Daily Work", path: "/employee/daily" },
+    { icon: <MdRateReview />, label: "Reviews", path: "/employee/reviews" },
   ];
 
   const menuItems =
     user?.userRole === "EMPLOYEE" ? employeeMenuItems : adminMenuItems;
 
   const getIconScale = (index: number) => {
-    if (hoveredIndex === null) return 1;
+    if (hoveredIndex === null || isExpanded) return 1;
 
     const distance = Math.abs(index - hoveredIndex);
 
@@ -191,37 +100,84 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   };
 
   const handleHoverStart = (index: number, event: React.MouseEvent) => {
+    if (isExpanded) return;
+
     const rect = event.currentTarget.getBoundingClientRect();
+
     setTooltipPosition({
       top: rect.top + rect.height / 2,
       left: rect.right + 12,
     });
+
     setHoveredIndex(index);
+  };
+
+  const toggleSidebar = () => {
+    setHoveredIndex(null);
+    setIsExpanded((prev) => !prev);
+  };
+
+  const handleMenuClick = () => {
+    setHoveredIndex(null);
+    onNavigate?.();
   };
 
   return (
     <>
       <motion.aside
+        animate={{ width: isExpanded ? 240 : 64 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
         className={cn(
-          "h-screen w-16 bg-gradient-to-br from-[#F8EBD6] via-[#F0E0C0] to-white flex flex-col fixed z-30 shadow-lg pt-4",
+          "h-screen bg-gradient-to-br from-[#F8EBD6] via-[#F0E0C0] to-white flex flex-col fixed z-30 shadow-lg pt-4 overflow-visible",
           "border-r border-[#D9C9A8]/30",
           className
         )}
       >
-        {/* Logo */}
-        <div className="px-3 pb-4 flex items-center justify-center mb-1">
-          <div className="w-8 h-8 rounded-full bg-[#6B4B28]/10 flex items-center justify-center">
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className="absolute -right-3 top-5 w-6 h-6 rounded-full bg-white shadow-md border border-[#D9C9A8]/50 flex items-center justify-center text-[#6B4B28] hover:bg-[#F8EBD6] transition-all z-40"
+          title={isExpanded ? "Thu gọn sidebar" : "Mở rộng sidebar"}
+        >
+          {isExpanded ? <FaChevronLeft size={12} /> : <FaChevronRight size={12} />}
+        </button>
+
+        <div
+          className={cn(
+            "px-3 pb-4 flex items-center mb-1 transition-all duration-300 ease-out",
+            isExpanded ? "justify-start gap-3" : "justify-center"
+          )}
+        >
+          <div className="w-8 h-8 rounded-full bg-[#6B4B28]/10 flex items-center justify-center shrink-0">
             <img
               className="w-5 h-5"
               src="../../src/assets/images/logo.png"
               alt="Logo"
             />
           </div>
+
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.span
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={{ duration: 0.2 }}
+                className="text-sm font-bold text-[#6B4B28] whitespace-nowrap"
+              >
+                Hotel Admin
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-grow px-2 py-1 overflow-y-auto no-scrollbar">
-          <ul className="space-y-1.5 flex flex-col items-center">
+          <ul
+            className={cn(
+              "space-y-1.5 flex flex-col",
+              isExpanded ? "items-stretch" : "items-center"
+            )}
+          >
             {menuItems.map((item, index) => {
               const isActive = location.pathname === item.path;
               const scale = getIconScale(index);
@@ -230,8 +186,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 <motion.li
                   key={index}
                   animate={{
-                    scale: scale,
-                    y: hoveredIndex === index ? -5 : 0,
+                    scale,
+                    y: hoveredIndex === index && !isExpanded ? -5 : 0,
                   }}
                   transition={{
                     type: "spring",
@@ -244,18 +200,21 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 >
                   <Link
                     to={item.path}
+                    onClick={handleMenuClick}
                     className={cn(
-                      "flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 relative",
+                      "flex items-center rounded-xl transition-all duration-300 ease-out relative",
+                      isExpanded
+                        ? "w-full h-10 justify-start px-3 gap-3"
+                        : "w-10 h-10 justify-center",
                       isActive
                         ? "bg-white shadow-md"
                         : "hover:bg-white/60 bg-white/30"
                     )}
                   >
-                    {/* Active Indicator */}
                     {isActive && (
                       <motion.div
                         layoutId="activeIndicator"
-                        className="absolute -left-4 w-0.5 h-6 bg-[#6B4B28] rounded-r-full"
+                        className="absolute -left-2 w-0.5 h-6 bg-[#6B4B28] rounded-r-full"
                         transition={{
                           type: "spring",
                           stiffness: 400,
@@ -264,19 +223,34 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                       />
                     )}
 
-                    {/* Icon */}
                     <motion.div
                       className={cn(
-                        "flex items-center justify-center text-base",
+                        "flex items-center justify-center text-base shrink-0",
                         isActive ? "text-[#6B4B28]" : "text-[#6B4B28]/70"
                       )}
                     >
                       {item.icon}
                     </motion.div>
+
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.span
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -8 }}
+                          transition={{ duration: 0.18 }}
+                          className={cn(
+                            "text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis",
+                            isActive ? "text-[#6B4B28]" : "text-[#6B4B28]/70"
+                          )}
+                        >
+                          {item.label}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
                   </Link>
 
-                  {/* Bounce effect on active */}
-                  {isActive && (
+                  {isActive && !isExpanded && (
                     <motion.div
                       className="absolute -bottom-0.5 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-[#6B4B28] rounded-full"
                       animate={{
@@ -296,21 +270,28 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           </ul>
         </nav>
 
-        {/* Footer */}
         <div className="p-2 text-center mb-2">
           <motion.div
             whileHover={{ scale: 1.05 }}
-            className="w-8 h-8 mx-auto rounded-full bg-[#6B4B28]/10 flex items-center justify-center cursor-pointer"
+            className={cn(
+              "h-8 mx-auto rounded-full bg-[#6B4B28]/10 flex items-center justify-center cursor-pointer transition-all duration-300 ease-out",
+              isExpanded ? "w-full gap-2 px-3" : "w-8"
+            )}
           >
             <span className="text-[10px] text-[#6B4B28]/70 font-bold">©</span>
+
+            {isExpanded && (
+              <span className="text-xs text-[#6B4B28]/70 font-semibold whitespace-nowrap">
+                Vistal Hotel
+              </span>
+            )}
           </motion.div>
         </div>
       </motion.aside>
 
-      {/* Tooltip Portal - Elegant Design */}
       {createPortal(
         <AnimatePresence mode="wait">
-          {hoveredIndex !== null && (
+          {hoveredIndex !== null && !isExpanded && (
             <motion.div
               key="tooltip"
               initial={{ opacity: 0, x: -8, scale: 0.95 }}
@@ -329,17 +310,14 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 zIndex: 9999,
               }}
             >
-              {/* Glass Background */}
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-white/95 to-[#F8EBD6]/95 backdrop-blur-xl rounded-xl shadow-xl border border-[#D9C9A8]/50"></div>
 
-                {/* Content */}
                 <div className="relative px-4 py-2.5 rounded-xl">
                   <span className="text-sm font-semibold text-[#6B4B28] tracking-wide whitespace-nowrap">
                     {menuItems[hoveredIndex].label}
                   </span>
 
-                  {/* Decorative line */}
                   <motion.div
                     className="absolute bottom-0 left-4 right-4 h-0.5 bg-gradient-to-r from-transparent via-[#6B4B28]/30 to-transparent rounded-full"
                     initial={{ scaleX: 0 }}
@@ -348,12 +326,10 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                   />
                 </div>
 
-                {/* Arrow */}
                 <div className="absolute -left-1.5 top-1/2 transform -translate-y-1/2">
                   <div className="w-3 h-3 bg-gradient-to-br from-white/95 to-[#F8EBD6]/95 border-l border-b border-[#D9C9A8]/50 rotate-45"></div>
                 </div>
 
-                {/* Glow effect */}
                 <div className="absolute inset-0 bg-[#6B4B28]/5 blur-xl rounded-xl -z-10"></div>
               </div>
             </motion.div>

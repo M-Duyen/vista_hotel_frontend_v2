@@ -50,7 +50,6 @@ export default function PaymentSuccessModal({
   };
 
   const handlePrintReceipt = () => {
-    // Tạo nội dung HTML cho hóa đơn
     const receiptHTML = bookingReceipt(paymentData);
 
     // Tạo cửa sổ mới để in

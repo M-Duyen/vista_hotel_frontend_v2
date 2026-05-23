@@ -174,8 +174,16 @@ export default function PaymentModal({
 
   const generateVNPayQR = async () => {
     try {
-      const qrUrl = await generateQRPayment(paymentData.bookingId);
-      setQrCodeUrl(qrUrl);
+      const blob = await generateQRPayment(paymentData.bookingId);
+
+      if (qrCodeUrl && qrCodeUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(qrCodeUrl);
+      }
+
+      const objectUrl = URL.createObjectURL(blob);
+      setQrCodeUrl(objectUrl);
+
+      stopPaymentPolling();
       startPaymentPolling();
     } catch (error) {
       console.error("Error generating QR code:", error);

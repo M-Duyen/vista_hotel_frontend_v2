@@ -1,20 +1,31 @@
-import { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
-import HeaderAdmin from '../components/HeaderAdmin';
-import Sidebar from '../components/Sidebar';
+import { useEffect, useState } from "react";
+import { Outlet } from "react-router-dom";
+import HeaderAdmin from "../components/HeaderAdmin";
+import Sidebar from "../components/Sidebar";
 
 const AdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+    setIsSidebarOpen((prev) => !prev);
+  };
+
+  const handleSidebarNavigate = () => {
+    setIsSidebarExpanded(false);
+
+    if (isMobile) {
+      setIsSidebarOpen(false);
+    }
   };
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 1024);
-      if (window.innerWidth >= 1024) {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+
+      if (!mobile) {
         setIsSidebarOpen(false);
       }
     };
@@ -23,12 +34,17 @@ const AdminLayout = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  const sidebarWidth = isSidebarExpanded ? 240 : 64;
+
   return (
     <div className="flex h-screen bg-light">
       <Sidebar
+        isExpanded={isSidebarExpanded}
+        setIsExpanded={setIsSidebarExpanded}
+        onNavigate={handleSidebarNavigate}
         className={
           isMobile
-            ? `z-30 transform ${
+            ? `z-30 transform transition-transform duration-300 ease-out ${
                 isSidebarOpen ? "translate-x-0" : "-translate-x-full"
               }`
             : ""
@@ -39,11 +55,15 @@ const AdminLayout = () => {
         <div
           className="fixed inset-0 bg-black/50 z-20"
           onClick={toggleSidebar}
-          style={{ pointerEvents: "auto" }}
-        ></div>
+        />
       )}
 
-      <div className="flex flex-col flex-grow ml-13 transition-all duration-300 ease-in-out">
+      <div
+        className="flex flex-col flex-grow transition-[margin-left] duration-300 ease-out"
+        style={{
+          marginLeft: isMobile ? 0 : sidebarWidth,
+        }}
+      >
         <HeaderAdmin
           toggleSidebar={toggleSidebar}
           isSidebarOpen={isSidebarOpen}

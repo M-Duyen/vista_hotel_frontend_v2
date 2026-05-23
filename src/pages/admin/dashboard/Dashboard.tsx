@@ -257,7 +257,6 @@ const Dashboard: React.FC = () => {
     return (
       <div className="bg-white rounded-xl shadow-md p-6 border border-[#EBE3D7]">
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <FaHotel className="text-[#CCBDA3]" />
           Room Status Overview
         </h3>
         <div className="space-y-4">
@@ -333,7 +332,6 @@ const Dashboard: React.FC = () => {
     return (
       <div className="bg-white rounded-xl shadow-md p-6 border border-[#EBE3D7]">
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <FaUserTie className="text-[#CCBDA3]" />
           Today's Tasks
         </h3>
         <div className="grid grid-cols-2 gap-4">
@@ -384,14 +382,14 @@ const Dashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
       {/* Header */}
-      <div className="mb-8">
+      {/* <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">
           Dashboard Overview
         </h1>
         <p className="text-gray-600">
           Welcome back! Here's what's happening at Hotel Vista today.
         </p>
-      </div>
+      </div> */}
 
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -435,7 +433,6 @@ const Dashboard: React.FC = () => {
         {/* Rating Card */}
         <div className="bg-white rounded-xl shadow-md p-6 border border-[#EBE3D7]">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <FaStar className="text-[#CCBDA3]" />
             Customer Satisfaction
           </h3>
           <div className="text-center py-4">
@@ -476,7 +473,6 @@ const Dashboard: React.FC = () => {
         {/* Revenue Trend */}
         <div className="bg-white rounded-xl shadow-md p-6 border border-[#EBE3D7]">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <FaChartLine className="text-[#CCBDA3]" />
             Revenue Trend (6 Months)
           </h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -508,7 +504,6 @@ const Dashboard: React.FC = () => {
         {/* Daily Occupancy */}
         <div className="bg-white rounded-xl shadow-md p-6 border border-[#EBE3D7]">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <FaBed className="text-[#CCBDA3]" />
             Daily Occupancy Rate
           </h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -594,7 +589,6 @@ const Dashboard: React.FC = () => {
         {/* Popular Services */}
         <div className="bg-white rounded-xl shadow-md p-6 border border-[#EBE3D7]">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <MdRoomService className="text-[#CCBDA3]" />
             Popular Services
           </h3>
           <div className="space-y-4">
