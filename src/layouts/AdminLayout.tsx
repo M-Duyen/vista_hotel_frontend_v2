@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { Outlet } from "react-router-dom";
 import HeaderAdmin from "../components/HeaderAdmin";
 import Sidebar from "../components/Sidebar";
@@ -42,13 +43,9 @@ const AdminLayout = () => {
         isExpanded={isSidebarExpanded}
         setIsExpanded={setIsSidebarExpanded}
         onNavigate={handleSidebarNavigate}
-        className={
-          isMobile
-            ? `z-30 transform transition-transform duration-300 ease-out ${
-                isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-              }`
-            : ""
-        }
+        isMobile={isMobile}
+        isOpen={isSidebarOpen}
+        className={isMobile ? "z-30" : ""}
       />
 
       {isSidebarOpen && isMobile && (
@@ -58,11 +55,10 @@ const AdminLayout = () => {
         />
       )}
 
-      <div
-        className="flex flex-col flex-grow transition-[margin-left] duration-300 ease-out"
-        style={{
-          marginLeft: isMobile ? 0 : sidebarWidth,
-        }}
+      <motion.div
+        className="flex flex-col flex-grow"
+        animate={{ marginLeft: isMobile ? 0 : sidebarWidth }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
       >
         <HeaderAdmin
           toggleSidebar={toggleSidebar}
@@ -72,7 +68,7 @@ const AdminLayout = () => {
         <main className="flex-grow overflow-auto bg-light mt-3">
           <Outlet />
         </main>
-      </div>
+      </motion.div>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-/* eslint-disable*/
+/* eslint-disable */
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -10,12 +10,10 @@ import {
   FaChevronLeft,
   FaChevronRight,
 } from "react-icons/fa";
-import { MdMeetingRoom, MdRateReview } from "react-icons/md";
+import { MdMeetingRoom, MdRateReview, MdRoomService, MdDiscount } from "react-icons/md";
 import { RiInfoCardFill, RiDiscountPercentFill } from "react-icons/ri";
 import { IoBagCheckOutline } from "react-icons/io5";
 import { LuMapPinCheckInside } from "react-icons/lu";
-import { cn } from "../utils/cn";
-import { MdRoomService, MdDiscount } from "react-icons/md";
 import {
   BiSolidCategory,
   BiSolidDiscount,
@@ -23,12 +21,15 @@ import {
 } from "react-icons/bi";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
+import { cn } from "../utils/cn";
 
 interface SidebarProps {
   className?: string;
   isExpanded: boolean;
   setIsExpanded: React.Dispatch<React.SetStateAction<boolean>>;
   onNavigate?: () => void;
+  isMobile?: boolean;
+  isOpen?: boolean;
 }
 
 interface User {
@@ -40,6 +41,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   isExpanded,
   setIsExpanded,
   onNavigate,
+  isMobile = false,
+  isOpen = true,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
@@ -122,21 +125,46 @@ const Sidebar: React.FC<SidebarProps> = ({
     onNavigate?.();
   };
 
+  const sidebarWidth = isExpanded ? 240 : 64;
+  const sidebarX = isMobile ? (isOpen ? 0 : -sidebarWidth) : 0;
+
+  const labelAnimation = {
+    opacity: isExpanded ? 1 : 0,
+    x: isExpanded ? 0 : -8,
+    width: isExpanded ? "auto" : 0,
+  };
+
   return (
     <>
       <motion.aside
-        animate={{ width: isExpanded ? 240 : 64 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
+        initial={false}
+        animate={{
+          width: sidebarWidth,
+          x: sidebarX,
+        }}
+        transition={{
+          width: {
+            duration: 0.28,
+            ease: [0.22, 1, 0.36, 1],
+          },
+          x: {
+            duration: 0.25,
+            ease: "easeOut",
+          },
+        }}
         className={cn(
           "h-screen bg-gradient-to-br from-[#F8EBD6] via-[#F0E0C0] to-white flex flex-col fixed z-30 shadow-lg pt-4 overflow-visible",
           "border-r border-[#D9C9A8]/30",
           className
         )}
+        style={{
+          willChange: "transform, width",
+        }}
       >
         <button
           type="button"
           onClick={toggleSidebar}
-          className="absolute -right-3 top-5 w-6 h-6 rounded-full bg-white shadow-md border border-[#D9C9A8]/50 flex items-center justify-center text-[#6B4B28] hover:bg-[#F8EBD6] transition-all z-40"
+          className="absolute -right-3 top-5 w-6 h-6 rounded-full bg-white shadow-md border border-[#D9C9A8]/50 flex items-center justify-center text-[#6B4B28] hover:bg-[#F8EBD6] transition-colors z-40"
           title={isExpanded ? "Thu gọn sidebar" : "Mở rộng sidebar"}
         >
           {isExpanded ? <FaChevronLeft size={12} /> : <FaChevronRight size={12} />}
@@ -144,8 +172,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         <div
           className={cn(
-            "px-3 pb-4 flex items-center mb-1 transition-all duration-300 ease-out",
-            isExpanded ? "justify-start gap-3" : "justify-center"
+            "px-3 pb-4 flex items-center mb-1 overflow-hidden",
+            isExpanded ? "justify-start gap-3" : "justify-center gap-0"
           )}
         >
           <div className="w-8 h-8 rounded-full bg-[#6B4B28]/10 flex items-center justify-center shrink-0">
@@ -156,19 +184,14 @@ const Sidebar: React.FC<SidebarProps> = ({
             />
           </div>
 
-          <AnimatePresence>
-            {isExpanded && (
-              <motion.span
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.2 }}
-                className="text-sm font-bold text-[#6B4B28] whitespace-nowrap"
-              >
-                Hotel Admin
-              </motion.span>
-            )}
-          </AnimatePresence>
+          <motion.span
+            initial={false}
+            animate={labelAnimation}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="text-sm font-bold text-[#6B4B28] whitespace-nowrap overflow-hidden"
+          >
+            Hotel Admin
+          </motion.span>
         </div>
 
         <nav className="flex-grow px-2 py-1 overflow-y-auto no-scrollbar">
@@ -184,7 +207,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
               return (
                 <motion.li
-                  key={index}
+                  key={item.path}
                   animate={{
                     scale,
                     y: hoveredIndex === index && !isExpanded ? -5 : 0,
@@ -202,10 +225,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                     to={item.path}
                     onClick={handleMenuClick}
                     className={cn(
-                      "flex items-center rounded-xl transition-all duration-300 ease-out relative",
+                      "flex items-center rounded-xl relative overflow-hidden",
+                      "transition-colors duration-200 ease-out",
                       isExpanded
                         ? "w-full h-10 justify-start px-3 gap-3"
-                        : "w-10 h-10 justify-center",
+                        : "w-10 h-10 justify-center gap-0",
                       isActive
                         ? "bg-white shadow-md"
                         : "hover:bg-white/60 bg-white/30"
@@ -232,27 +256,22 @@ const Sidebar: React.FC<SidebarProps> = ({
                       {item.icon}
                     </motion.div>
 
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.span
-                          initial={{ opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -8 }}
-                          transition={{ duration: 0.18 }}
-                          className={cn(
-                            "text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis",
-                            isActive ? "text-[#6B4B28]" : "text-[#6B4B28]/70"
-                          )}
-                        >
-                          {item.label}
-                        </motion.span>
+                    <motion.span
+                      initial={false}
+                      animate={labelAnimation}
+                      transition={{ duration: 0.18, ease: "easeOut" }}
+                      className={cn(
+                        "text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis",
+                        isActive ? "text-[#6B4B28]" : "text-[#6B4B28]/70"
                       )}
-                    </AnimatePresence>
+                    >
+                      {item.label}
+                    </motion.span>
                   </Link>
 
                   {isActive && !isExpanded && (
                     <motion.div
-                      className="absolute -bottom-0.5 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-[#6B4B28] rounded-full"
+                      className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#6B4B28] rounded-full"
                       animate={{
                         scale: [1, 1.3, 1],
                         opacity: [0.5, 1, 0.5],
@@ -274,17 +293,25 @@ const Sidebar: React.FC<SidebarProps> = ({
           <motion.div
             whileHover={{ scale: 1.05 }}
             className={cn(
-              "h-8 mx-auto rounded-full bg-[#6B4B28]/10 flex items-center justify-center cursor-pointer transition-all duration-300 ease-out",
-              isExpanded ? "w-full gap-2 px-3" : "w-8"
+              "h-8 mx-auto rounded-full bg-[#6B4B28]/10 flex items-center justify-center cursor-pointer overflow-hidden",
+              isExpanded ? "w-full gap-2 px-3" : "w-8 gap-0 px-0"
             )}
           >
-            <span className="text-[10px] text-[#6B4B28]/70 font-bold">©</span>
+            <span className="text-[10px] text-[#6B4B28]/70 font-bold shrink-0">
+              ©
+            </span>
 
-            {isExpanded && (
-              <span className="text-xs text-[#6B4B28]/70 font-semibold whitespace-nowrap">
-                Vistal Hotel
-              </span>
-            )}
+            <motion.span
+              initial={false}
+              animate={{
+                opacity: isExpanded ? 1 : 0,
+                width: isExpanded ? "auto" : 0,
+              }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="text-xs text-[#6B4B28]/70 font-semibold whitespace-nowrap overflow-hidden"
+            >
+              Vistal Hotel
+            </motion.span>
           </motion.div>
         </div>
       </motion.aside>
@@ -311,7 +338,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               }}
             >
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-white/95 to-[#F8EBD6]/95 backdrop-blur-xl rounded-xl shadow-xl border border-[#D9C9A8]/50"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-white/95 to-[#F8EBD6]/95 backdrop-blur-xl rounded-xl shadow-xl border border-[#D9C9A8]/50" />
 
                 <div className="relative px-4 py-2.5 rounded-xl">
                   <span className="text-sm font-semibold text-[#6B4B28] tracking-wide whitespace-nowrap">
@@ -326,11 +353,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                   />
                 </div>
 
-                <div className="absolute -left-1.5 top-1/2 transform -translate-y-1/2">
-                  <div className="w-3 h-3 bg-gradient-to-br from-white/95 to-[#F8EBD6]/95 border-l border-b border-[#D9C9A8]/50 rotate-45"></div>
+                <div className="absolute -left-1.5 top-1/2 -translate-y-1/2">
+                  <div className="w-3 h-3 bg-gradient-to-br from-white/95 to-[#F8EBD6]/95 border-l border-b border-[#D9C9A8]/50 rotate-45" />
                 </div>
 
-                <div className="absolute inset-0 bg-[#6B4B28]/5 blur-xl rounded-xl -z-10"></div>
+                <div className="absolute inset-0 bg-[#6B4B28]/5 blur-xl rounded-xl -z-10" />
               </div>
             </motion.div>
           )}
