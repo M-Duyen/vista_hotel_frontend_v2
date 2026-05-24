@@ -11,6 +11,7 @@ import {
 } from "../../../components/dialog/Dialog";
 import StarRating from "../../../components/review/StarRating";
 import { formatNumber } from "../../../utils/formatters";
+import { useToastContext } from "../../../hooks/useToastContext";
 
 interface ReviewModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export default function ReviewModal({
   onSubmit,
   existingReview,
 }: ReviewModalProps) {
+  const toast = useToastContext();
   const [roomQuality, setRoomQuality] = useState(
     existingReview?.roomQuality || 0
   );
@@ -67,7 +69,7 @@ export default function ReviewModal({
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length + images.length + imageFiles.length > 5) {
-      alert("You can only upload up to 5 images");
+      toast.warning("You can only upload up to 5 images");
       return;
     }
 
@@ -85,7 +87,7 @@ export default function ReviewModal({
     const calculatedRating = overallRating();
 
     if (calculatedRating === 0) {
-      alert("Please provide at least one rating");
+      toast.warning("Please provide at least one rating");
       return;
     }
 

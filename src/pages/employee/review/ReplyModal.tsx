@@ -110,7 +110,9 @@ export default function ReplyModal({
               </div>
 
               <p className="text-sm text-gray-800 bg-white p-3 rounded border border-blue-300">
-                "{parentReview.comment}"
+                {parentReview.comment?.trim()
+                  ? parentReview.comment
+                  : "No comment"}
               </p>
 
               <p className="text-xs text-gray-600">

@@ -2,6 +2,7 @@ import type { Customer } from "./Customer";
 
 export interface Review {
   reviewID: string;
+  customerId?: string;
   rating: number;
   roomQuality: number;
   serviceQuality: number;
@@ -12,7 +13,8 @@ export interface Review {
   reviewDate: Date;
   flag: boolean;
   images: string[];
+  parentReviewId?: string;
   parentReview?: Review;
   replies?: Review[];
-  customer?: Customer; // Thông tin khách hàng (nếu không anonymous)
+  customer?: Customer;
 }

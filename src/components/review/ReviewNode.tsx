@@ -8,10 +8,10 @@ interface ReviewNodeProps {
 export default function ReviewNode({ entry, level = 0 }: ReviewNodeProps) {
   const customer = entry.customer;
   const rev = entry.review;
-  const anonymous = (rev as any).anonymous;
+  const anonymous = rev.isAnonymous ?? (rev as any).anonymous;
   const author = anonymous
     ? "Anonymous Guest"
-    : customer?.fullName || customer?.userName || "Guest";
+    : customer?.fullName || customer?.userName || rev.customerId || "Guest";
   const avatar = customer?.avatarUrl || customer?.avatar || null;
   const rating = (rev as any).rating ?? 0;
 
@@ -35,11 +35,6 @@ export default function ReviewNode({ entry, level = 0 }: ReviewNodeProps) {
   };
 
   // Styling khác nhau cho customer review vs staff reply
-  const isStaffReply = level > 0;
-  const bgColor = isStaffReply ? "bg-blue-50" : "bg-white";
-  const borderColor = isStaffReply ? "border-blue-200" : "border-gray-200";
-  const avatarBg = isStaffReply ? "bg-[#d4c5b9]" : "bg-gray-200";
-
   return (
     <div className={`${level > 0 ? "ml-12 mt-4" : ""}`}>
       {level === 0 ? (

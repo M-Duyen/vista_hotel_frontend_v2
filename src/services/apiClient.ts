@@ -146,5 +146,6 @@ export const hourlyRatePoliciesApi = createApiClient(
 export const newsApi = createApiClient(
   `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.NEWS}`,
 );
-
-
+export const reviewsApi = createApiClient(
+  `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REVIEWS}`,
+);

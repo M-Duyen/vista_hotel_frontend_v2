@@ -14,7 +14,7 @@ interface ToastOptions {
 interface ToastContextType {
     showToast: (options: {
         message: string;
-        type?: 'success' | 'error' | 'warning' | 'info';
+        type?: 'success' | 'error' | 'warning' | 'info' | 'infor';
         duration?: number;
         position?: ToastPosition;
         showCloseButton?: boolean;
@@ -24,6 +24,7 @@ interface ToastContextType {
     error: (message: string, options?: ToastOptions) => string;
     warning: (message: string, options?: ToastOptions) => string;
     info: (message: string, options?: ToastOptions) => string;
+    infor: (message: string, options?: ToastOptions) => string;
     clearAllToasts: () => void;
 }
 
@@ -49,6 +50,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
         error,
         warning,
         info,
+        infor,
     } = useToast();
 
     return (
@@ -59,6 +61,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
                 error,
                 warning,
                 info,
+                infor,
                 clearAllToasts,
             }}
         >
