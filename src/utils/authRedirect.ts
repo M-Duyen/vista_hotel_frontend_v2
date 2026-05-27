@@ -14,7 +14,7 @@ export const getDefaultRouteForRoles = (roles?: string[], userRole?: string): st
   }
 
   if (primaryRole === "CUSTOMER" || normalizedRoles.includes("CUSTOMER")) {
-    return "/customer/room";
+    return "/";
   }
 
   return "/";
