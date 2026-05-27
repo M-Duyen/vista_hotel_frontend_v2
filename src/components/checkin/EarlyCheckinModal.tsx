@@ -314,7 +314,7 @@ export default function EarlyCheckinModal({ onClose, onSuccess, booking }: Props
                 </div>
 
                 {/* Time Picker */}
-                <div className="mt-4">
+                <div className="mt-4 mb-4">
                     <TimePicker
                         value={time}
                         onChange={(newTime) => setTime(newTime)}

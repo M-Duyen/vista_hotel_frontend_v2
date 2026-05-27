@@ -6,12 +6,10 @@ export type MemberShipLevel =
     | 'PLATINUM'
     | string;
 export type UserRole =
-    | 'SUPER_ADMIN'
     | 'ADMIN'
     | 'EMPLOYEE'
     | 'CUSTOMER'
-    | 'GUEST'
-    | string;
+    | 'GUEST';
 
 export interface Customer {
     id: string;

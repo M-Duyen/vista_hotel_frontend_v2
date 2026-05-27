@@ -252,7 +252,7 @@ const AIChatWidget: React.FC = () => {
       {/* Chat Widget Container */}
       {isOpen && (
         <div
-          className={`fixed bottom-20 right-4 sm:right-6 z-[9999] bg-white rounded-2xl shadow-2xl transition-all duration-300 ${
+          className={`fixed bottom-25 right-50 sm:right-6 z-[9999] bg-white rounded-2xl shadow-2xl transition-all duration-300 ${
             isMinimized ? "h-16" : "h-[600px]"
           } w-[calc(100vw-2rem)] sm:w-96`}
           style={{ maxHeight: "calc(100vh - 100px)" }}

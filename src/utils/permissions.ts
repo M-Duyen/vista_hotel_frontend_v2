@@ -9,6 +9,18 @@ import type {
  * Utility functions for checking permissions and roles
  */
 
+const normalizeRole = (role: string): string =>
+  role.trim().toUpperCase().replace(/^ROLE_/, "");
+
+const normalizePermission = (permission: string): string =>
+  permission.trim().toLowerCase();
+
+const getUserRoles = (user: User): string[] =>
+  (user.roles ?? []).map(normalizeRole);
+
+const getUserPermissions = (user: User): string[] =>
+  (user.permissions ?? []).map(normalizePermission);
+
 /**
  * Check if user has a specific permission
  */
@@ -19,7 +31,10 @@ export const hasPermission = (
   if (!user) return false;
 
   const permissions = Array.isArray(permission) ? permission : [permission];
-  return permissions.some((p) => user.permissions?.includes(p));
+  const userPermissions = getUserPermissions(user);
+  return permissions.some((p) =>
+    userPermissions.includes(normalizePermission(p)),
+  );
 };
 
 /**
@@ -30,7 +45,10 @@ export const hasAllPermissions = (
   permissions: PermissionCode[],
 ): boolean => {
   if (!user) return false;
-  return permissions.every((p) => user.permissions?.includes(p));
+  const userPermissions = getUserPermissions(user);
+  return permissions.every((p) =>
+    userPermissions.includes(normalizePermission(p)),
+  );
 };
 
 /**
@@ -41,7 +59,10 @@ export const hasAnyPermission = (
   permissions: PermissionCode[],
 ): boolean => {
   if (!user) return false;
-  return permissions.some((p) => user.permissions?.includes(p));
+  const userPermissions = getUserPermissions(user);
+  return permissions.some((p) =>
+    userPermissions.includes(normalizePermission(p)),
+  );
 };
 
 /**
@@ -54,7 +75,8 @@ export const hasRole = (
   if (!user) return false;
 
   const roles = Array.isArray(role) ? role : [role];
-  return roles.some((r) => user.roles?.includes(r));
+  const userRoles = getUserRoles(user);
+  return roles.some((r) => userRoles.includes(normalizeRole(r)));
 };
 
 /**
@@ -62,7 +84,8 @@ export const hasRole = (
  */
 export const hasAllRoles = (user: User | null, roles: RoleCode[]): boolean => {
   if (!user) return false;
-  return roles.every((r) => user.roles?.includes(r));
+  const userRoles = getUserRoles(user);
+  return roles.every((r) => userRoles.includes(normalizeRole(r)));
 };
 
 /**
@@ -70,21 +93,22 @@ export const hasAllRoles = (user: User | null, roles: RoleCode[]): boolean => {
  */
 export const hasAnyRole = (user: User | null, roles: RoleCode[]): boolean => {
   if (!user) return false;
-  return roles.some((r) => user.roles?.includes(r));
+  const userRoles = getUserRoles(user);
+  return roles.some((r) => userRoles.includes(normalizeRole(r)));
 };
 
 /**
- * Check if user is admin or super admin
+ * Check if user is admin
  */
 export const isAdmin = (user: User | null): boolean => {
-  return hasAnyRole(user, ["SUPER_ADMIN", "ADMIN"]);
+  return hasRole(user, "ADMIN");
 };
 
 /**
  * Check if user is employee
  */
 export const isEmployee = (user: User | null): boolean => {
-  return hasAnyRole(user, ["EMPLOYEE", "ADMIN", "SUPER_ADMIN"]);
+  return hasAnyRole(user, ["EMPLOYEE", "ADMIN"]);
 };
 
 /**
@@ -115,7 +139,6 @@ export const getPrimaryRole = (user: User | null): RoleCode | null => {
   if (!user || !user.roles || user.roles.length === 0) return null;
 
   const roleHierarchy: RoleCode[] = [
-    "SUPER_ADMIN",
     "ADMIN",
     "EMPLOYEE",
     "CUSTOMER",
@@ -123,12 +146,12 @@ export const getPrimaryRole = (user: User | null): RoleCode | null => {
   ];
 
   for (const role of roleHierarchy) {
-    if (user.roles.includes(role)) {
+    if (getUserRoles(user).includes(role)) {
       return role;
     }
   }
 
-  return user.roles[0] as RoleCode;
+  return getUserRoles(user)[0] as RoleCode;
 };
 
 /**
@@ -193,7 +216,6 @@ export const getUserDisplayName = (user: User | null): string => {
  */
 export const getRoleLabel = (role: RoleCode | null): string => {
   const labels: Record<RoleCode, string> = {
-    SUPER_ADMIN: "Siêu quản trị viên",
     ADMIN: "Quản trị viên",
     EMPLOYEE: "Nhân viên",
     CUSTOMER: "Khách hàng",

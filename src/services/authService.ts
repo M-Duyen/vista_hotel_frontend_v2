@@ -9,8 +9,9 @@ import {
   passwordChangedTemplate,
 } from "../utils/emailTemplates/authEmails";
 import type { PasswordChangeRequest } from "../types/UserProfile";
+import type { User } from "../types/auth";
 
-export type StoredUser = AuthResponse["data"] | Record<string, unknown>;
+export type StoredUser = AuthResponse["data"] | User | Record<string, unknown>;
 
 const extractErrorMessage = (error: unknown, fallback: string): string => {
   if (
@@ -70,6 +71,9 @@ interface BackendAuthResponse {
   email?: string;
   message?: string;
   expiresIn?: number;
+  roles?: string[];
+  permissions?: string[];
+  isEnabled?: boolean;
 }
 
 export interface AuthResponse {
@@ -84,6 +88,9 @@ export interface AuthResponse {
     address: string;
     userRole: string;
     avatarUrl: string;
+    isEnabled?: boolean;
+    roles?: string[];
+    permissions?: string[];
   };
   token?: string;
   refreshToken?: string;
@@ -100,6 +107,9 @@ const toAuthResponse = (
     payload.phone ||
     payload.fullName,
   );
+  const roles = (payload.roles || []).map((role) =>
+    role.trim().toUpperCase().replace(/^ROLE_/, ""),
+  );
 
   return {
     success: true,
@@ -114,8 +124,11 @@ const toAuthResponse = (
           email: payload.email || "",
           phone: payload.phone || "",
           address: "",
-          userRole: "",
+          userRole: roles[0] || "GUEST",
           avatarUrl: "",
+          isEnabled: payload.isEnabled ?? true,
+          roles,
+          permissions: payload.permissions || [],
         }
       : undefined,
   };
@@ -259,7 +272,16 @@ export const getToken = (): string | null => {
  */
 export const getUser = (): StoredUser | null => {
   const user = localStorage.getItem(API_CONFIG.STORAGE_KEYS.USER);
-  return user ? (JSON.parse(user) as StoredUser) : null;
+  if (!user) return null;
+
+  try {
+    return JSON.parse(user) as StoredUser;
+  } catch {
+    localStorage.removeItem(API_CONFIG.STORAGE_KEYS.TOKEN);
+    localStorage.removeItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
+    localStorage.removeItem(API_CONFIG.STORAGE_KEYS.USER);
+    return null;
+  }
 };
 
 /**
@@ -324,6 +346,7 @@ export const refreshToken = async (): Promise<AuthResponse> => {
           data.refreshToken,
         );
       }
+      window.dispatchEvent(new Event("authChanged"));
     }
 
     return data;

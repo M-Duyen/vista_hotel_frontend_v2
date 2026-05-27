@@ -74,11 +74,15 @@ const normalizeProfile = (
   fallback?: UserProfile
 ): UserProfile => {
   const userRole =
-    data.userRole ||
-    data.roles?.[0] ||
-    fallback?.userRole ||
-    getRolesFromToken()[0] ||
-    "CUSTOMER";
+    (
+      data.userRole ||
+      data.roles?.[0] ||
+      fallback?.userRole ||
+      getRolesFromToken()[0] ||
+      "CUSTOMER"
+    )
+      .toUpperCase()
+      .replace(/^ROLE_/, "");
 
   return {
     id: data.id ?? fallback?.id ?? "",
@@ -350,10 +354,14 @@ const UserProfilePage: React.FC = () => {
     return item?.label || "My Account";
   };
 
+  const isStaffProfilePage =
+    location.pathname.startsWith("/admin/profile") ||
+    location.pathname.startsWith("/employee/profile");
+
   return (
     <>
-      {/* Fixed Header - Only show if not on admin profile page */}
-      {!location.pathname.startsWith("/admin/profile") && (
+      {/* Fixed Header - Only show in the customer profile area */}
+      {!isStaffProfilePage && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-[#F5F0EB] shadow-md">
           <Header />
         </div>
@@ -362,7 +370,7 @@ const UserProfilePage: React.FC = () => {
       {/* Main Content with top padding to account for fixed header */}
       <div
         className={`min-h-screen ${
-          !location.pathname.startsWith("/admin/profile") ? "pt-20" : ""
+          !isStaffProfilePage ? "pt-20" : ""
         }`}
       >
         <div className="container mx-auto px-6 py-4 ">

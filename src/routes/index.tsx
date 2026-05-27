@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
 // Layouts
 import AuthLayout from "../layouts/AuthLayout";
@@ -59,6 +59,8 @@ import AccessDenied403 from "../pages/error/AccessDenied403.tsx";
 import NotFound404 from "../pages/error/NotFound404.tsx";
 import ServerError500 from "../pages/error/ServerError500.tsx";
 import ReservationList from "../pages/admin/ReservationList.tsx";
+import ProtectedRoute from "../components/ProtectedRoute.tsx";
+import StaffRedirect from "../components/StaffRedirect.tsx";
 
 export const router = createBrowserRouter([
   // OAuth
@@ -81,62 +83,132 @@ export const router = createBrowserRouter([
   // EMPLOYEE
   {
     path: "employee",
-    element: <EmployeeLayout />,
+    element: (
+      <ProtectedRoute requiredRoles={["EMPLOYEE"]}>
+        <EmployeeLayout />
+      </ProtectedRoute>
+    ),
     children: [
-      { path: "customers", element: <CustomerList /> },
+      {
+        index: true,
+        element: <Navigate to="daily" replace />,
+      },
+      {
+        path: "customers",
+        element: <CustomerList />,
+      },
       { path: "incidents", element: <IncidentManagement /> },
       { path: "bookingPage", element: <BookingPage /> },
-      { path: "newsPage", element: <NewsPage /> },
-      { path: "daily", element: <DailyWorkStatistics /> },
+      {
+        path: "daily",
+        element: <DailyWorkStatistics />,
+      },
       { path: "profile", element: <UserProfilePage /> },
-      { path: "room-management", element: <RoomManagement /> },
-      { path: "room-type-management", element: <RoomTypeManagement /> },
+      {
+        path: "room-management",
+        element: <RoomManagement />,
+      },
+      {
+        path: "room-type-management",
+        element: <RoomTypeManagement />,
+      },
       { path: "support", element: <ChatSupport /> },
       { path: "reviews", element: <ReplyReviewsPage /> },
       { path: "services", element: <ServiceManagement /> },
       { path: "checkin", element: <CheckInManager /> },
       { path: "checkout", element: <CheckOutManager /> },
       { path: "info", element: <NewsList /> },
+      { path: "chat", element: <ChatSupport /> },
+      {
+        path: "reservations",
+        element: <ReservationList />,
+      },
     ],
   },
 
   // ADMIN
   {
     path: "admin",
-    element: <AdminLayout />,
+    element: (
+      <ProtectedRoute requiredRoles={["ADMIN"]}>
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
     children: [
       { path: "", element: <Dashboard /> },
       { path: "checkin", element: <CheckInManager /> },
       { path: "checkout", element: <CheckOutManager /> },
       { path: "info", element: <NewsList /> },
       { path: "info/:id", element: <NewsDetail /> },
-      { path: "room-management", element: <RoomManagement /> },
-      { path: "room-type-management", element: <RoomTypeManagement /> },
-      { path: "promotion-management", element: <PromotionManagement /> },
+      {
+        path: "room-management",
+        element: <RoomManagement />,
+      },
+      {
+        path: "room-type-management",
+        element: <RoomTypeManagement />,
+      },
+      {
+        path: "promotion-management",
+        element: <PromotionManagement />,
+      },
       {
         path: "promotion-type-management",
         element: <PromotionTypeManagement />,
       },
       { path: "voucher-management", element: <VoucherManagement /> },
-      { path: "bookingPage", element: <BookingPage /> },
-      { path: "employees", element: <EmployeeList /> },
-      { path: "daily", element: <DailyWorkStatistics /> },
+      {
+        path: "employees",
+        element: <EmployeeList />,
+      },
+      {
+        path: "daily",
+        element: <DailyWorkStatistics />,
+      },
 
-      { path: "pricing", element: <PricingManager /> },
+      {
+        path: "pricing",
+        element: <PricingManager />,
+      },
       { path: "profile", element: <UserProfilePage /> },
-      { path: "reports", element: <ReportPage /> },
-      { path: "customers", element: <CustomerList /> },
+      {
+        path: "reports",
+        element: <ReportPage />,
+      },
+      {
+        path: "customers",
+        element: <CustomerList />,
+      },
       { path: "incidents", element: <IncidentManagement /> },
+      {
+        path: "reviews",
+        element: <ReplyReviewsPage />,
+      },
+      {
+        path: "services",
+        element: <ServiceManagement />,
+      },
+      {
+        path: "reservations",
+        element: <ReservationList />,
+      },
+      { path: "support", element: <ChatSupport /> },
       { path: "reviews", element: <ReplyReviewsPage /> },
       { path: "services", element: <ServiceManagement /> },
-      { path: "reservations", element: <ReservationList /> },
+      { path: "checkout", element: <CheckOutManager /> },
+      { path: "info", element: <NewsList /> },
+      { path: "chat", element: <ChatSupport /> },
     ],
   },
 
   // MAIN USER AREA
   {
     path: "",
-    element: <MainLayout />,
+    element: (
+      <StaffRedirect>
+        <MainLayout />
+      </StaffRedirect>
+    ),
     children: [
       { path: "/", element: <Home /> },
       { path: "home", element: <Home /> },
@@ -157,7 +229,11 @@ export const router = createBrowserRouter([
   // CUSTOMER
   {
     path: "customer",
-    element: <CustomerLayout />,
+    element: (
+      <ProtectedRoute requiredRoles={["CUSTOMER"]}>
+        <CustomerLayout />
+      </ProtectedRoute>
+    ),
     children: [
       { path: "room", element: <RoomList /> },
       { path: "room/incident", element: <IncidentReport /> },

@@ -14,6 +14,7 @@ import {
   detectInputType,
 } from "../../utils/validators";
 import { useToastContext } from "../../hooks/useToastContext";
+import { getDefaultRouteForRoles } from "../../utils/authRedirect";
 
 const Login: React.FC = () => {
   const { login } = useAuth();
@@ -110,9 +111,13 @@ const Login: React.FC = () => {
 
     if (res.success) {
       toast.success("Login successful!", { duration: 2000 });
+      const redirectTo = getDefaultRouteForRoles(
+        res.data?.roles,
+        res.data?.userRole,
+      );
 
       setTimeout(() => {
-        navigate("/");
+        navigate(redirectTo, { replace: true });
       }, 1000);
     } else {
       // Phân biệt các loại lỗi dựa vào error message từ backend

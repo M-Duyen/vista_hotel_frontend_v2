@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
+import { API_CONFIG } from "@/config/api.config";
 import * as authService from "@/services/authService";
 import type {
   AuthResponse,
@@ -15,6 +16,7 @@ export interface AuthState {
   token: string | null;
   refreshToken: string | null;
   isLoading: boolean;
+  isInitialized: boolean;
   error: string | null;
   isAuthenticated: boolean;
 
@@ -28,27 +30,56 @@ export interface AuthState {
   loadFromStorage: () => void;
 }
 
-const getClaimsFromToken = (token?: string) => {
-  try {
-    const payload = token?.split(".")[1];
-    if (!payload) return { roles: [], permissions: [] };
-
-    const normalizedPayload = payload
-      .replace(/-/g, "+")
-      .replace(/_/g, "/")
-      .padEnd(Math.ceil(payload.length / 4) * 4, "=");
-    const decodedPayload = JSON.parse(atob(normalizedPayload));
-
-    return {
-      roles: Array.isArray(decodedPayload.roles) ? decodedPayload.roles : [],
-      permissions: Array.isArray(decodedPayload.permissions)
-        ? decodedPayload.permissions
-        : [],
-    };
-  } catch (error) {
-    console.error("Error parsing token claims:", error);
-    return { roles: [], permissions: [] };
+const toArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string");
   }
+  if (value instanceof Set) {
+    return Array.from(value).filter(
+      (item): item is string => typeof item === "string",
+    );
+  }
+  return [];
+};
+
+const normalizeRole = (role: string): string =>
+  role.trim().toUpperCase().replace(/^ROLE_/, "");
+
+const normalizeStoredUser = (
+  storedUser: authService.StoredUser | null,
+): User | null => {
+  if (!storedUser || typeof storedUser !== "object") return null;
+
+  const raw = storedUser as Record<string, unknown>;
+  const roles = toArray(raw.roles).map(normalizeRole);
+
+  return {
+    id: String(raw.id ?? raw.userId ?? ""),
+    userName: String(raw.userName ?? raw.username ?? ""),
+    username: String(raw.username ?? raw.userName ?? ""),
+    fullName: String(raw.fullName ?? ""),
+    email: String(raw.email ?? ""),
+    phone: typeof raw.phone === "string" ? raw.phone : undefined,
+    address: typeof raw.address === "string" ? raw.address : undefined,
+    avatarUrl: typeof raw.avatarUrl === "string" ? raw.avatarUrl : null,
+    isEnabled: raw.isEnabled !== false,
+    roles,
+    permissions: toArray(raw.permissions),
+    userRole: roles[0] ?? "GUEST",
+  };
+};
+
+const getStoredAuthState = () => {
+  const token = authService.getToken();
+  const user = normalizeStoredUser(authService.getUser());
+
+  return {
+    user,
+    token,
+    refreshToken: localStorage.getItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN),
+    isAuthenticated: Boolean(token && user),
+    isInitialized: true,
+  };
 };
 
 /**
@@ -57,13 +88,10 @@ const getClaimsFromToken = (token?: string) => {
 export const useAuthStore = create<AuthState>()(
   devtools(
     (set) => ({
+      ...getStoredAuthState(),
       // Initial state
-      user: null,
-      token: null,
-      refreshToken: null,
       isLoading: false,
       error: null,
-      isAuthenticated: false,
 
       /**
        * Login action
@@ -74,7 +102,6 @@ export const useAuthStore = create<AuthState>()(
           const response = await authService.handleLogin(payload);
 
           if (response.success && response.data && response.token) {
-            const tokenClaims = getClaimsFromToken(response.token);
             const user: User = {
               id: response.data.id || "",
               userName: response.data.userName || "",
@@ -83,10 +110,12 @@ export const useAuthStore = create<AuthState>()(
               phone: response.data.phone,
               address: response.data.address,
               avatarUrl: response.data.avatarUrl,
-              isEnabled: true,
-              roles: tokenClaims.roles,
-              permissions: tokenClaims.permissions,
-              userRole: response.data.userRole || tokenClaims.roles[0] || "",
+              isEnabled: response.data.isEnabled ?? true,
+              roles: (response.data.roles ?? []).map(normalizeRole),
+              permissions: response.data.permissions ?? [],
+              userRole: response.data.roles?.[0]
+                ? normalizeRole(response.data.roles[0])
+                : "GUEST",
             };
 
             authService.saveTokens(response.token, response.refreshToken);
@@ -125,12 +154,14 @@ export const useAuthStore = create<AuthState>()(
               token: response.token,
               refreshToken: response.refreshToken || null,
               isAuthenticated: true,
+              isInitialized: true,
               isLoading: false,
               error: null,
             });
           } else {
             set({
               isLoading: false,
+              isInitialized: true,
               error: response.message || "Login failed",
             });
           }
@@ -141,6 +172,7 @@ export const useAuthStore = create<AuthState>()(
             error instanceof Error ? error.message : "Login failed";
           set({
             isLoading: false,
+            isInitialized: true,
             error: errorMessage,
           });
           return {
@@ -160,7 +192,6 @@ export const useAuthStore = create<AuthState>()(
 
           if (response.success) {
             // Registration might not return token
-            const tokenClaims = getClaimsFromToken(response.token);
             const user = response.data
               ? {
                   id: response.data.id || "",
@@ -170,10 +201,12 @@ export const useAuthStore = create<AuthState>()(
                   phone: response.data.phone,
                   address: response.data.address,
                   avatarUrl: response.data.avatarUrl,
-                  isEnabled: true,
-                  roles: tokenClaims.roles,
-                  permissions: tokenClaims.permissions,
-                  userRole: response.data.userRole || tokenClaims.roles[0] || "",
+                  isEnabled: response.data.isEnabled ?? true,
+                  roles: (response.data.roles ?? []).map(normalizeRole),
+                  permissions: response.data.permissions ?? [],
+                  userRole: response.data.roles?.[0]
+                    ? normalizeRole(response.data.roles[0])
+                    : "GUEST",
                 }
               : null;
 
@@ -187,12 +220,14 @@ export const useAuthStore = create<AuthState>()(
               token: response.token || null,
               refreshToken: response.refreshToken || null,
               isAuthenticated: Boolean(response.token),
+              isInitialized: true,
               isLoading: false,
               error: null,
             });
           } else {
             set({
               isLoading: false,
+              isInitialized: true,
               error: response.message || "Registration failed",
             });
           }
@@ -203,6 +238,7 @@ export const useAuthStore = create<AuthState>()(
             error instanceof Error ? error.message : "Registration failed";
           set({
             isLoading: false,
+            isInitialized: true,
             error: errorMessage,
           });
           return {
@@ -222,6 +258,7 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           refreshToken: null,
           isAuthenticated: false,
+          isInitialized: true,
           error: null,
           isLoading: false,
         });
@@ -264,19 +301,21 @@ export const useAuthStore = create<AuthState>()(
        */
       loadFromStorage: () => {
         const token = authService.getToken();
-        const user = authService.getUser();
+        const user = normalizeStoredUser(authService.getUser());
 
         if (token && user) {
           set({
             token,
-            user: user as User,
+            user,
             isAuthenticated: true,
+            isInitialized: true,
           });
         } else {
           set({
             token: null,
             user: null,
             isAuthenticated: false,
+            isInitialized: true,
           });
         }
       },

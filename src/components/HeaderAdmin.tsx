@@ -14,7 +14,8 @@ interface UserData {
   userName: string;
   fullName: string;
   email: string;
-  userRole: string;
+  userRole?: string;
+  roles?: string[];
   memberShipLevel?: string;
   avatarUrl?: string | null;
 }
@@ -65,10 +66,13 @@ const HeaderAdmin: React.FC<HeaderProps> = ({
 
   // Lấy tên hiển thị (ưu tiên fullName, nếu không có thì dùng userName)
   const displayName = userData?.fullName || userData?.userName || "Admin User";
+  const normalizedRole = (userData?.userRole || userData?.roles?.[0] || "")
+    .toUpperCase()
+    .replace(/^ROLE_/, "");
   const displayRole =
-    userData?.userRole === "ADMIN"
-      ? "Administrator"
-      : userData?.userRole || "Administrator";
+    normalizedRole === "ADMIN" ? "Administrator" : normalizedRole || "Administrator";
+  const profilePath =
+    normalizedRole === "EMPLOYEE" ? "/employee/profile" : "/admin/profile";
 
   // Generate breadcrumbs from pathname
   const generateBreadcrumbs = () => {
@@ -143,7 +147,7 @@ const HeaderAdmin: React.FC<HeaderProps> = ({
 
           {/* Profile */}
           <Link
-            to="/admin/profile"
+            to={profilePath}
             className="flex items-center gap-3 hover:bg-gold/10 px-3 py-2 rounded-lg transition-all duration-200 group cursor-pointer"
           >
             <div className="relative">
