@@ -89,6 +89,11 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       path: "/admin/employees",
     },
     {
+      icon: <FaClipboardList />,
+      label: "Permissions",
+      path: "/admin/permissions",
+    },
+    {
       icon: <FaCalendarAlt />,
       label: "Reservations",
       path: "/admin/reservations",
@@ -207,7 +212,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   const primaryRole = (user?.userRole || user?.roles?.[0] || "")
     .toUpperCase()
     .replace(/^ROLE_/, "");
-  const menuItems = primaryRole === "EMPLOYEE" ? employeeMenuItems : adminMenuItems;
+  const menuItems =
+    primaryRole === "EMPLOYEE" ? employeeMenuItems : adminMenuItems;
 
   const getIconScale = (index: number) => {
     if (hoveredIndex === null) return 1;
@@ -235,7 +241,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
         className={cn(
           "h-screen w-16 bg-gradient-to-br from-[#F8EBD6] via-[#F0E0C0] to-white flex flex-col fixed z-30 shadow-lg pt-4",
           "border-r border-[#D9C9A8]/30",
-          className
+          className,
         )}
       >
         {/* Logo */}
@@ -281,7 +287,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                       "flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 relative",
                       isActive
                         ? "bg-white shadow-md"
-                        : "hover:bg-white/60 bg-white/30"
+                        : "hover:bg-white/60 bg-white/30",
                     )}
                   >
                     {/* Active Indicator */}
@@ -301,7 +307,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                     <motion.div
                       className={cn(
                         "flex items-center justify-center text-base",
-                        isActive ? "text-[#6B4B28]" : "text-[#6B4B28]/70"
+                        isActive ? "text-[#6B4B28]" : "text-[#6B4B28]/70",
                       )}
                     >
                       {item.icon}
@@ -392,7 +398,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             </motion.div>
           )}
         </AnimatePresence>,
-        document.body
+        document.body,
       )}
     </>
   );

@@ -34,6 +34,7 @@ import IncidentReport from "../pages/customer/IncidentReport.tsx";
 import ServiceManagement from "../pages/admin/ServiceManagement.tsx";
 import Contact from "../pages/customer/Contact.tsx";
 import EmployeeList from "../pages/admin/EmployeeList.tsx";
+import PermissionsManagement from "../pages/admin/permissions/PermissionsManagement.tsx";
 import BookingPage from "../pages/customer/booking/BookingPage.tsx";
 import RoomManagement from "../pages/employee/room/RoomManagement.tsx";
 import RoomTypeManagement from "../pages/employee/room/RoomTypeManagement.tsx";
@@ -160,6 +161,10 @@ export const router = createBrowserRouter([
       {
         path: "employees",
         element: <EmployeeList />,
+      },
+      {
+        path: "permissions",
+        element: <PermissionsManagement />,
       },
       {
         path: "daily",
