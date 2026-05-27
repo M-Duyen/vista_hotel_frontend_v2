@@ -373,7 +373,7 @@ const PermissionsManagement: React.FC = () => {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-[#f9f6f2]">
+                  <TableRow className="bg-[#f9f6f2] border-b border-[#d9c9a8]">
                     <TableHead className="py-3 px-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
                       User
                     </TableHead>
@@ -419,13 +419,13 @@ const PermissionsManagement: React.FC = () => {
                           onClick={() => handleSelectUser(user)}
                           data-state={isSelected ? "selected" : undefined}
                           className={`cursor-pointer select-none transition-colors hover:bg-[#f9f6f2] ${
-                            isSelected ? "bg-[#f5f0eb]" : ""
+                            isSelected ? "bg-[#f5f0eb] border-b border-[#d9c9a8]" : "border-b border-[#d9c9a8]"
                           }`}
                         >
                           {/* Avatar + Name */}
                           <TableCell className="py-3 px-4">
                             <div className="flex items-center gap-3">
-                              <div className="h-9 w-9 overflow-hidden rounded-full border-2 border-[#d9c9a8] bg-[#f5f0eb] flex-shrink-0">
+                              <div className="h-9 w-9 overflow-hidden rounded-full border border-[#d9c9a8] bg-[#f5f0eb] flex-shrink-0">
                                 {user.avatarUrl ? (
                                   <img
                                     src={user.avatarUrl}
@@ -499,7 +499,7 @@ const PermissionsManagement: React.FC = () => {
             <div className="p-5 space-y-4 overflow-y-auto" style={{ maxHeight: "calc(100vh - 220px)" }}>
               {/* Empty state */}
               {!selectedUser && (
-                <div className="rounded-xl border-2 border-dashed border-[#d9c9a8] bg-[#f8f2e7] px-4 py-10 text-center">
+                <div className="rounded-xl border-1 border-dashed border-[#d9c9a8] bg-[#f8f2e7] px-4 py-10 text-center">
                   <FaUserShield className="mx-auto mb-3 text-[#c9b89a] text-3xl" />
                   <p className="text-sm font-medium text-[#8a7c67]">
                     Select a staff member to view and update permissions.
@@ -511,7 +511,7 @@ const PermissionsManagement: React.FC = () => {
                 <>
                   {/* Selected user info */}
                   <div className="rounded-lg border border-[#d9c9a8] bg-[#f8f2e7] px-4 py-3 flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full border-2 border-[#d9c9a8] bg-[#f5f0eb] flex items-center justify-center text-sm font-bold text-[#6b5e4c] flex-shrink-0">
+                    <div className="h-10 w-10 rounded-full border-1 border-[#d9c9a8] bg-[#f5f0eb] flex items-center justify-center text-sm font-bold text-[#6b5e4c] flex-shrink-0">
                       {getInitials(selectedUser)}
                     </div>
                     <div className="min-w-0">

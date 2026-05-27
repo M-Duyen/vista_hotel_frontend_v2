@@ -1,54 +1,66 @@
 import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import HeaderAdmin from '../components/HeaderAdmin';
-import Sidebar from '../components/Sidebar';
+import Sidebar, { SIDEBAR_COLLAPSED_W, SIDEBAR_EXPANDED_W } from '../components/Sidebar';
 
 const AdminLayout = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(() => {
+    return localStorage.getItem("sidebarExpanded") === "true";
+  });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+  const toggleExpanded = () => {
+    const next = !isSidebarExpanded;
+    setIsSidebarExpanded(next);
+    localStorage.setItem("sidebarExpanded", String(next));
   };
+
+  const toggleMobileSidebar = () => setIsMobileSidebarOpen(p => !p);
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 1024);
-      if (window.innerWidth >= 1024) {
-        setIsSidebarOpen(false);
-      }
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (!mobile) setIsMobileSidebarOpen(false);
     };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const sidebarW = isSidebarExpanded ? SIDEBAR_EXPANDED_W : SIDEBAR_COLLAPSED_W;
 
   return (
     <div className="flex h-screen bg-light">
       <Sidebar
+        isExpanded={isMobile ? false : isSidebarExpanded}
+        onToggle={isMobile ? toggleMobileSidebar : toggleExpanded}
         className={
           isMobile
-            ? `z-30 transform ${
-                isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            ? `z-30 transform transition-transform duration-300 ${
+                isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
               }`
-            : ""
+            : ''
         }
       />
 
-      {isSidebarOpen && isMobile && (
+      {/* Mobile overlay */}
+      {isMobileSidebarOpen && isMobile && (
         <div
           className="fixed inset-0 bg-black/50 z-20"
-          onClick={toggleSidebar}
-          style={{ pointerEvents: "auto" }}
-        ></div>
+          onClick={toggleMobileSidebar}
+        />
       )}
 
-      <div className="flex flex-col flex-grow ml-13 transition-all duration-300 ease-in-out">
+      {/* Main content — shifts right based on sidebar width */}
+      <div
+        className="flex flex-col flex-grow transition-all duration-300 ease-in-out min-w-0"
+        style={{ marginLeft: isMobile ? 0 : sidebarW }}
+      >
         <HeaderAdmin
-          toggleSidebar={toggleSidebar}
-          isSidebarOpen={isSidebarOpen}
+          toggleSidebar={isMobile ? toggleMobileSidebar : toggleExpanded}
+          isSidebarOpen={isMobile ? isMobileSidebarOpen : isSidebarExpanded}
         />
-
         <main className="flex-grow overflow-auto bg-light mt-3">
           <Outlet />
         </main>
