@@ -107,6 +107,9 @@ const toAuthResponse = (
     payload.phone ||
     payload.fullName,
   );
+  const roles = (payload.roles || []).map((role) =>
+    role.trim().toUpperCase().replace(/^ROLE_/, ""),
+  );
 
   return {
     success: true,
@@ -121,10 +124,10 @@ const toAuthResponse = (
           email: payload.email || "",
           phone: payload.phone || "",
           address: "",
-          userRole: payload.roles?.[0] || "GUEST",
+          userRole: roles[0] || "GUEST",
           avatarUrl: "",
           isEnabled: payload.isEnabled ?? true,
-          roles: payload.roles || [],
+          roles,
           permissions: payload.permissions || [],
         }
       : undefined,

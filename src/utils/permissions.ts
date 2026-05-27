@@ -9,7 +9,8 @@ import type {
  * Utility functions for checking permissions and roles
  */
 
-const normalizeRole = (role: string): string => role.trim().toUpperCase();
+const normalizeRole = (role: string): string =>
+  role.trim().toUpperCase().replace(/^ROLE_/, "");
 
 const normalizePermission = (permission: string): string =>
   permission.trim().toLowerCase();
@@ -97,17 +98,17 @@ export const hasAnyRole = (user: User | null, roles: RoleCode[]): boolean => {
 };
 
 /**
- * Check if user is admin or super admin
+ * Check if user is admin
  */
 export const isAdmin = (user: User | null): boolean => {
-  return hasAnyRole(user, ["SUPER_ADMIN", "ADMIN"]);
+  return hasRole(user, "ADMIN");
 };
 
 /**
  * Check if user is employee
  */
 export const isEmployee = (user: User | null): boolean => {
-  return hasAnyRole(user, ["EMPLOYEE", "ADMIN", "SUPER_ADMIN"]);
+  return hasAnyRole(user, ["EMPLOYEE", "ADMIN"]);
 };
 
 /**
@@ -138,7 +139,6 @@ export const getPrimaryRole = (user: User | null): RoleCode | null => {
   if (!user || !user.roles || user.roles.length === 0) return null;
 
   const roleHierarchy: RoleCode[] = [
-    "SUPER_ADMIN",
     "ADMIN",
     "EMPLOYEE",
     "CUSTOMER",
@@ -216,7 +216,6 @@ export const getUserDisplayName = (user: User | null): string => {
  */
 export const getRoleLabel = (role: RoleCode | null): string => {
   const labels: Record<RoleCode, string> = {
-    SUPER_ADMIN: "Siêu quản trị viên",
     ADMIN: "Quản trị viên",
     EMPLOYEE: "Nhân viên",
     CUSTOMER: "Khách hàng",

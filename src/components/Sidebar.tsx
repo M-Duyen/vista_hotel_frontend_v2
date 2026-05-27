@@ -6,8 +6,10 @@ import {
   FaCalendarAlt,
   FaUsers,
   FaChartLine,
-  FaCog,
   FaExclamationTriangle,
+  FaHeadset,
+  FaUserCircle,
+  FaClipboardList,
 } from "react-icons/fa";
 import { MdMeetingRoom, MdRateReview } from "react-icons/md";
 import { RiInfoCardFill, RiDiscountPercentFill } from "react-icons/ri";
@@ -29,6 +31,7 @@ interface SidebarProps {
 
 interface User {
   userRole?: string;
+  roles?: string[];
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ className }) => {
@@ -91,6 +94,11 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       path: "/admin/reservations",
     },
     {
+      icon: <FaCalendarAlt />,
+      label: "Daily Work",
+      path: "/admin/daily",
+    },
+    {
       icon: <FaUsers />,
       label: "Customers",
       path: "/admin/customers",
@@ -130,6 +138,11 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       label: "Reports",
       path: "/admin/reports",
     },
+    {
+      icon: <FaHeadset />,
+      label: "Support",
+      path: "/admin/support",
+    },
   ];
 
   const employeeMenuItems = [
@@ -150,6 +163,11 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       path: "/employee/info",
     },
     {
+      icon: <FaCalendarAlt />,
+      label: "Reservations",
+      path: "/employee/reservations",
+    },
+    {
       icon: <LuMapPinCheckInside />,
       label: "Check-in",
       path: "/employee/checkin",
@@ -165,6 +183,11 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       path: "/employee/customers",
     },
     {
+      icon: <FaExclamationTriangle />,
+      label: "Incidents",
+      path: "/employee/incidents",
+    },
+    {
       icon: <FaCalendarAlt />,
       label: "Daily Work",
       path: "/employee/daily",
@@ -174,10 +197,17 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       label: "Reviews",
       path: "/employee/reviews",
     },
+    {
+      icon: <FaHeadset />,
+      label: "Support",
+      path: "/employee/support",
+    },
   ];
 
-  const menuItems =
-    user?.userRole === "EMPLOYEE" ? employeeMenuItems : adminMenuItems;
+  const primaryRole = (user?.userRole || user?.roles?.[0] || "")
+    .toUpperCase()
+    .replace(/^ROLE_/, "");
+  const menuItems = primaryRole === "EMPLOYEE" ? employeeMenuItems : adminMenuItems;
 
   const getIconScale = (index: number) => {
     if (hoveredIndex === null) return 1;
@@ -223,7 +253,10 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
         <nav className="flex-grow px-2 py-1 overflow-y-auto no-scrollbar">
           <ul className="space-y-1.5 flex flex-col items-center">
             {menuItems.map((item, index) => {
-              const isActive = location.pathname === item.path;
+              const isActive =
+                location.pathname === item.path ||
+                (item.path !== "/admin" &&
+                  location.pathname.startsWith(`${item.path}/`));
               const scale = getIconScale(index);
 
               return (

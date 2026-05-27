@@ -102,7 +102,7 @@ export const useUserDisplay = () => {
  * const userInfo = useUserDisplay();
  *
  * // Check permission
- * if (can('BOOKING_CREATE')) {
+ * if (can('booking_create')) {
  *   // Show create booking button
  * }
  *
@@ -112,7 +112,7 @@ export const useUserDisplay = () => {
  * }
  *
  * // Check multiple permissions (any)
- * if (can(['BOOKING_VIEW', 'BOOKING_CREATE'])) {
+ * if (can(['booking_view', 'booking_create'])) {
  *   // User has at least one of these permissions
  * }
  */

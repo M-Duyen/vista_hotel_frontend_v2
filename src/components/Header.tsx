@@ -84,39 +84,47 @@ const Header: React.FC = () => {
   };
 
   const getPrimaryRole = () =>
-    (user?.userRole || user?.roles?.[0] || "").toUpperCase();
+    (user?.userRole || user?.roles?.[0] || "")
+      .toUpperCase()
+      .replace(/^ROLE_/, "");
 
   const getProfilePath = () => {
     const role = getPrimaryRole();
-    if (role === "SUPER_ADMIN" || role === "ADMIN") return "/admin/profile";
+    if (role === "ADMIN") return "/admin/profile";
     if (role === "EMPLOYEE") return "/employee/profile";
     return "/customer/profile";
   };
 
   const getUserMenuItems = () => {
     const role = getPrimaryRole();
-    const roleItems =
-      role === "SUPER_ADMIN" || role === "ADMIN"
-        ? [
-            { label: "Dashboard", path: "/admin", icon: faChartLine },
-            { label: "Management", path: "/admin/room-management", icon: faTasks },
-          ]
-        : role === "EMPLOYEE"
-          ? [
-              { label: "Dashboard", path: "/employee/customers", icon: faChartLine },
-              {
-                label: "Booking Management",
-                path: "/employee/bookingPage",
-                icon: faTasks,
-              },
-            ]
-          : [];
+    if (role === "ADMIN") {
+      return [
+        { label: "Dashboard", path: "/admin", icon: faChartLine },
+        { label: "Management", path: "/admin/room-management", icon: faTasks },
+        { label: "My Profile", path: getProfilePath(), icon: faUserCircle },
+      ];
+    }
+
+    if (role === "EMPLOYEE") {
+      return [
+        { label: "Dashboard", path: "/employee/daily", icon: faChartLine },
+        {
+          label: "Booking Management",
+          path: "/employee/bookingPage",
+          icon: faTasks,
+        },
+        { label: "My Profile", path: getProfilePath(), icon: faUserCircle },
+      ];
+    }
 
     return [
-      ...roleItems,
       { label: "My Profile", path: getProfilePath(), icon: faUserCircle },
       { label: "My Booking", path: "/customer/mybooking", icon: faBookmark },
-      { label: "My Vouchers", path: `${getProfilePath()}?tab=vouchers`, icon: faTicketAlt },
+      {
+        label: "My Vouchers",
+        path: `${getProfilePath()}?tab=vouchers`,
+        icon: faTicketAlt,
+      },
     ];
   };
 
@@ -207,9 +215,11 @@ const Header: React.FC = () => {
         </div>
 
         {/* Cart */}
-        <Link to="/customer/cart">
-          <CiShoppingCart className="text-black text-2xl hover:opacity-80 transition" />
-        </Link>
+        {getPrimaryRole() !== "ADMIN" && getPrimaryRole() !== "EMPLOYEE" && (
+          <Link to="/customer/cart">
+            <CiShoppingCart className="text-black text-2xl hover:opacity-80 transition" />
+          </Link>
+        )}
       </div>
 
       <MenuSidebar

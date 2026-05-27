@@ -42,13 +42,16 @@ const toArray = (value: unknown): string[] => {
   return [];
 };
 
+const normalizeRole = (role: string): string =>
+  role.trim().toUpperCase().replace(/^ROLE_/, "");
+
 const normalizeStoredUser = (
   storedUser: authService.StoredUser | null,
 ): User | null => {
   if (!storedUser || typeof storedUser !== "object") return null;
 
   const raw = storedUser as Record<string, unknown>;
-  const roles = toArray(raw.roles).map((role) => role.toUpperCase());
+  const roles = toArray(raw.roles).map(normalizeRole);
 
   return {
     id: String(raw.id ?? raw.userId ?? ""),
@@ -108,9 +111,11 @@ export const useAuthStore = create<AuthState>()(
               address: response.data.address,
               avatarUrl: response.data.avatarUrl,
               isEnabled: response.data.isEnabled ?? true,
-              roles: response.data.roles ?? [],
+              roles: (response.data.roles ?? []).map(normalizeRole),
               permissions: response.data.permissions ?? [],
-              userRole: response.data.roles?.[0] ?? "GUEST",
+              userRole: response.data.roles?.[0]
+                ? normalizeRole(response.data.roles[0])
+                : "GUEST",
             };
 
             authService.saveTokens(response.token, response.refreshToken);
@@ -169,9 +174,11 @@ export const useAuthStore = create<AuthState>()(
                   address: response.data.address,
                   avatarUrl: response.data.avatarUrl,
                   isEnabled: response.data.isEnabled ?? true,
-                  roles: response.data.roles ?? [],
+                  roles: (response.data.roles ?? []).map(normalizeRole),
                   permissions: response.data.permissions ?? [],
-                  userRole: response.data.roles?.[0] ?? "GUEST",
+                  userRole: response.data.roles?.[0]
+                    ? normalizeRole(response.data.roles[0])
+                    : "GUEST",
                 }
               : null;
 

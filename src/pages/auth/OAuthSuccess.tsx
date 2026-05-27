@@ -6,6 +6,7 @@ import { useToastContext } from "../../hooks/useToastContext";
 import type { User } from "../../types/auth";
 import { sendEmail } from "../../services/emailService";
 import { loginWelcomeBackEmail } from "../../utils/emailTemplates/authEmails";
+import { getDefaultRouteForRoles } from "../../utils/authRedirect";
 
 const OAuthSuccess: React.FC = () => {
   const navigate = useNavigate();
@@ -51,9 +52,13 @@ const OAuthSuccess: React.FC = () => {
 
         // Hiển thị toast thành công giống Login.tsx
         toast.success("Login successful!", { duration: 2000 });
+        const redirectTo = getDefaultRouteForRoles(
+          parsedUser.roles,
+          parsedUser.userRole,
+        );
 
         setTimeout(() => {
-          navigate("/");
+          navigate(redirectTo, { replace: true });
         }, 1000);
       } catch (err) {
         console.error("OAuth parse error:", err);

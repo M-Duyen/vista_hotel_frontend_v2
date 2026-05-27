@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
 // Layouts
 import AuthLayout from "../layouts/AuthLayout";
@@ -60,6 +60,7 @@ import NotFound404 from "../pages/error/NotFound404.tsx";
 import ServerError500 from "../pages/error/ServerError500.tsx";
 import ReservationList from "../pages/admin/ReservationList.tsx";
 import ProtectedRoute from "../components/ProtectedRoute.tsx";
+import StaffRedirect from "../components/StaffRedirect.tsx";
 
 export const router = createBrowserRouter([
   // OAuth
@@ -83,46 +84,33 @@ export const router = createBrowserRouter([
   {
     path: "employee",
     element: (
-      <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ADMIN", "EMPLOYEE"]}>
+      <ProtectedRoute requiredRoles={["EMPLOYEE"]}>
         <EmployeeLayout />
       </ProtectedRoute>
     ),
     children: [
       {
+        index: true,
+        element: <Navigate to="daily" replace />,
+      },
+      {
         path: "customers",
-        element: (
-          <ProtectedRoute requiredPermissions={["CUSTOMER_VIEW"]}>
-            <CustomerList />
-          </ProtectedRoute>
-        ),
+        element: <CustomerList />,
       },
       { path: "incidents", element: <IncidentManagement /> },
       { path: "bookingPage", element: <BookingPage /> },
-      { path: "newsPage", element: <NewsPage /> },
       {
         path: "daily",
-        element: (
-          <ProtectedRoute requiredPermissions={["REPORT_VIEW"]}>
-            <DailyWorkStatistics />
-          </ProtectedRoute>
-        ),
+        element: <DailyWorkStatistics />,
       },
       { path: "profile", element: <UserProfilePage /> },
       {
         path: "room-management",
-        element: (
-          <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ADMIN", "EMPLOYEE"]}>
-            <RoomManagement />
-          </ProtectedRoute>
-        ),
+        element: <RoomManagement />,
       },
       {
         path: "room-type-management",
-        element: (
-          <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ADMIN", "EMPLOYEE"]}>
-            <RoomTypeManagement />
-          </ProtectedRoute>
-        ),
+        element: <RoomTypeManagement />,
       },
       { path: "support", element: <ChatSupport /> },
       { path: "reviews", element: <ReplyReviewsPage /> },
@@ -131,6 +119,10 @@ export const router = createBrowserRouter([
       { path: "checkout", element: <CheckOutManager /> },
       { path: "info", element: <NewsList /> },
       { path: "chat", element: <ChatSupport /> },
+      {
+        path: "reservations",
+        element: <ReservationList />,
+      },
     ],
   },
 
@@ -138,7 +130,7 @@ export const router = createBrowserRouter([
   {
     path: "admin",
     element: (
-      <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ADMIN"]}>
+      <ProtectedRoute requiredRoles={["ADMIN"]}>
         <AdminLayout />
       </ProtectedRoute>
     ),
@@ -150,73 +142,73 @@ export const router = createBrowserRouter([
       { path: "info/:id", element: <NewsDetail /> },
       {
         path: "room-management",
-        element: (
-          <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ADMIN", "EMPLOYEE"]}>
-            <RoomManagement />
-          </ProtectedRoute>
-        ),
+        element: <RoomManagement />,
       },
       {
         path: "room-type-management",
-        element: (
-          <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ADMIN", "EMPLOYEE"]}>
-            <RoomTypeManagement />
-          </ProtectedRoute>
-        ),
+        element: <RoomTypeManagement />,
       },
-      { path: "promotion-management", element: <PromotionManagement /> },
+      {
+        path: "promotion-management",
+        element: <PromotionManagement />,
+      },
       {
         path: "promotion-type-management",
         element: <PromotionTypeManagement />,
       },
       { path: "voucher-management", element: <VoucherManagement /> },
-      { path: "bookingPage", element: <BookingPage /> },
       {
         path: "employees",
-        element: (
-          <ProtectedRoute requiredPermissions={["EMPLOYEE_VIEW"]}>
-            <EmployeeList />
-          </ProtectedRoute>
-        ),
+        element: <EmployeeList />,
       },
       {
         path: "daily",
-        element: (
-          <ProtectedRoute requiredPermissions={["REPORT_VIEW"]}>
-            <DailyWorkStatistics />
-          </ProtectedRoute>
-        ),
+        element: <DailyWorkStatistics />,
       },
 
-      { path: "pricing", element: <PricingManager /> },
+      {
+        path: "pricing",
+        element: <PricingManager />,
+      },
       { path: "profile", element: <UserProfilePage /> },
       {
         path: "reports",
-        element: (
-          <ProtectedRoute requiredPermissions={["REPORT_VIEW"]}>
-            <ReportPage />
-          </ProtectedRoute>
-        ),
+        element: <ReportPage />,
       },
       {
         path: "customers",
-        element: (
-          <ProtectedRoute requiredPermissions={["CUSTOMER_VIEW"]}>
-            <CustomerList />
-          </ProtectedRoute>
-        ),
+        element: <CustomerList />,
       },
       { path: "incidents", element: <IncidentManagement /> },
+      {
+        path: "reviews",
+        element: <ReplyReviewsPage />,
+      },
+      {
+        path: "services",
+        element: <ServiceManagement />,
+      },
+      {
+        path: "reservations",
+        element: <ReservationList />,
+      },
+      { path: "support", element: <ChatSupport /> },
       { path: "reviews", element: <ReplyReviewsPage /> },
       { path: "services", element: <ServiceManagement /> },
-      { path: "reservations", element: <ReservationList /> },
+      { path: "checkout", element: <CheckOutManager /> },
+      { path: "info", element: <NewsList /> },
+      { path: "chat", element: <ChatSupport /> },
     ],
   },
 
   // MAIN USER AREA
   {
     path: "",
-    element: <MainLayout />,
+    element: (
+      <StaffRedirect>
+        <MainLayout />
+      </StaffRedirect>
+    ),
     children: [
       { path: "/", element: <Home /> },
       { path: "home", element: <Home /> },

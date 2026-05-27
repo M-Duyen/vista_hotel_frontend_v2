@@ -59,39 +59,47 @@ const HeaderHome: React.FC = () => {
   ];
 
   const getPrimaryRole = () =>
-    (user?.userRole || user?.roles?.[0] || "").toUpperCase();
+    (user?.userRole || user?.roles?.[0] || "")
+      .toUpperCase()
+      .replace(/^ROLE_/, "");
 
   const getProfilePath = () => {
     const role = getPrimaryRole();
-    if (role === "SUPER_ADMIN" || role === "ADMIN") return "/admin/profile";
+    if (role === "ADMIN") return "/admin/profile";
     if (role === "EMPLOYEE") return "/employee/profile";
     return "/customer/profile";
   };
 
   const getUserMenuItems = () => {
     const role = getPrimaryRole();
-    const roleItems =
-      role === "SUPER_ADMIN" || role === "ADMIN"
-        ? [
-            { label: "Dashboard", path: "/admin", icon: faChartLine },
-            { label: "Management", path: "/admin/room-management", icon: faTasks },
-          ]
-        : role === "EMPLOYEE"
-          ? [
-              { label: "Dashboard", path: "/employee/customers", icon: faChartLine },
-              {
-                label: "Booking Management",
-                path: "/employee/bookingPage",
-                icon: faTasks,
-              },
-            ]
-          : [];
+    if (role === "ADMIN") {
+      return [
+        { label: "Dashboard", path: "/admin", icon: faChartLine },
+        { label: "Management", path: "/admin/room-management", icon: faTasks },
+        { label: "Profile", path: getProfilePath(), icon: faUserCircle },
+      ];
+    }
+
+    if (role === "EMPLOYEE") {
+      return [
+        { label: "Dashboard", path: "/employee/daily", icon: faChartLine },
+        {
+          label: "Booking Management",
+          path: "/employee/bookingPage",
+          icon: faTasks,
+        },
+        { label: "Profile", path: getProfilePath(), icon: faUserCircle },
+      ];
+    }
 
     return [
-      ...roleItems,
       { label: "Profile", path: getProfilePath(), icon: faUserCircle },
       { label: "My Booking", path: "/customer/mybooking", icon: faBookmark },
-      { label: "My Vouchers", path: `${getProfilePath()}?tab=vouchers`, icon: faTicketAlt },
+      {
+        label: "My Vouchers",
+        path: `${getProfilePath()}?tab=vouchers`,
+        icon: faTicketAlt,
+      },
     ];
   };
 
@@ -301,13 +309,15 @@ const HeaderHome: React.FC = () => {
           </div>
 
           {/* Reserve Button */}
-          <Link
-            to="/customer/cart"
-            className="bg-white text-black px-3 py-1.5 sm:px-4 sm:py-2 lg:px-6 lg:py-2 rounded font-serif border border-transparent hover:bg-black/40 hover:text-white transition-all duration-300 ease-in-out text-xs sm:text-sm lg:text-base"
-          >
-            <span className="hidden sm:inline">Reserve</span>
-            <span className="sm:hidden">Book</span>
-          </Link>
+          {getPrimaryRole() !== "ADMIN" && getPrimaryRole() !== "EMPLOYEE" && (
+            <Link
+              to="/customer/cart"
+              className="bg-white text-black px-3 py-1.5 sm:px-4 sm:py-2 lg:px-6 lg:py-2 rounded font-serif border border-transparent hover:bg-black/40 hover:text-white transition-all duration-300 ease-in-out text-xs sm:text-sm lg:text-base"
+            >
+              <span className="hidden sm:inline">Reserve</span>
+              <span className="sm:hidden">Book</span>
+            </Link>
+          )}
         </div>
       </div>
 

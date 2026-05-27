@@ -21,7 +21,10 @@ const VoucherList: React.FC = () => {
       const userData = localStorage.getItem("user");
       if (!userData) return localStorage.getItem("customerId");
       const user = JSON.parse(userData);
-      return user?.userRole === "CUSTOMER" ? user.id : null;
+      const role = (user?.userRole || user?.roles?.[0] || "")
+        .toUpperCase()
+        .replace(/^ROLE_/, "");
+      return role === "CUSTOMER" ? user.id : null;
     } catch (error) {
       console.error("Error reading customer ID:", error);
       return localStorage.getItem("customerId");

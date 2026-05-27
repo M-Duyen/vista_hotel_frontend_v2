@@ -2,6 +2,7 @@ import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
 import { canAccess } from "@/utils/permissions";
+import { getDefaultRouteForRoles } from "@/utils/authRedirect";
 import type { PermissionCode, RoleCode } from "@/types/auth";
 
 interface ProtectedRouteProps {
@@ -48,7 +49,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (!hasAccess) {
     if (fallback) return <>{fallback}</>;
-    return <Navigate to="/404" replace />;
+    return (
+      <Navigate
+        to={getDefaultRouteForRoles(user.roles, user.userRole)}
+        replace
+      />
+    );
   }
 
   return <>{children}</>;

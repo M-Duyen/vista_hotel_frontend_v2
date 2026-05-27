@@ -8,6 +8,9 @@ import { API_CONFIG } from "@/config/api.config";
 const EMPLOYEE_ENDPOINT = "/employees";
 const ADMIN_ENDPOINT = "/admins";
 
+const normalizeRole = (role: string): string =>
+  role.trim().toUpperCase().replace(/^ROLE_/, "");
+
 /**
  * Lấy thông tin khách hàng theo ID
  */
@@ -96,9 +99,9 @@ export const updateUserAvatar = async (
     const avatarUrl = uploadResult.secure_url;
 
     // Cập nhật avatarUrl vào database
-    if (userRole === "CUSTOMER") {
+    if (normalizeRole(userRole) === "CUSTOMER") {
       await updateCustomerProfile(userId, { avatarUrl });
-    } else if (userRole === "EMPLOYEE") {
+    } else if (normalizeRole(userRole) === "EMPLOYEE") {
       const currentUser = getCurrentUserFromStorage();
       await updateEmployeeProfile(userId, {
         fullName: currentUser?.fullName,
@@ -107,7 +110,7 @@ export const updateUserAvatar = async (
         address: currentUser?.address ?? "",
         avatarUrl,
       });
-    } else if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
+    } else if (normalizeRole(userRole) === "ADMIN") {
       const currentUser = getCurrentUserFromStorage();
       await updateAdminProfile(userId, {
         fullName: currentUser?.fullName,
@@ -135,11 +138,11 @@ export const updateUserProfile = async (
 ): Promise<any> => {
   try {
     let response;
-    if (userRole === "CUSTOMER") {
+    if (normalizeRole(userRole) === "CUSTOMER") {
       response = await updateCustomerProfile(userId, data);
-    } else if (userRole === "EMPLOYEE") {
+    } else if (normalizeRole(userRole) === "EMPLOYEE") {
       response = await updateEmployeeProfile(userId, data);
-    } else if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
+    } else if (normalizeRole(userRole) === "ADMIN") {
       response = await updateAdminProfile(userId, data);
     } else {
       throw new Error("Invalid user role");
