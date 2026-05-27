@@ -69,20 +69,27 @@ const getRolesFromToken = (): string[] => {
   }
 };
 
+const getAllowedTabs = (role?: string): MenuTab[] => {
+  if (role?.toUpperCase() === "CUSTOMER") {
+    return ["profile", "password", "membership", "bookings", "vouchers"];
+  }
+
+  return ["profile", "password"];
+};
+
 const normalizeProfile = (
   data: ProfileSource,
-  fallback?: UserProfile
+  fallback?: UserProfile,
 ): UserProfile => {
-  const userRole =
-    (
-      data.userRole ||
-      data.roles?.[0] ||
-      fallback?.userRole ||
-      getRolesFromToken()[0] ||
-      "CUSTOMER"
-    )
-      .toUpperCase()
-      .replace(/^ROLE_/, "");
+  const userRole = (
+    data.userRole ||
+    data.roles?.[0] ||
+    fallback?.userRole ||
+    getRolesFromToken()[0] ||
+    "CUSTOMER"
+  )
+    .toUpperCase()
+    .replace(/^ROLE_/, "");
 
   return {
     id: data.id ?? fallback?.id ?? "",
@@ -146,6 +153,15 @@ const UserProfilePage: React.FC = () => {
   }, [location.search]);
 
   useEffect(() => {
+    if (!profile) return;
+
+    const allowedTabs = getAllowedTabs(profile.userRole);
+    if (!allowedTabs.includes(activeTab)) {
+      setActiveTab("profile");
+    }
+  }, [activeTab, profile]);
+
+  useEffect(() => {
     if (activeTab === "bookings" && profile?.id) {
       loadBookings();
     }
@@ -171,16 +187,24 @@ const UserProfilePage: React.FC = () => {
       // Only customer profile has a matching customer endpoint; the UI below is shared for all roles.
       if (storedProfile.userRole === "CUSTOMER") {
         const customerData = await userProfileService.getCustomerProfile(
-          storedProfile.id
+          storedProfile.id,
         );
         const normalizedCustomer = normalizeProfile(
           customerData as ProfileSource,
-          storedProfile
+          storedProfile,
         );
         setProfile(normalizedCustomer);
         userProfileService.updateUserInStorage(normalizedCustomer);
       } else {
-        setProfile(storedProfile);
+        const userData = await userProfileService.getUserProfile(
+          storedProfile.id,
+        );
+        const normalizedUser = normalizeProfile(
+          userData as ProfileSource,
+          storedProfile,
+        );
+        setProfile(normalizedUser);
+        userProfileService.updateUserInStorage(normalizedUser);
       }
     } catch (error) {
       console.error("Error loading profile:", error);
@@ -248,16 +272,16 @@ const UserProfilePage: React.FC = () => {
     return {
       total: vouchers.length,
       active: vouchers.filter(
-        (v) => getVoucherStatus(v.endDate).status === "active"
+        (v) => getVoucherStatus(v.endDate).status === "active",
       ).length,
       expiring: vouchers.filter(
-        (v) => getVoucherStatus(v.endDate).status === "expiring"
+        (v) => getVoucherStatus(v.endDate).status === "expiring",
       ).length,
     };
   };
 
   const getVoucherStatus = (
-    endDate: Date | string
+    endDate: Date | string,
   ): {
     status: "active" | "expiring" | "expired";
     label: string;
@@ -266,7 +290,7 @@ const UserProfilePage: React.FC = () => {
     const now = new Date();
     const end = new Date(endDate);
     const daysUntilExpiry = Math.ceil(
-      (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
     );
 
     if (end < now) return { status: "expired", label: "Expired", daysLeft: 0 };
@@ -292,11 +316,11 @@ const UserProfilePage: React.FC = () => {
     const updated = await updateUserProfile(
       profile.id,
       profile.userRole || "CUSTOMER",
-      data
+      data,
     );
     const normalizedProfile = normalizeProfile(
       updated as ProfileSource,
-      profile
+      profile,
     );
     setProfile(normalizedProfile);
     userProfileService.updateUserInStorage(normalizedProfile);
@@ -330,22 +354,25 @@ const UserProfilePage: React.FC = () => {
     navigate("/auth/login", { replace: true });
   };
 
-  const menuItems: { id: MenuTab; label: string; icon: React.JSX.Element }[] = [
-    { id: "profile", label: "Personal Information", icon: <FaUser /> },
-    { id: "password", label: "Change Password", icon: <FaLock /> },
-  ];
-
-  menuItems.push(
-    { id: "membership", label: "Membership Info", icon: <FaTrophy /> },
-    { id: "bookings", label: "Booking History", icon: <FaHistory /> },
-    { id: "vouchers", label: "My Vouchers", icon: <FaTicketAlt /> }
-  );
-
   if (loading || !profile) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
+    );
+  }
+
+  const isCustomerProfile = profile.userRole === "CUSTOMER";
+  const menuItems: { id: MenuTab; label: string; icon: React.JSX.Element }[] = [
+    { id: "profile", label: "Personal Information", icon: <FaUser /> },
+    { id: "password", label: "Change Password", icon: <FaLock /> },
+  ];
+
+  if (isCustomerProfile) {
+    menuItems.push(
+      { id: "membership", label: "Membership Info", icon: <FaTrophy /> },
+      { id: "bookings", label: "Booking History", icon: <FaHistory /> },
+      { id: "vouchers", label: "My Vouchers", icon: <FaTicketAlt /> },
     );
   }
 
@@ -368,11 +395,7 @@ const UserProfilePage: React.FC = () => {
       )}
 
       {/* Main Content with top padding to account for fixed header */}
-      <div
-        className={`min-h-screen ${
-          !isStaffProfilePage ? "pt-20" : ""
-        }`}
-      >
+      <div className={`min-h-screen ${!isStaffProfilePage ? "pt-20" : ""}`}>
         <div className="container mx-auto px-6 py-4 ">
           {/* Mobile Header with Menu Toggle */}
           <div className="lg:hidden flex items-center justify-between mb-4 p-4 bg-gradient-to-r from-cream to-gold rounded-lg shadow-sm">
@@ -478,19 +501,19 @@ const UserProfilePage: React.FC = () => {
                   <p className="text-center text-xs md:text-sm text-white/80">
                     {profile.email}
                   </p>
-                  {profile.memberShipLevel && (
-                      <div className="mt-3 text-center">
-                        <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold">
-                          {profile.memberShipLevel === "PLATINUM"
-                            ? "Platinum"
-                            : profile.memberShipLevel === "GOLD"
+                  {isCustomerProfile && profile.memberShipLevel && (
+                    <div className="mt-3 text-center">
+                      <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold">
+                        {profile.memberShipLevel === "PLATINUM"
+                          ? "Platinum"
+                          : profile.memberShipLevel === "GOLD"
                             ? "Gold"
                             : profile.memberShipLevel === "SILVER"
-                            ? "Silver"
-                            : "Bronze"}
-                        </span>
-                      </div>
-                    )}
+                              ? "Silver"
+                              : "Bronze"}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <nav className="p-2 md:p-2 max-h-[calc(100vh-280px)] lg:max-h-none overflow-y-auto">
@@ -553,18 +576,18 @@ const UserProfilePage: React.FC = () => {
                   />
                 )}
 
-                {activeTab === "membership" && (
+                {isCustomerProfile && activeTab === "membership" && (
                   <MembershipInfoSection profile={profile} />
                 )}
 
-                {activeTab === "bookings" && (
+                {isCustomerProfile && activeTab === "bookings" && (
                   <BookingHistorySection
                     bookings={bookings}
                     loading={bookingsLoading}
                   />
                 )}
 
-                {activeTab === "vouchers" && (
+                {isCustomerProfile && activeTab === "vouchers" && (
                   <div>
                     {vouchersLoading ? (
                       <div className="bg-white rounded-xl shadow-md border border-cream p-6">
@@ -597,7 +620,7 @@ const UserProfilePage: React.FC = () => {
                               <AnimatePresence>
                                 {getFilteredVouchers().map((voucher, index) => {
                                   const { status, label } = getVoucherStatus(
-                                    voucher.endDate
+                                    voucher.endDate,
                                   );
                                   return (
                                     <VoucherCard

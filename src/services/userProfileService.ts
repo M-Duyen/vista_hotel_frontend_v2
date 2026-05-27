@@ -1,15 +1,58 @@
-import { api, customerApi, bookingsApi } from "./apiClient";
+import { customerApi, bookingsApi, usersApi } from "./apiClient";
 import type { UserProfile, ProfileUpdateRequest } from "../types/UserProfile";
 import type { Customer } from "../types/Customer";
 import type { Booking } from "../types/Booking";
 import { uploadImageToCloudinary } from "./cloudinaryService";
 import { API_CONFIG } from "@/config/api.config";
 
-const EMPLOYEE_ENDPOINT = "/employees";
-const ADMIN_ENDPOINT = "/admins";
-
 const normalizeRole = (role: string): string =>
-  role.trim().toUpperCase().replace(/^ROLE_/, "");
+  role
+    .trim()
+    .toUpperCase()
+    .replace(/^ROLE_/, "");
+
+type StaffProfileSource = {
+  username?: string;
+  userName?: string;
+  email?: string;
+  fullName?: string;
+  phone?: string;
+  address?: string;
+  avatarUrl?: string | null;
+  department?: string;
+  position?: string;
+  salary?: number;
+  hireDate?: string;
+  employeeStatus?: string;
+  adminLevel?: number;
+};
+
+export const getUserProfile = async (
+  userId: string,
+): Promise<StaffProfileSource> => {
+  const response = await usersApi.get(`/${userId}`);
+  return response.data;
+};
+
+const buildStaffUpdatePayload = (
+  currentProfile: StaffProfileSource,
+  data: ProfileUpdateRequest,
+) => {
+  return {
+    username: currentProfile.username ?? currentProfile.userName ?? "",
+    email: data.email ?? currentProfile.email ?? "",
+    fullName: data.fullName ?? currentProfile.fullName ?? "",
+    phone: data.phone ?? currentProfile.phone ?? "",
+    address: data.address ?? currentProfile.address ?? "",
+    avatarUrl: data.avatarUrl ?? currentProfile.avatarUrl ?? null,
+    department: currentProfile.department ?? null,
+    position: currentProfile.position ?? null,
+    salary: currentProfile.salary ?? null,
+    hireDate: currentProfile.hireDate ?? null,
+    employeeStatus: currentProfile.employeeStatus ?? null,
+    adminLevel: currentProfile.adminLevel ?? null,
+  };
+};
 
 /**
  * Lấy thông tin khách hàng theo ID
@@ -61,7 +104,9 @@ export const updateEmployeeProfile = async (
   data: ProfileUpdateRequest,
 ): Promise<any> => {
   try {
-    const response = await api.put(`${EMPLOYEE_ENDPOINT}/${employeeId}`, data);
+    const currentProfile = await getUserProfile(employeeId);
+    const payload = buildStaffUpdatePayload(currentProfile, data);
+    const response = await usersApi.put(`/${employeeId}`, payload);
     return response.data;
   } catch (error) {
     console.error("Error updating employee profile:", error);
@@ -77,7 +122,9 @@ export const updateAdminProfile = async (
   data: ProfileUpdateRequest,
 ): Promise<any> => {
   try {
-    const response = await api.put(`${ADMIN_ENDPOINT}/${adminId}`, data);
+    const currentProfile = await getUserProfile(adminId);
+    const payload = buildStaffUpdatePayload(currentProfile, data);
+    const response = await usersApi.put(`/${adminId}`, payload);
     return response.data;
   } catch (error) {
     console.error("Error updating admin profile:", error);
@@ -88,45 +135,6 @@ export const updateAdminProfile = async (
 /**
  * Cập nhật avatar cho user (Customer, Employee, Admin)
  */
-export const updateUserAvatar = async (
-  userId: string,
-  userRole: string,
-  file: File,
-): Promise<string> => {
-  try {
-    // Upload ảnh lên Cloudinary
-    const uploadResult = await uploadImageToCloudinary(file);
-    const avatarUrl = uploadResult.secure_url;
-
-    // Cập nhật avatarUrl vào database
-    if (normalizeRole(userRole) === "CUSTOMER") {
-      await updateCustomerProfile(userId, { avatarUrl });
-    } else if (normalizeRole(userRole) === "EMPLOYEE") {
-      const currentUser = getCurrentUserFromStorage();
-      await updateEmployeeProfile(userId, {
-        fullName: currentUser?.fullName,
-        email: currentUser?.email,
-        phone: currentUser?.phone,
-        address: currentUser?.address ?? "",
-        avatarUrl,
-      });
-    } else if (normalizeRole(userRole) === "ADMIN") {
-      const currentUser = getCurrentUserFromStorage();
-      await updateAdminProfile(userId, {
-        fullName: currentUser?.fullName,
-        email: currentUser?.email,
-        phone: currentUser?.phone,
-        address: currentUser?.address ?? "",
-        avatarUrl,
-      });
-    }
-
-    return avatarUrl;
-  } catch (error) {
-    console.error("Error updating user avatar:", error);
-    throw error;
-  }
-};
 
 /**
  * Cập nhật profile chung cho tất cả user role
@@ -150,6 +158,27 @@ export const updateUserProfile = async (
     return response;
   } catch (error) {
     console.error("Error updating user profile:", error);
+    throw error;
+  }
+};
+
+/**
+ * Cập nhật avatar cho user (Customer, Employee, Admin)
+ */
+export const updateUserAvatar = async (
+  userId: string,
+  userRole: string,
+  file: File,
+): Promise<string> => {
+  try {
+    const uploadResult = await uploadImageToCloudinary(file);
+    const avatarUrl = uploadResult.secure_url;
+
+    await updateUserProfile(userId, userRole, { avatarUrl });
+
+    return avatarUrl;
+  } catch (error) {
+    console.error("Error updating user avatar:", error);
     throw error;
   }
 };
@@ -190,13 +219,31 @@ export const getCurrentUserFromStorage = (): UserProfile | null => {
  */
 export const updateUserInStorage = (user: UserProfile): void => {
   try {
-    localStorage.setItem(API_CONFIG.STORAGE_KEYS.USER, JSON.stringify(user));
+    const existingRaw = localStorage.getItem(API_CONFIG.STORAGE_KEYS.USER);
+    const existing = existingRaw ? JSON.parse(existingRaw) : {};
+    const profile = user as Record<string, unknown>;
+
+    const mergedUser = {
+      ...existing,
+      ...user,
+      roles: existing?.roles ?? profile.roles,
+      permissions: existing?.permissions ?? profile.permissions,
+      userRole: existing?.userRole ?? profile.userRole,
+      isEnabled: existing?.isEnabled ?? profile.isEnabled,
+    };
+
+    localStorage.setItem(
+      API_CONFIG.STORAGE_KEYS.USER,
+      JSON.stringify(mergedUser),
+    );
+    window.dispatchEvent(new Event("userDataUpdated"));
   } catch (error) {
     console.error("Error updating user in localStorage:", error);
   }
 };
 
 const userProfileService = {
+  getUserProfile,
   getCustomerProfile,
   updateCustomerProfile,
   updateEmployeeProfile,

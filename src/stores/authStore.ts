@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { API_CONFIG } from "@/config/api.config";
 import * as authService from "@/services/authService";
+import userProfileService from "@/services/userProfileService";
 import type {
   AuthResponse,
   LoginPayload,
@@ -43,7 +44,10 @@ const toArray = (value: unknown): string[] => {
 };
 
 const normalizeRole = (role: string): string =>
-  role.trim().toUpperCase().replace(/^ROLE_/, "");
+  role
+    .trim()
+    .toUpperCase()
+    .replace(/^ROLE_/, "");
 
 const normalizeStoredUser = (
   storedUser: authService.StoredUser | null,
@@ -119,7 +123,43 @@ export const useAuthStore = create<AuthState>()(
             };
 
             authService.saveTokens(response.token, response.refreshToken);
-            authService.saveUser(user as StoredUser);
+
+            let enrichedUser: User = user;
+
+            try {
+              if (user.userRole === "CUSTOMER") {
+                const customerProfile =
+                  await userProfileService.getCustomerProfile(user.id);
+                enrichedUser = normalizeStoredUser({
+                  ...user,
+                  ...customerProfile,
+                  roles: user.roles,
+                  permissions: user.permissions,
+                  userRole: user.userRole,
+                }) as User;
+              } else if (
+                user.userRole === "EMPLOYEE" ||
+                user.userRole === "ADMIN"
+              ) {
+                const staffProfile = await userProfileService.getUserProfile(
+                  user.id,
+                );
+                enrichedUser = normalizeStoredUser({
+                  ...user,
+                  ...staffProfile,
+                  roles: user.roles,
+                  permissions: user.permissions,
+                  userRole: user.userRole,
+                }) as User;
+              }
+            } catch (profileError) {
+              console.warn(
+                "Could not enrich user profile after login:",
+                profileError,
+              );
+            }
+
+            authService.saveUser(enrichedUser as StoredUser);
 
             void import("@/services/notificationApiService")
               .then(({ notificationApiService }) =>
@@ -150,7 +190,7 @@ export const useAuthStore = create<AuthState>()(
               );
 
             set({
-              user,
+              user: enrichedUser,
               token: response.token,
               refreshToken: response.refreshToken || null,
               isAuthenticated: true,
