@@ -8,4 +8,5 @@ export interface Voucher {
   discountType: "PERCENT" | "FIXED" | string;
   isActive: boolean;
   active?: boolean;
+  usedCount?: number;
 }

@@ -359,6 +359,9 @@ const VoucherManagement: React.FC = () => {
                       Validity
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-[#6b5e4c] uppercase tracking-wider">
+                      Used
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-[#6b5e4c] uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-[#6b5e4c] uppercase tracking-wider">
@@ -404,6 +407,11 @@ const VoucherManagement: React.FC = () => {
                             {new Date(voucher.endDate).toLocaleDateString(
                               "vi-VN"
                             )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-semibold text-gray-900">
+                            {voucher.usedCount ?? 0}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

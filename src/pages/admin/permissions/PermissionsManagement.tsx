@@ -18,8 +18,7 @@ import {
 import type { RoleCode } from "../../../types/auth";
 import { useAuthStore } from "../../../stores/authStore";
 
-// ─── Constants ──────────────────────────────────────────────────────────────
-
+// Constants 
 const ROLE_OPTIONS: { value: RoleCode; label: string; color: string }[] = [
   { value: "ADMIN", label: "Admin", color: "bg-red-100 text-red-700 border-red-200" },
   { value: "EMPLOYEE", label: "Employee", color: "bg-blue-100 text-blue-700 border-blue-200" },

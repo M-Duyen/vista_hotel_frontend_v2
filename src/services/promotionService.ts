@@ -72,14 +72,12 @@ export const createPromotion = async (
         : promotionOnly.promotionType?.promotionTypeID ||
           promotionOnly.promotionType?.promotionTypeId;
 
-    // TODO: Get adminId from auth context when available
     const promotionPayload = {
       promotionId: promotionOnly.promotionID,
       promotionName: promotionOnly.promotionName,
       description: promotionOnly.description,
       discountType: promotionOnly.discountType,
       active: promotionOnly.active ?? true,
-      adminId: "ADMIN001",
       promotionType: promotionTypeId
         ? {
             promotionTypeId,

@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Send, Clock, CheckCircle, XCircle } from "lucide-react";
 import type { Voucher } from "../../types/Voucher";
@@ -7,6 +7,7 @@ import voucherService from "../../services/voucherService";
 
 interface DistributionHistory {
   id: number;
+  voucherId?: string;
   voucherName: string;
   criteria: string;
   recipientCount: number;
@@ -51,7 +52,18 @@ export default function DistributionTab({
     }
   };
 
+  const distributedVoucherIds = useMemo(() => {
+    return new Set(
+      history
+        .filter((record) => record.status === "success")
+        .map((record) => record.voucherId || record.voucherName)
+    );
+  }, [history]);
+
   const activeVouchers = vouchers.filter((v) => v.isActive);
+  const availableVouchers = activeVouchers.filter(
+    (v) => !distributedVoucherIds.has(v.voucherId)
+  );
 
   return (
     <div className="space-y-6">
@@ -79,7 +91,7 @@ export default function DistributionTab({
               className="w-full px-4 py-2 border border-[#ebe3d7] rounded-lg focus:ring-2 focus:ring-[#6b5e4c] focus:border-transparent cursor-pointer"
             >
               <option value="">Choose a voucher...</option>
-              {activeVouchers.map((voucher) => (
+              {availableVouchers.map((voucher) => (
                 <option key={voucher.voucherId} value={voucher.voucherId}>
                   {voucher.voucherName} -{" "}
                   {voucher.discountType === "PERCENT"

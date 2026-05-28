@@ -7,7 +7,10 @@ import type { PromotionType } from "../../../types/PromotionType";
 import type { RoomType } from "../../../types/RoomType";
 import { getAllPromotionTypes } from "../../../services/promotionTypeService";
 import { getAllRoomTypes } from "../../../services/roomService";
-import { getRoomTypePromotionsByPromotionId } from "../../../services/roomTypePromotionService";
+import {
+  getAllRoomTypePromotions,
+  getRoomTypePromotionsByPromotionId,
+} from "../../../services/roomTypePromotionService";
 import { useToastContext } from "../../../hooks/useToastContext";
 import { FaSpinner } from "react-icons/fa";
 
@@ -62,15 +65,20 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
   const [roomTypes, setRoomTypes] = useState<
     { value: string; label: string }[]
   >([]);
+  const [blockedRoomTypeIds, setBlockedRoomTypeIds] = useState<Set<string>>(
+    new Set()
+  );
 
   // Fetch promotion types and room types
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [promotionTypesData, roomTypesData] = await Promise.all([
+        const [promotionTypesData, roomTypesData, allRoomTypePromotions] =
+          await Promise.all([
           getAllPromotionTypes(),
           getAllRoomTypes(),
-        ]);
+            getAllRoomTypePromotions(),
+          ]);
 
         setPromotionTypes(
           promotionTypesData.map((pt: PromotionType) => ({
@@ -85,6 +93,34 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
             label: rt.typeName || rt.roomTypeID || "",
           }))
         );
+
+        const today = new Date();
+        const currentPromotionId = editPromotion?.promotionID || "";
+        const blocked = new Set(
+          allRoomTypePromotions
+            .filter((rtp: any) => {
+              const endDate = rtp.endDate ? new Date(rtp.endDate) : null;
+              const promotionId =
+                rtp.promotion?.promotionID ||
+                rtp.promotion?.promotionId ||
+                rtp.id?.promotionId ||
+                "";
+              return (
+                endDate &&
+                endDate >= today &&
+                promotionId !== currentPromotionId
+              );
+            })
+            .map(
+              (rtp: any) =>
+                rtp.roomType?.roomTypeID ||
+                rtp.roomType?.roomTypeId ||
+                rtp.id?.roomTypeId ||
+                ""
+            )
+            .filter((id: string) => id)
+        );
+        setBlockedRoomTypeIds(blocked);
       } catch (error) {
         console.error("Error fetching dropdown data:", error);
       }
@@ -93,7 +129,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
     if (isOpen) {
       fetchData();
     }
-  }, [isOpen]);
+  }, [isOpen, editPromotion]);
 
   useEffect(() => {
     const loadPromotionData = async () => {
@@ -118,11 +154,13 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
               rtpData.map(
                 (rtp: {
                   roomType?: { roomTypeID?: string; typeName?: string };
+                  id?: { roomTypeId?: string };
                   discountValue?: number;
                   startDate?: string;
                   endDate?: string;
                 }) => ({
-                  roomTypeId: rtp.roomType?.roomTypeID || "",
+                  roomTypeId:
+                    rtp.roomType?.roomTypeID || rtp.id?.roomTypeId || "",
                   roomTypeName: rtp.roomType?.typeName || "",
                   discountValue: rtp.discountValue || 0,
                   startDate: rtp.startDate || "",
@@ -647,7 +685,11 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                               Room Type
                             </label>
                             <Dropdown
-                              options={roomTypes}
+                              options={roomTypes.filter(
+                                (rt) =>
+                                  !blockedRoomTypeIds.has(rt.value) ||
+                                  rt.value === rtp.roomTypeId
+                              )}
                               value={rtp.roomTypeId}
                               onChange={(value) =>
                                 updateRoomTypePromotion(

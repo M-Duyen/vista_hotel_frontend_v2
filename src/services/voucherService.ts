@@ -12,6 +12,8 @@ const mapBackendVoucher = (data: any): Voucher => {
         ? Boolean(data.active)
         : true;
 
+  const usedCount = data?.usedCount;
+
   return {
     voucherId,
     voucherName: data?.voucherName ?? "",
@@ -22,6 +24,7 @@ const mapBackendVoucher = (data: any): Voucher => {
     discountType: data?.discountType ?? "PERCENT",
     isActive,
     active: isActive,
+    usedCount: usedCount !== undefined ? Number(usedCount) : undefined,
   };
 };
 

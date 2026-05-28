@@ -63,7 +63,7 @@ export default function AutoEventsTab({ vouchers }: AutoEventsTabProps) {
       enabled: false,
       voucherId: "",
       config: {
-        daysBeforeEvent: 7,
+        daysBeforeEvent: 3,
       },
     },
     // {
