@@ -6,21 +6,25 @@ import {
   FaGift,
   FaArrowRight,
 } from "react-icons/fa";
-
-interface Promotion {
-  promotionID: string;
-  promotionName: string;
-  description: string;
-  discountType: string;
-  isActive: boolean;
-}
+import type { Promotion } from "../../types/Promotion";
 
 interface PromotionCardProps {
   promotion: Promotion;
   index: number;
+  onClick?: (promotion: Promotion) => void;
 }
 
-const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, index }) => {
+const PromotionCard: React.FC<PromotionCardProps> = ({
+  promotion,
+  index,
+  onClick,
+}) => {
+  const handleClick = () => {
+    if (onClick) {
+      onClick(promotion);
+    }
+  };
+
   return (
     <motion.div
       key={`${promotion.promotionID}-${index}`}
@@ -28,16 +32,16 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, index }) => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -30 }}
       transition={{ delay: index * 0.08, duration: 0.5 }}
-      className="group"
+      className="group cursor-pointer"
     >
-      <div className="relative cursor-pointer h-full">
+      <div className="relative cursor-pointer h-full" onClick={handleClick}>
         <div className="h-full bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-200 hover:border-[#CCBDA3]">
           {/* Decorative Corner Elements */}
           <div className="absolute top-0 right-0 w-20 h-20 bg-[#CCBDA3]/10 rounded-full blur-xl"></div>
           <div className="absolute bottom-0 left-0 w-16 h-16 bg-[#C3923C]/5 rounded-full blur-lg"></div>
 
           {/* Status Badge */}
-          {promotion.isActive && (
+          {promotion.active && (
             <div className="absolute top-4 right-4 z-10">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-success to-green-600 text-white rounded-full text-xs font-bold shadow-lg animate-pulse">
                 <FaCheckCircle className="text-xs" />
@@ -76,7 +80,14 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, index }) => {
               </div>
 
               {/* Action Button */}
-              <button className="cursor-pointer w-full bg-gradient-to-r from-[#CCBDA3] to-[#B8A888] hover:from-[#C3923C] hover:to-[#B4893E] text-white py-2.5 rounded-lg font-semibold text-sm transition-all duration-300 shadow-sm hover:shadow-md flex items-center justify-center gap-2">
+              <button
+                className="cursor-pointer w-full bg-gradient-to-r from-[#CCBDA3] to-[#B8A888] hover:from-[#C3923C] hover:to-[#B4893E] text-white py-2.5 rounded-lg font-semibold text-sm transition-all duration-300 shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleClick();
+                }}
+              >
                 <FaGift className="text-sm" />
                 <span>View Details</span>
                 <FaArrowRight className="text-xs" />

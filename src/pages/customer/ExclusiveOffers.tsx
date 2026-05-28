@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -8,45 +9,54 @@ import {
   faMagic,
   faFilter,
 } from "@fortawesome/free-solid-svg-icons";
-import { getPromotions } from "../../services/promotionService";
-import { getVouchers } from "../../services/voucherService";
+import {
+  getPromotionById,
+  getPromotions,
+} from "../../services/promotionService";
+import { getRoomTypePromotionsByPromotionId } from "../../services/roomTypePromotionService";
+import { getAllRoomTypes } from "../../services/roomTypeService";
+import {
+  getVouchers,
+  getVouchersByCustomerId,
+} from "../../services/voucherService";
+import { saveCustomerVoucher } from "../../services/customerVoucherService";
 import { useToastContext } from "../../hooks/useToastContext";
+import { useAuthStore } from "../../stores/authStore";
 import HeaderHome from "../../components/HeaderHome";
 import Header from "../../components/Header";
 import PromotionCard from "../../components/promotion/PromotionCard";
 import VoucherCard from "../../components/voucher/VoucherCard";
-
-interface Promotion {
-  promotionID: string;
-  promotionName: string;
-  description: string;
-  discountType: string;
-  isActive: boolean;
-}
-
-interface Voucher {
-  voucherId: string;
-  voucherName: string;
-  discountPercentage: number;
-  discountValue: number;
-  startDate: Date | string;
-  endDate: Date | string;
-  discountType: string;
-  isActive: boolean;
-}
+import PromotionDetailModal from "../../components/offers/PromotionDetailModal";
+import VoucherDetailModal from "../../components/offers/VoucherDetailModal";
+import type { Promotion } from "../../types/Promotion";
+import type { Voucher } from "../../types/Voucher";
 
 type TabType = "all" | "promotions" | "vouchers";
 
 const ExclusiveOffers: React.FC = () => {
+  const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<"active" | "all">(
-    "active"
+    "active",
   );
   const [showSolidHeader, setShowSolidHeader] = useState(false);
   const [copiedCode, setCopiedCode] = useState("");
+  const [selectedPromotion, setSelectedPromotion] = useState<Promotion | null>(
+    null,
+  );
+  const [promotionDetailLoading, setPromotionDetailLoading] = useState(false);
+  const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
+  const [ownedVoucherIds, setOwnedVoucherIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [savingVoucherId, setSavingVoucherId] = useState<string | null>(null);
+  const [roomTypeNameById, setRoomTypeNameById] = useState<
+    Record<string, string>
+  >({});
   const heroRef = useRef<HTMLDivElement>(null);
   const toast = useToastContext();
 
@@ -67,6 +77,15 @@ const ExclusiveOffers: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) {
+      setOwnedVoucherIds(new Set());
+      return;
+    }
+    loadOwnedVouchers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user?.id]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -76,6 +95,17 @@ const ExclusiveOffers: React.FC = () => {
       ]);
       setPromotions(promotionsData);
       setVouchers(vouchersData);
+      const roomTypes = await getAllRoomTypes();
+      const roomTypeMap = (roomTypes || []).reduce(
+        (acc: Record<string, string>, roomType: any) => {
+          const id = roomType?.roomTypeID ?? roomType?.roomTypeId;
+          const name = roomType?.typeName ?? roomType?.roomTypeName ?? "";
+          if (id) acc[id] = name || id;
+          return acc;
+        },
+        {},
+      );
+      setRoomTypeNameById(roomTypeMap);
     } catch (error) {
       console.error("Error fetching offers:", error);
       toast.error("Failed to load exclusive offers");
@@ -84,38 +114,90 @@ const ExclusiveOffers: React.FC = () => {
     }
   };
 
-  const filteredPromotions = promotions.filter(
-    (p) => selectedFilter === "all" || p.isActive
-  );
+  const loadOwnedVouchers = async () => {
+    if (!user?.id) return;
+
+    try {
+      const data = await getVouchersByCustomerId(user.id);
+      setOwnedVoucherIds(new Set(data.map((voucher) => voucher.voucherId)));
+    } catch (error) {
+      console.error("Error loading owned vouchers:", error);
+      setOwnedVoucherIds(new Set());
+    }
+  };
+
+  const filteredPromotions = promotions.filter((p) => p.active);
+
+  const isVoucherExpired = (voucher: Voucher) => {
+    if (!voucher.endDate) return true;
+    const end = new Date(voucher.endDate);
+    if (typeof voucher.endDate === "string" && voucher.endDate.length <= 10) {
+      end.setHours(23, 59, 59, 999);
+    }
+    return new Date().getTime() > end.getTime();
+  };
 
   const filteredVouchers = vouchers.filter(
-    (v) => selectedFilter === "all" || v.isActive
+    (v) => !isVoucherExpired(v) && (selectedFilter === "all" || v.isActive),
   );
 
   const calculateDaysRemaining = (endDate: Date | string) => {
+    if (!endDate) return 0;
     const end = new Date(endDate);
+    if (typeof endDate === "string" && endDate.length <= 10) {
+      end.setHours(23, 59, 59, 999);
+    }
     const now = new Date();
     const diff = Math.ceil(
-      (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
     );
     return diff > 0 ? diff : 0;
   };
 
   const getVoucherStatus = (
-    voucher: Voucher
+    voucher: Voucher,
   ): "active" | "expiring" | "expired" => {
+    if (isVoucherExpired(voucher)) return "expired";
     const daysRemaining = calculateDaysRemaining(voucher.endDate);
-    if (daysRemaining === 0) return "expired";
     if (daysRemaining <= 7) return "expiring";
     return "active";
   };
 
   const getVoucherLabel = (voucher: Voucher): string => {
+    if (isVoucherExpired(voucher)) return "Expired";
     const daysRemaining = calculateDaysRemaining(voucher.endDate);
-    if (daysRemaining === 0) return "Expired";
     if (daysRemaining === 1) return "Expires today";
     if (daysRemaining <= 7) return `${daysRemaining} days left`;
     return "Active";
+  };
+
+  const handleSaveVoucher = async (voucher: Voucher) => {
+    if (!isAuthenticated || !user?.id || user.userRole !== "CUSTOMER") {
+      toast.error("Please log in to save vouchers.");
+      navigate("/auth/login");
+      return;
+    }
+
+    if (ownedVoucherIds.has(voucher.voucherId)) {
+      toast.success("Voucher already saved.");
+      return;
+    }
+
+    try {
+      setSavingVoucherId(voucher.voucherId);
+      await saveCustomerVoucher({
+        customerId: user.id,
+        voucherId: voucher.voucherId,
+        state: true,
+      });
+      setOwnedVoucherIds((prev) => new Set([...prev, voucher.voucherId]));
+      toast.success("Voucher saved to your account!");
+    } catch (error) {
+      console.error("Error saving voucher:", error);
+      toast.error("Failed to save voucher.");
+    } finally {
+      setSavingVoucherId(null);
+    }
   };
 
   const handleCopyCode = (code: string) => {
@@ -123,6 +205,28 @@ const ExclusiveOffers: React.FC = () => {
     setCopiedCode(code);
     toast.success("Voucher code copied!");
     setTimeout(() => setCopiedCode(""), 2000);
+  };
+
+  const handleSelectPromotion = async (promotion: Promotion) => {
+    setSelectedPromotion(promotion);
+    setPromotionDetailLoading(true);
+
+    try {
+      const detail = await getPromotionById(promotion.promotionID);
+      const roomTypePromotions =
+        detail.roomTypePromotion && detail.roomTypePromotion.length > 0
+          ? detail.roomTypePromotion
+          : await getRoomTypePromotionsByPromotionId(promotion.promotionID);
+
+      setSelectedPromotion({
+        ...detail,
+        roomTypePromotion: roomTypePromotions,
+      });
+    } catch (error) {
+      console.error("Error loading promotion detail:", error);
+    } finally {
+      setPromotionDetailLoading(false);
+    }
   };
 
   return (
@@ -270,6 +374,7 @@ const ExclusiveOffers: React.FC = () => {
                           key={promotion.promotionID}
                           promotion={promotion}
                           index={index}
+                          onClick={handleSelectPromotion}
                         />
                       ))}
                     </div>
@@ -287,17 +392,31 @@ const ExclusiveOffers: React.FC = () => {
                       Exclusive Vouchers
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {filteredVouchers.map((voucher, index) => (
-                        <VoucherCard
-                          key={voucher.voucherId}
-                          voucher={voucher}
-                          index={index}
-                          status={getVoucherStatus(voucher)}
-                          label={getVoucherLabel(voucher)}
-                          copiedCode={copiedCode}
-                          onCopy={handleCopyCode}
-                        />
-                      ))}
+                      {filteredVouchers.map((voucher, index) => {
+                        const isSaved = ownedVoucherIds.has(voucher.voucherId);
+                        const isSaving = savingVoucherId === voucher.voucherId;
+                        return (
+                          <VoucherCard
+                            key={voucher.voucherId}
+                            voucher={voucher}
+                            index={index}
+                            status={getVoucherStatus(voucher)}
+                            label={getVoucherLabel(voucher)}
+                            copiedCode={copiedCode}
+                            onCopy={handleCopyCode}
+                            actionLabel={
+                              isSaved
+                                ? "Saved"
+                                : isSaving
+                                  ? "Saving..."
+                                  : "Save Voucher"
+                            }
+                            actionDisabled={isSaved || isSaving}
+                            onAction={handleSaveVoucher}
+                            onCardClick={setSelectedVoucher}
+                          />
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -332,6 +451,7 @@ const ExclusiveOffers: React.FC = () => {
                       key={promotion.promotionID}
                       promotion={promotion}
                       index={index}
+                      onClick={handleSelectPromotion}
                     />
                   ))
                 ) : (
@@ -358,17 +478,31 @@ const ExclusiveOffers: React.FC = () => {
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
               >
                 {filteredVouchers.length > 0 ? (
-                  filteredVouchers.map((voucher, index) => (
-                    <VoucherCard
-                      key={voucher.voucherId}
-                      voucher={voucher}
-                      index={index}
-                      status={getVoucherStatus(voucher)}
-                      label={getVoucherLabel(voucher)}
-                      copiedCode={copiedCode}
-                      onCopy={handleCopyCode}
-                    />
-                  ))
+                  filteredVouchers.map((voucher, index) => {
+                    const isSaved = ownedVoucherIds.has(voucher.voucherId);
+                    const isSaving = savingVoucherId === voucher.voucherId;
+                    return (
+                      <VoucherCard
+                        key={voucher.voucherId}
+                        voucher={voucher}
+                        index={index}
+                        status={getVoucherStatus(voucher)}
+                        label={getVoucherLabel(voucher)}
+                        copiedCode={copiedCode}
+                        onCopy={handleCopyCode}
+                        actionLabel={
+                          isSaved
+                            ? "Saved"
+                            : isSaving
+                              ? "Saving..."
+                              : "Save Voucher"
+                        }
+                        actionDisabled={isSaved || isSaving}
+                        onAction={handleSaveVoucher}
+                        onCardClick={setSelectedVoucher}
+                      />
+                    );
+                  })
                 ) : (
                   <div className="col-span-full text-center py-20">
                     <FontAwesomeIcon
@@ -385,6 +519,34 @@ const ExclusiveOffers: React.FC = () => {
           </AnimatePresence>
         )}
       </div>
+
+      <PromotionDetailModal
+        isOpen={!!selectedPromotion}
+        onClose={() => setSelectedPromotion(null)}
+        promotion={selectedPromotion}
+        isLoading={promotionDetailLoading}
+        roomTypeNameById={roomTypeNameById}
+      />
+
+      <VoucherDetailModal
+        isOpen={!!selectedVoucher}
+        onClose={() => setSelectedVoucher(null)}
+        voucher={selectedVoucher}
+        isSaved={
+          selectedVoucher
+            ? ownedVoucherIds.has(selectedVoucher.voucherId)
+            : false
+        }
+        isSaving={
+          selectedVoucher
+            ? savingVoucherId === selectedVoucher.voucherId
+            : false
+        }
+        isExpired={selectedVoucher ? isVoucherExpired(selectedVoucher) : false}
+        statusLabel={selectedVoucher ? getVoucherLabel(selectedVoucher) : ""}
+        onCopy={handleCopyCode}
+        onSave={handleSaveVoucher}
+      />
     </div>
   );
 };

@@ -9,7 +9,7 @@ const normalizePromotion = (raw: any): Promotion => ({
   promotionName: raw?.promotionName ?? "",
   description: raw?.description ?? "",
   discountType: raw?.discountType,
-  active: raw?.active ?? false,
+  active: raw?.active ?? raw?.isActive ?? false,
   promotionType: raw?.promotionType
     ? {
         promotionTypeID:

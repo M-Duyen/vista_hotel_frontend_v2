@@ -16,6 +16,10 @@ interface VoucherCardProps {
   label: string;
   copiedCode: string;
   onCopy: (code: string) => void;
+  actionLabel?: string;
+  actionDisabled?: boolean;
+  onAction?: (voucher: Voucher) => void;
+  onCardClick?: (voucher: Voucher) => void;
 }
 
 const VoucherCard: React.FC<VoucherCardProps> = ({
@@ -25,13 +29,30 @@ const VoucherCard: React.FC<VoucherCardProps> = ({
   label,
   copiedCode,
   onCopy,
+  actionLabel,
+  actionDisabled,
+  onAction,
+  onCardClick,
 }) => {
+  const handleCardClick = () => {
+    if (onCardClick) {
+      onCardClick(voucher);
+    }
+  };
+
+  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (onAction) {
+      onAction(voucher);
+    }
+  };
+
   const gradientClass =
     status === "expired"
       ? "from-gray-400 to-gray-500"
       : status === "expiring"
-      ? "from-warning to-danger"
-      : "from-[#ebe3d7] to-[#d4c4a8]";
+        ? "from-warning to-danger"
+        : "from-[#ebe3d7] to-[#d4c4a8]";
 
   return (
     <motion.div
@@ -40,9 +61,9 @@ const VoucherCard: React.FC<VoucherCardProps> = ({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 50 }}
       transition={{ delay: index * 0.05 }}
-      className="group"
+      className="group cursor-pointer"
     >
-      <div className="relative cursor-pointer">
+      <div className="relative cursor-pointer" onClick={handleCardClick}>
         <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-200 hover:border-[#CCBDA3]">
           <div className="flex flex-col sm:flex-row">
             {/* Left Side - Compact Discount */}
@@ -121,7 +142,10 @@ const VoucherCard: React.FC<VoucherCardProps> = ({
                     </code>
                   </div>
                   <button
-                    onClick={() => onCopy(voucher.voucherId)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onCopy(voucher.voucherId);
+                    }}
                     className={`cursor-pointer p-2 rounded-lg transition-all duration-300 shadow-sm flex-shrink-0 ${
                       copiedCode === voucher.voucherId
                         ? "bg-success text-white"
@@ -163,14 +187,18 @@ const VoucherCard: React.FC<VoucherCardProps> = ({
 
               {/* Action Button */}
               <button
-                disabled={status === "expired"}
+                disabled={status === "expired" || actionDisabled}
                 className={`cursor-pointer w-full py-2 sm:py-2.5 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-300 shadow-sm ${
-                  status === "expired"
+                  status === "expired" || actionDisabled
                     ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                     : "bg-[#CCBDA3] text-white hover:bg-[#C3923C] hover:shadow-md"
                 }`}
+                type="button"
+                onClick={onAction ? handleAction : undefined}
               >
-                {status === "expired" ? "Expired" : "Use This Voucher"}
+                {status === "expired"
+                  ? "Expired"
+                  : actionLabel || "Use This Voucher"}
               </button>
             </div>
           </div>
