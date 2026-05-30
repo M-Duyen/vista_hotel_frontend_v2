@@ -33,7 +33,7 @@ export default function CheckOutManager() {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const datePickerRef = useRef<HTMLDivElement>(null);
 
-    const [paymentData, setPaymentData] = useState({
+    const [paymentData, setPaymentData] = useState<any>({
         bookingId: '',
         guestName: '',
         guestEmail: '',
@@ -169,8 +169,14 @@ export default function CheckOutManager() {
                     ?.toLowerCase()
                     .includes(searchLower) ||
                 booking.customer?.email.toLowerCase().includes(searchLower) ||
-                booking.bookingDetails.some((detail) =>
-                    detail.room.roomNumber?.toString().includes(searchLower),
+                booking.bookingDetails.some((detail: any) =>
+                    (
+                        detail.room?.roomNumber ??
+                        detail.roomNumber ??
+                        ''
+                    )
+                        .toString()
+                        .includes(searchLower),
                 ),
         );
 
@@ -218,36 +224,49 @@ export default function CheckOutManager() {
         setFilteredData(filtered);
     };
 
-    const handleProcessCheckout = (booking: Booking) => {
+    const buildPaymentData = async (booking: Booking) => {
         const roomInfo = booking.bookingDetails
-            .map(
-                (detail) =>
-                    `${detail.room.roomNumber} - ${
-                        detail.room.roomType?.roomTypeName || ''
-                    }`,
-            )
-            .join(', ');
+            .map((detail: any) => {
+                const roomNumber =
+                    detail.room?.roomNumber ?? detail.roomNumber ?? 'N/A';
+                const roomType =
+                    detail.room?.roomType?.typeName ??
+                    detail.room?.roomType?.roomTypeName ??
+                    'N/A';
 
-        const balanceDue =
-            booking.paymentStatus === 'PAID'
-                ? 0
-                : booking.paymentStatus === 'PARTIAL'
-                ? booking.totalAmount * 0.5
-                : booking.totalAmount;
+                return `Room ${roomNumber} - ${roomType}`;
+            })
+            .join(', ') || 'N/A';
 
-        setSelectedBooking(booking);
-        setPaymentData({
+        const balance = await bookingService
+            .getCheckoutBalance(booking.bookingID)
+            .catch(() => ({
+                remainingAmount: booking.totalAmount,
+                totalAmount: booking.totalAmount,
+                paidAmount: 0,
+                paymentStatus: booking.paymentStatus,
+            }));
+
+        return {
             bookingId: booking.bookingID,
             guestName: booking.customer?.fullName || '',
             guestEmail: booking.customer?.email || '',
-            guestPhone: booking.customer?.phoneNumber || '',
+            guestPhone: booking.customer?.phone || '',
             guestImage: booking.customer?.avatarUrl || '',
             roomNumber: roomInfo,
-            balanceDue: `${balanceDue.toLocaleString('vi-VN')} VND`,
-            totalAmount: `${booking.totalAmount.toLocaleString('vi-VN')} VND`,
+            balanceDue: `${balance.remainingAmount.toLocaleString('vi-VN')} VND`,
+            totalAmount: `${balance.totalAmount.toLocaleString('vi-VN')} VND`,
             amountTendered: '',
             changeAmount: '',
-        });
+            paymentStatus: balance.paymentStatus,
+            bookingType: booking.type,
+            duration: booking.duration,
+        };
+    };
+
+    const handleProcessCheckout = async (booking: Booking) => {
+        setSelectedBooking(booking);
+        setPaymentData(await buildPaymentData(booking));
 
         setShowCheckoutDetailsModal(true);
     };
@@ -257,7 +276,9 @@ export default function CheckOutManager() {
         setShowCheckoutDetailsModal(true);
     };
 
-    const handleProceedToPayment = () => {
+    const handleProceedToPayment = async () => {
+        if (!selectedBooking) return;
+        setPaymentData(await buildPaymentData(selectedBooking));
         setShowCheckoutDetailsModal(false);
         setShowPaymentModal(true);
     };
@@ -270,7 +291,7 @@ export default function CheckOutManager() {
     ) => {
         // Update payment data with new values
         if (amountTendered) {
-            setPaymentData((prev) => ({
+            setPaymentData((prev: any) => ({
                 ...prev,
                 amountTendered,
                 changeAmount: changeAmount || '0',
@@ -284,10 +305,6 @@ export default function CheckOutManager() {
             setShowCashConfirmationModal(true);
         } else if (paymentMethod === 'vnpay') {
             try {
-                await bookingService.processCheckout(
-                    paymentData.bookingId,
-                    paymentMethod,
-                );
                 setShowPaymentModal(false);
                 setShowPaymentSuccessModal(true);
                 // Reload data immediately

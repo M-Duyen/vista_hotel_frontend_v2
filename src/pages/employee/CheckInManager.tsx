@@ -164,8 +164,8 @@ const CheckInManager: React.FC = () => {
         setShowDatePicker(false);
     };
 
-    const handleOpenDetailsModal = (guest: Booking) => {
-        setSelectedGuest(guest);
+    const handleOpenDetailsModal = (guest: Booking | any) => {
+        setSelectedGuest(guest?.booking || guest);
         openDetailsModal();
     };
 
@@ -203,7 +203,8 @@ const CheckInManager: React.FC = () => {
 
             hourly: filteredBookings.filter(
                 (booking) =>
-                    booking.hourlyRate !== null && booking.hourlyRate > 0,
+                    (booking.hourlyRate ?? 0) > 0 ||
+                    booking.type === 'HOURLY',
             ).length,
         };
     }, [filteredBookings, currentDate]);
@@ -246,7 +247,8 @@ const CheckInManager: React.FC = () => {
             case 'hourly':
                 return filteredBookings.filter(
                     (booking) =>
-                        booking.hourlyRate !== null && booking.hourlyRate > 0,
+                        (booking.hourlyRate ?? 0) > 0 ||
+                        booking.type === 'HOURLY',
                 );
 
             default:
@@ -406,8 +408,6 @@ const CheckInManager: React.FC = () => {
                         {activeTab === 'early' && (
                             <EarlyTab
                                 onViewDetails={handleOpenDetailsModal}
-                                bookings={tabBookings}
-                                onRefresh={fetchBookings}
                             />
                         )}
                         {activeTab === 'hourly' && (
@@ -425,7 +425,7 @@ const CheckInManager: React.FC = () => {
                     isOpen={isDetailsModalOpen}
                     onClose={closeDetailsModal}
                     guest={selectedGuest}
-                    onRefresh={fetchBookings}
+                    onCheckInSuccess={fetchBookings}
                 />
             )}
 

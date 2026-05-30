@@ -1,55 +1,30 @@
 /* eslint-disable */
-import React from "react";
 import { FaCheck, FaEye, FaClock } from "react-icons/fa";
 import type { Booking } from "../../types/Booking";
 
-const formatTime = (dateString) => {
+const formatTime = (dateString: string) => {
   if (!dateString) return "N/A";
   const date = new Date(dateString);
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
 
-const calculateDuration = (startDate: String, endDate: String) => {
-  if (!startDate || !endDate) return "N/A";
+const isHourlyBooking = (booking: Booking) =>
+  booking?.type === "HOURLY" || booking?.packageType === "HOURLY";
 
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diffMs = end - start;
-  const diffHrs = Math.round(diffMs / (1000 * 60 * 60));
+const formatCurrency = (amount?: number | null) =>
+  `${Number(amount || 0).toLocaleString("vi-VN")} VND`;
 
-  return diffHrs + " hours";
+type HourlyTabProps = {
+  onViewDetails: (booking: Booking) => void;
+  bookings?: Booking[];
 };
 
-const isHourlyBooking = (booking: Booking) => {
-  if (!booking) return false;
-  return booking.type === "HOURLY" && booking.duration < 24;
-};
+const HourlyTab = ({ onViewDetails, bookings = [] }: HourlyTabProps) => {
+  const hourlyBookings = bookings.filter((booking: Booking) =>
+    isHourlyBooking(booking),
+  );
 
-const HourlyTab = ({ onViewDetails, bookings = [] }) => {
-  const hourlyBookings = bookings
-    .filter((booking: Booking) => isHourlyBooking(booking))
-    .map((booking: Booking) => ({
-      id: booking.bookingID,
-      guest: {
-        name: booking.customer?.fullName || "Guest",
-        email: booking.customer?.email || "No email",
-        image: "https://randomuser.me/api/portraits/men/52.jpg",
-      },
-      room: `${booking.bookingDetails?.[0]?.room?.roomNumber || "N/A"} - ${
-        booking.bookingDetails?.[0]?.room?.roomType?.typeName || "Standard"
-      }`,
-      type: booking.type,
-      duration: booking.duration + " hours",
-      checkInTime: formatTime(booking.checkInDate),
-      checkOutTime: formatTime(booking.checkOutDate),
-      rate: `$${booking.hourlyRate || "45"} (${
-        booking.duration * 15 || "45"
-      }%)`,
-    }));
-
-  const displayBookings = hourlyBookings.length > 0 ? hourlyBookings : [];
-
-  if (hourlyBookings.length === 0 && bookings.length > 0) {
+  if (hourlyBookings.length === 0) {
     return (
       <div className="p-10 text-center">
         <p className="text-gray-500">No hourly bookings found.</p>
@@ -73,61 +48,73 @@ const HourlyTab = ({ onViewDetails, bookings = [] }) => {
           </tr>
         </thead>
         <tbody>
-          {displayBookings.map((booking, index) => (
-            <tr
-              key={booking.id}
-              className="border-b border-[#EBE3D7]/50 hover:bg-[#EBE3D7]/10"
-            >
-              <td className="py-4 px-4">{booking.id}</td>
-              <td className="py-4 px-4">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={booking.guest.image}
-                    alt={booking.guest.name}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                  <div className="flex flex-col">
-                    <span className="font-medium">{booking.guest.name}</span>
-                    <span className="text-sm text-gray-500">
-                      {booking.guest.email}
-                    </span>
+          {hourlyBookings.map((booking: Booking) => {
+            const room = `${booking.bookingDetails?.[0]?.room?.roomNumber || "N/A"} - ${
+              booking.bookingDetails?.[0]?.room?.roomType?.typeName || "Standard"
+            }`;
+
+            return (
+              <tr
+                key={booking.bookingID}
+                className="border-b border-[#EBE3D7]/50 hover:bg-[#EBE3D7]/10"
+              >
+                <td className="py-4 px-4">{booking.bookingID}</td>
+                <td className="py-4 px-4">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={
+                        booking.customer?.avatarUrl ||
+                        `https://ui-avatars.com/api/?name=${booking.customer?.fullName || "Guest"}`
+                      }
+                      alt={booking.customer?.fullName || "Guest"}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-medium">
+                        {booking.customer?.fullName || "Guest"}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {booking.customer?.email || "No email"}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td className="py-4 px-4">{booking.room}</td>
-              <td className="py-4 px-4">{booking.duration}</td>
-              <td className="py-4 px-4">{booking.checkInTime}</td>
-              <td className="py-4 px-4">{booking.checkOutTime}</td>
-              <td className="py-4 px-4">{booking.rate}</td>
-              <td className="py-4 px-4">
-                <div className="flex gap-1">
-                  {index === 0 && (
+                </td>
+                <td className="py-4 px-4">{room}</td>
+                <td className="py-4 px-4">{booking.duration || 0} hours</td>
+                <td className="py-4 px-4">{formatTime(booking.checkInDate)}</td>
+                <td className="py-4 px-4">{formatTime(booking.checkOutDate)}</td>
+                <td className="py-4 px-4">{formatCurrency(booking.totalAmount)}</td>
+                <td className="py-4 px-4">
+                  <div className="flex gap-1">
+                    {booking.status === "PENDING" && (
+                      <button
+                        title="Check In"
+                        className="w-8 h-8 rounded-full bg-[#F5F0EB] hover:bg-[#EBE3D7] transition flex items-center justify-center text-green-600"
+                        onClick={() => onViewDetails(booking)}
+                      >
+                        <FaCheck size={14} />
+                      </button>
+                    )}
+                    {booking.status === "CHECKED_IN" && (
+                      <button
+                        title="Checked In"
+                        className="w-8 h-8 rounded-full bg-[#F5F0EB] text-blue-600 flex items-center justify-center"
+                      >
+                        <FaClock size={14} />
+                      </button>
+                    )}
                     <button
-                      title="Check In"
-                      className="w-8 h-8 rounded-full bg-[#F5F0EB] hover:bg-[#EBE3D7] transition flex items-center justify-center text-green-600"
+                      onClick={() => onViewDetails(booking)}
+                      title="View Details"
+                      className="w-8 h-8 rounded-full bg-[#F5F0EB] hover:bg-[#EBE3D7] transition flex items-center justify-center"
                     >
-                      <FaCheck size={14} />
+                      <FaEye size={14} />
                     </button>
-                  )}
-                  {index === 1 && (
-                    <button
-                      title="Check Out"
-                      className="w-8 h-8 rounded-full bg-[#F5F0EB] hover:bg-[#EBE3D7] transition flex items-center justify-center text-blue-600"
-                    >
-                      <FaClock size={14} />
-                    </button>
-                  )}
-                  <button
-                    onClick={() => onViewDetails(booking)}
-                    title="View Details"
-                    className="w-8 h-8 rounded-full bg-[#F5F0EB] hover:bg-[#EBE3D7] transition flex items-center justify-center"
-                  >
-                    <FaEye size={14} />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

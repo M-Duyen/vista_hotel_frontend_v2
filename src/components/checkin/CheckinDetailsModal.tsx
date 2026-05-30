@@ -1,5 +1,5 @@
 /* eslint-disable */
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   FaEnvelope,
   FaPhone,
@@ -17,18 +17,6 @@ import {
 import type { Booking } from "../../types/Booking";
 import { checkIn } from "../../services/bookingService";
 import { useToastContext } from "../../hooks/useToastContext";
-import ConfirmDialog from "../dialog/ConfirmDialog";
-
-const formatDate = (dateString: string | undefined) => {
-  if (!dateString) return "N/A";
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-};
-
 const formatDateTime = (dateString: string | undefined) => {
   if (!dateString) return "N/A";
   const date = new Date(dateString);
@@ -214,8 +202,7 @@ function CheckinDetailsModal({
   const trustScore = customer?.reputationPoint ?? 0;
   const trustScoreColors = getTrustScoreColor(trustScore);
   const paymentInfo = calculatePaymentInfo(booking);
-  const isPending =
-    booking.status === "PENDING" || booking.status === "CONFIRMED";
+  const isPending = booking.status === "PENDING" || booking.status === "WAITING";
 
   return (
     <>

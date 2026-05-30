@@ -1,8 +1,6 @@
 /* eslint-disable */
-import React from 'react';
 import { FaCheck, FaEye } from 'react-icons/fa';
 import type { Booking } from '../../types/Booking';
-import { checkIn } from '../../services/bookingService';
 
 const formatCheckInTime = (dateString: string | undefined): string => {
     if (!dateString) return 'N/A';
@@ -49,41 +47,6 @@ const getPaymentStatus = (status: string) => {
         default:
             return { type: 'pending', label: 'Pending' };
     }
-};
-
-const handleCheckIn = async (bookingId: string, booking: Booking) => {
-    if (
-        !window.confirm(
-            `Are you sure you want to check in guest: ${booking.customer?.fullName}?`,
-        )
-    ) {
-        return;
-    }
-
-    try {
-        await checkIn(bookingId);
-        alert(`Check-in successful for ${booking.customer?.fullName}!`);
-    } catch (error: any) {
-        console.error('Check-in error:', error);
-
-        const errorMessage =
-            error.response?.data?.message ||
-            error.message ||
-            'Failed to check in. Please try again.';
-        alert(`Check-in failed: ${errorMessage}`);
-    }
-};
-
-const isToday = (dateString: string | undefined): boolean => {
-    if (!dateString) return false;
-    const checkInDate = new Date(dateString);
-    const today = new Date();
-
-    return (
-        checkInDate.getDate() === today.getDate() &&
-        checkInDate.getMonth() === today.getMonth() &&
-        checkInDate.getFullYear() === today.getFullYear()
-    );
 };
 
 interface TodayTabProps {

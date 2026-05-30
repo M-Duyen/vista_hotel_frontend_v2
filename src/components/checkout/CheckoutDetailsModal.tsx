@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import type { Booking } from "../../types/Booking";
+import { getCheckoutBalance } from "../../services/bookingService";
 
 export default function CheckoutDetailsModal({
   booking,
@@ -10,50 +12,42 @@ export default function CheckoutDetailsModal({
   onProceedToPayment?: () => void;
 }) {
   const roomInfo = (booking.bookingDetails ?? [])
-    .map(
-      (detail) =>
-        `${detail.room.roomNumber} - ${
-          detail.room.roomType?.roomTypeName || ""
-        }`
-    )
-    .join(", ");
+    .map((detail: any) => {
+      const roomNumber = detail.room?.roomNumber ?? detail.roomNumber ?? "N/A";
+      const roomType =
+        detail.room?.roomType?.typeName ??
+        detail.room?.roomType?.roomTypeName ??
+        "N/A";
 
-  // Calculate balance due based on payment status
-  const calculateBalanceDue = (): number => {
-    const totalAmount = booking.totalAmount || 0;
-    switch (booking.paymentStatus) {
-      case "PAID":
-        return 0;
+      return `Room ${roomNumber} - ${roomType}`;
+    })
+    .join(", ") || "N/A";
 
-      case "PERCENTAGE_30":
-        return totalAmount * 0.7;
+  const [balanceDue, setBalanceDue] = useState<number>(booking.totalAmount || 0);
+  const [totalAmount, setTotalAmount] = useState<number>(booking.totalAmount || 0);
 
-      case "PERCENTAGE_50":
-        return totalAmount * 0.5;
+  useEffect(() => {
+    let cancelled = false;
 
-      case "PARTIAL":
-        return totalAmount * 0.5;
+    getCheckoutBalance(booking.bookingID)
+      .then((balance) => {
+        if (!cancelled) {
+          setBalanceDue(balance.remainingAmount);
+          setTotalAmount(balance.totalAmount);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBalanceDue(booking.totalAmount || 0);
+          setTotalAmount(booking.totalAmount || 0);
+        }
+      });
 
-      case "PENDING":
-        return totalAmount;
+    return () => {
+      cancelled = true;
+    };
+  }, [booking.bookingID, booking.totalAmount]);
 
-      case "COMPLETED":
-        return 0;
-
-      case "REFUNDED":
-        return 0;
-
-      case "CANCELLED":
-        return 0;
-
-      case "FAILED":
-        return totalAmount;
-      default:
-        return totalAmount;
-    }
-  };
-
-  const balanceDue = calculateBalanceDue();
   const isCheckedOut = booking.status === "CHECKED_OUT";
 
   return (
@@ -173,7 +167,7 @@ export default function CheckoutDetailsModal({
               <div className="flex justify-between mb-2">
                 <span className="text-gray-600">Total Amount:</span>
                 <span className="font-medium">
-                  {booking.totalAmount.toLocaleString("vi-VN")} VND
+                  {totalAmount.toLocaleString("vi-VN")} VND
                 </span>
               </div>
               <div className="flex justify-between mb-2">

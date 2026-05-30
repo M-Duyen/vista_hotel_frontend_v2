@@ -225,12 +225,18 @@ export const getAllRoomBookings = async (): Promise<RoomBooking[]> => {
 
 export const searchBookings = async (
   keyword: string,
-): Promise<RoomBooking[]> => {
+): Promise<Booking[]> => {
   try {
-    const response = await bookingsApi.get("/search", {
-      params: { keyword },
-    });
-    return mappingBookings(response.data);
+    const bookings = await getAll();
+    const needle = keyword.trim().toLowerCase();
+    return bookings.filter(
+      (booking) =>
+        booking.bookingID?.toLowerCase().includes(needle) ||
+        booking.customer?.fullName?.toLowerCase().includes(needle) ||
+        booking.customer?.email?.toLowerCase().includes(needle) ||
+        booking.customer?.phone?.includes(keyword) ||
+        (booking.customer as any)?.phoneNumber?.includes(keyword),
+    );
   } catch (error) {
     console.error(`Error searching bookings with keyword "${keyword}":`, error);
     throw error;
@@ -357,6 +363,19 @@ export const processCheckout = async (
   const response = await bookingsApi.post(`/${bookingId}/checkout`, {
     paymentMethod,
   });
+  return response.data;
+};
+
+export const getCheckoutBalance = async (
+  bookingId: string,
+): Promise<{
+  bookingId: string;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  paymentStatus: string;
+}> => {
+  const response = await bookingsApi.get(`/${bookingId}/remaining-amount`);
   return response.data;
 };
 
@@ -500,7 +519,12 @@ export const checkRoomAvailability = async (
         checkOutDate,
       },
     });
-    return response.data;
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    return Array.isArray(response.data?.conflicts)
+      ? response.data.conflicts
+      : [];
   } catch (error) {
     console.error("Error checking room availability:", error);
     throw error;

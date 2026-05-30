@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import ModalContainer from "./ModalContainer";
 import {
   getBookingById,
-  getBookingServicesByBookingId,
+  getCheckoutBalance,
   processCheckout,
 } from "../../services/bookingService";
 import { generateQRPayment } from "../../services/paymentService";
@@ -20,13 +20,15 @@ interface BookingService {
 }
 
 interface BookingDetail {
+  roomNumber?: string;
   room: {
-    roomNumber: string;
-    roomType: {
-      typeName: string;
-      basePrice: number;
-    };
-  };
+    roomNumber?: string;
+    roomType?: {
+      typeName?: string;
+      roomTypeName?: string;
+      basePrice?: number;
+    } | null;
+  } | null;
   roomPrice: number;
 }
 
@@ -52,6 +54,7 @@ export default function PaymentModal({
   const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
 
   const [booking, setBooking] = useState<any>(null);
+  const [checkoutBalance, setCheckoutBalance] = useState<any>(null);
 
   const [bookingServices, setBookingServices] = useState<BookingService[]>([]);
   const [bookingDetails, setBookingDetails] = useState<BookingDetail[]>([]);
@@ -59,7 +62,7 @@ export default function PaymentModal({
   const [initialPaymentStatus, setInitialPaymentStatus] = useState<string>("");
 
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [checklist, setChecklist] = useState({
     roomKeys: false,
@@ -74,19 +77,26 @@ export default function PaymentModal({
   }, [paymentData.bookingId]);
 
   const fetchBookingData = async () => {
+    if (!paymentData.bookingId) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
 
       const bookingData = await getBookingById(paymentData.bookingId);
+      const balanceData = await getCheckoutBalance(paymentData.bookingId);
 
       setBooking(bookingData);
+      setCheckoutBalance(balanceData);
 
       setInitialPaymentStatus(
         bookingData?.paymentStatus || paymentData.paymentStatus,
       );
 
       if (bookingData?.bookingDetails) {
-        setBookingDetails(bookingData.bookingDetails);
+        setBookingDetails(bookingData.bookingDetails as any);
       }
 
       setBookingServices([]);
@@ -100,7 +110,7 @@ export default function PaymentModal({
   };
 
   const calculateRoomCharges = () => {
-    return bookingDetails.reduce((sum, detail) => sum + detail.roomPrice, 0);
+    return bookingDetails.reduce((sum, detail) => sum + (detail.roomPrice || 0), 0);
   };
 
   const calculateServiceCharges = () => {
@@ -112,59 +122,18 @@ export default function PaymentModal({
 
   const roomCharges = calculateRoomCharges();
   const serviceCharges = calculateServiceCharges();
-  const subtotal = roomCharges + serviceCharges;
-  const total = booking?.totalAmount || paymentData.totalAmount || 0;
+  const total = Number(
+    checkoutBalance?.totalAmount || booking?.totalAmount || 0,
+  );
 
   const calculatePrepaidAmount = () => {
-    const paymentStatus = paymentData.paymentStatus;
-    let paid = 0;
-
-    switch (paymentStatus) {
-      case "PAID":
-        paid = total;
-        break;
-
-      case "COMPLETED":
-        paid = total;
-        break;
-
-      case "PERCENTAGE_30":
-        paid = total * 0.3;
-        break;
-
-      case "PERCENTAGE_50":
-        paid = total * 0.5;
-        break;
-
-      case "PARTIAL":
-        paid = total * 0.5;
-        break;
-
-      case "PENDING":
-        paid = 0;
-        break;
-
-      case "FAILED":
-        paid = 0;
-        break;
-
-      case "REFUNDED":
-        paid = 0;
-        break;
-
-      case "CANCELLED":
-        paid = 0;
-        break;
-
-      default:
-        paid = 0;
-    }
-
-    return paid;
+    return Number(checkoutBalance?.paidAmount || 0);
   };
 
   const prepaidAmount = calculatePrepaidAmount();
-  const balanceDue = total - prepaidAmount;
+  const balanceDue = Number(
+    checkoutBalance?.remainingAmount ?? Math.max(0, total - prepaidAmount),
+  );
 
   useEffect(() => {
     if (paymentMethod === "vnpay" && balanceDue > 0 && !loading) {
@@ -174,7 +143,7 @@ export default function PaymentModal({
 
   const generateVNPayQR = async () => {
     try {
-      const blob = await generateQRPayment(paymentData.bookingId);
+      const blob = await generateQRPayment(paymentData.bookingId, 4);
 
       if (qrCodeUrl && qrCodeUrl.startsWith("blob:")) {
         URL.revokeObjectURL(qrCodeUrl);
@@ -309,7 +278,15 @@ export default function PaymentModal({
     return new Intl.NumberFormat("vi-VN").format(Math.round(amount));
   };
 
-  const handleChecklistChange = (key: string) => {
+  const getDetailRoomNumber = (detail: BookingDetail) =>
+    detail.room?.roomNumber ?? detail.roomNumber ?? "N/A";
+
+  const getDetailRoomType = (detail: BookingDetail) =>
+    detail.room?.roomType?.typeName ??
+    detail.room?.roomType?.roomTypeName ??
+    "N/A";
+
+  const handleChecklistChange = (key: keyof typeof checklist) => {
     setChecklist((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
@@ -317,10 +294,13 @@ export default function PaymentModal({
     try {
       setIsProcessingCheckout(true);
 
+      if (paymentMethod === "cash") {
+        onConfirmPayment(paymentMethod, amountTendered, changeAmount, notes);
+        return;
+      }
+
       if (paymentMethod === "vnpay") {
         await processCheckout(paymentData.bookingId, "vnpay");
-      } else if (paymentMethod === "cash") {
-        await processCheckout(paymentData.bookingId, "cash");
       } else {
         await processCheckout(paymentData.bookingId, "transfer");
       }
@@ -379,7 +359,7 @@ export default function PaymentModal({
             <div>
               <span className="text-sm text-gray-500 block">Room(s)</span>
               <span className="font-semibold">
-                {bookingDetails.map((d) => d.room.roomNumber).join(", ") ||
+                {bookingDetails.map((d) => getDetailRoomNumber(d)).join(", ") ||
                   "Loading..."}
               </span>
             </div>
@@ -410,8 +390,8 @@ export default function PaymentModal({
                   {bookingDetails.map((detail, index) => (
                     <tr key={index} className="border-b border-cream">
                       <td className="py-2 px-4">
-                        {detail.room.roomType.typeName} - Room{" "}
-                        {detail.room.roomNumber}
+                        {getDetailRoomType(detail)} - Room{" "}
+                        {getDetailRoomNumber(detail)}
                         {paymentData.bookingType === "HOURLY" && (
                           <span className="text-xs text-gray-500 ml-2">
                             ({paymentData.duration}h)
@@ -861,7 +841,9 @@ export default function PaymentModal({
                   type="checkbox"
                   id={key}
                   checked={value}
-                  onChange={() => handleChecklistChange(key)}
+                  onChange={() =>
+                    handleChecklistChange(key as keyof typeof checklist)
+                  }
                   className="w-5 h-5 rounded accent-[#c9b8a8]"
                 />
                 <label htmlFor={key} className="cursor-pointer capitalize">

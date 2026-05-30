@@ -18,10 +18,15 @@ import WalkInService, {
 } from "../../services/WalkInService";
 import { calculateHourlyRate } from "../../services/hourlyRate";
 import type { HourlyRateCalculation } from "../../types/HourlyRate";
+import { calculateRoomPrice } from "../../services/pricingService";
 
-type ManualCheckinModalProps = { isOpen: boolean; onClose: () => void };
+type ManualCheckinModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
+};
 
-function ManualCheckinModal({ isOpen, onClose }: ManualCheckinModalProps) {
+function ManualCheckinModal({ isOpen, onClose, onSuccess }: ManualCheckinModalProps) {
   const [activeOption, setActiveOption] = useState("booking");
 
   // Walk-in states
@@ -45,6 +50,9 @@ function ManualCheckinModal({ isOpen, onClose }: ManualCheckinModalProps) {
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [walkInRoomTypePrices, setWalkInRoomTypePrices] = useState<
+    Record<string, number>
+  >({});
 
   // Hourly booking states
   const [hourlyData, setHourlyData] = useState({
@@ -63,13 +71,11 @@ function ManualCheckinModal({ isOpen, onClose }: ManualCheckinModalProps) {
   const [checkInDate, setCheckInDate] = useState("");
   const [duration, setDuration] = useState("1");
   const [checkOutTime, setCheckOutTime] = useState("");
-  const [hourlyRate, setHourlyRate] = useState({ rate: 15, percentage: 15 });
   const [hourlyAvailableRooms, setHourlyAvailableRooms] = useState<Room[]>([]);
   const [loadingHourlyRooms, setLoadingHourlyRooms] = useState(false);
 
   const [hourlyRateCalculation, setHourlyRateCalculation] =
     useState<HourlyRateCalculation | null>(null);
-  const [roomTypePrice, setRoomTypePrice] = useState<number>(0);
 
   // Booking search states
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -80,7 +86,7 @@ function ManualCheckinModal({ isOpen, onClose }: ManualCheckinModalProps) {
 
   const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
   const [foundCustomer, setFoundCustomer] = useState<Customer | null>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isCalculatingRate, setIsCalculatingRate] = useState(false);
 
   useEffect(() => {
@@ -213,6 +219,7 @@ function ManualCheckinModal({ isOpen, onClose }: ManualCheckinModalProps) {
       setHourlyAvailableRooms([]);
       setHourlyRateCalculation(null);
 
+      onSuccess?.();
       onClose();
     } catch (error: any) {
       console.error("Error creating hourly booking:", error);
@@ -440,9 +447,69 @@ function ManualCheckinModal({ isOpen, onClose }: ManualCheckinModalProps) {
   }, [walkInData.checkInDate, walkInData.checkOutDate, selectedRoomType]);
 
   useEffect(() => {
+    if (
+      activeOption !== "walkin" ||
+      !walkInData.checkInDate ||
+      !walkInData.checkOutDate ||
+      roomTypes.length === 0
+    ) {
+      setWalkInRoomTypePrices({});
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadPrices = async () => {
+      const checkIn = new Date(walkInData.checkInDate);
+      const checkOut = new Date(walkInData.checkOutDate);
+      const nights = Math.max(
+        1,
+        Math.ceil(
+          (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)
+        )
+      );
+
+      const entries = await Promise.all(
+        roomTypes
+          .filter((type) => type.roomTypeID && type.basePrice)
+          .map(async (type) => {
+            const prices = await Promise.all(
+              Array.from({ length: nights }, (_, index) => {
+                const date = new Date(checkIn);
+                date.setDate(date.getDate() + index);
+                return calculateRoomPrice({
+                  roomTypeId: type.roomTypeID!,
+                  basePrice: Number(type.basePrice || 0),
+                  bookingDate: date.toISOString().split("T")[0],
+                });
+              })
+            );
+
+            return [
+              type.roomTypeID!,
+              prices.reduce((sum, item) => sum + Number(item.finalPrice || 0), 0),
+            ] as const;
+          })
+      );
+
+      if (!cancelled) {
+        setWalkInRoomTypePrices(Object.fromEntries(entries));
+      }
+    };
+
+    loadPrices().catch((error) => {
+      console.error("Error loading principle prices:", error);
+      if (!cancelled) setWalkInRoomTypePrices({});
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeOption, walkInData.checkInDate, walkInData.checkOutDate, roomTypes]);
+
+  useEffect(() => {
     if (checkInTime && duration) {
       calculateCheckOutTime();
-      updateHourlyRate(parseInt(duration));
     }
   }, [checkInTime, duration]);
 
@@ -503,43 +570,6 @@ function ManualCheckinModal({ isOpen, onClose }: ManualCheckinModalProps) {
     setCheckOutTime(`${checkOutHours}:${checkOutMinutes}`);
   };
 
-  const updateHourlyRate = (hours: number) => {
-    const baseRate = 100;
-    let percentage;
-
-    switch (hours) {
-      case 1:
-        percentage = 15;
-        break;
-      case 2:
-        percentage = 25;
-        break;
-      case 3:
-        percentage = 35;
-        break;
-      case 4:
-        percentage = 45;
-        break;
-      case 5:
-        percentage = 55;
-        break;
-      case 6:
-        percentage = 65;
-        break;
-      case 7:
-        percentage = 75;
-        break;
-      case 8:
-        percentage = 85;
-        break;
-      default:
-        percentage = 100;
-    }
-
-    const rate = baseRate * (percentage / 100);
-    setHourlyRate({ rate, percentage });
-  };
-
   const validateWalkInForm = (): string | null => {
     if (!walkInData.firstName.trim()) return "First name is required";
     if (!walkInData.lastName.trim()) return "Last name is required";
@@ -576,7 +606,8 @@ function ManualCheckinModal({ isOpen, onClose }: ManualCheckinModalProps) {
         phone: walkInData.phone,
         address: walkInData.address || undefined,
         birthDate: walkInData.birthDate || undefined,
-        gender: walkInData.gender,
+        gender:
+          walkInData.gender === "Select Gender" ? undefined : walkInData.gender,
         roomNumber: walkInData.roomNumber,
         checkInDate: toLocalDateTime(walkInData.checkInDate),
         checkOutDate: toLocalDateTime(walkInData.checkOutDate),
@@ -609,6 +640,7 @@ function ManualCheckinModal({ isOpen, onClose }: ManualCheckinModalProps) {
       setSelectedRoomType("");
       setAvailableRooms([]);
 
+      onSuccess?.();
       onClose();
     } catch (error: any) {
       console.error("Error creating walk-in booking:", error);
@@ -634,11 +666,31 @@ function ManualCheckinModal({ isOpen, onClose }: ManualCheckinModalProps) {
     }));
   };
 
-  const handleRoomTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedRoomType(e.target.value);
+  const selectWalkInRoomType = (roomTypeId: string) => {
+    setSelectedRoomType(roomTypeId);
     setWalkInData((prev) => ({ ...prev, roomNumber: "" }));
     setAvailableRooms([]);
   };
+
+  const selectWalkInRoom = (roomNumber?: string) => {
+    if (!roomNumber) return;
+    setWalkInData((prev) => ({ ...prev, roomNumber }));
+  };
+
+  const selectHourlyRoomType = (roomTypeId: string) => {
+    setHourlyData((prev) => ({ ...prev, roomType: roomTypeId, roomNumber: "" }));
+    setHourlyAvailableRooms([]);
+  };
+
+  const selectHourlyRoom = (roomNumber?: string) => {
+    if (!roomNumber) return;
+    setHourlyData((prev) => ({ ...prev, roomNumber }));
+  };
+
+  const formatCurrency = (amount?: number) =>
+    typeof amount === "number"
+      ? `${amount.toLocaleString("vi-VN")} VND`
+      : "Pricing...";
 
   //   const handleHourlyInputChange = (
   //     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -821,7 +873,9 @@ function ManualCheckinModal({ isOpen, onClose }: ManualCheckinModalProps) {
                     >
                       {isSearching ? (
                         <>
-                          <span className="animate-spin">⏳</span>
+                          {/* <span className="animate-spin">
+                            
+                          </span> */}
                           Searching...
                         </>
                       ) : (
@@ -1194,69 +1248,87 @@ function ManualCheckinModal({ isOpen, onClose }: ManualCheckinModalProps) {
                   </div>
 
                   {/* Room Selection */}
-                  <div>
-                    <label
-                      htmlFor="roomType"
-                      className="block text-sm font-medium mb-1"
-                    >
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2">
                       Room Type*
                     </label>
-                    <select
-                      id="roomType"
-                      name="roomType"
-                      required
-                      value={selectedRoomType}
-                      onChange={handleRoomTypeChange}
-                      disabled={
-                        !walkInData.checkInDate || !walkInData.checkOutDate
-                      }
-                      className="w-full p-2.5 border border-[#EBE3D7] rounded-md focus:outline-none focus:ring-2 focus:ring-[#CCBDA3] disabled:bg-gray-100"
-                    >
-                      <option value="">
-                        {!walkInData.checkInDate || !walkInData.checkOutDate
-                          ? "Select dates first"
-                          : "Select Room Type"}
-                      </option>
-                      {roomTypes.map((type) => (
-                        <option key={type.roomTypeID} value={type.roomTypeID}>
-                          {type.typeName} - {type.basePrice?.toLocaleString()}{" "}
-                          VND/night
-                        </option>
-                      ))}
-                    </select>
+                    {!walkInData.checkInDate || !walkInData.checkOutDate ? (
+                      <div className="p-4 border border-dashed border-[#EBE3D7] rounded-md text-sm text-gray-500">
+                        Select dates first
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {roomTypes.map((type) => (
+                          <button
+                            type="button"
+                            key={type.roomTypeID}
+                            onClick={() => selectWalkInRoomType(type.roomTypeID || "")}
+                            className={`text-left p-4 border rounded-md transition ${
+                              selectedRoomType === type.roomTypeID
+                                ? "border-[#CCBDA3] bg-[#CCBDA3]/10 ring-2 ring-[#CCBDA3]/40"
+                                : "border-[#EBE3D7] hover:border-[#CCBDA3]"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="font-semibold">
+                                  {type.typeName || "Room type"}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Up to {type.maxOccupancy || "-"} guests
+                                </p>
+                              </div>
+                              <span className="text-sm font-semibold text-[#9f8c6f]">
+                                {formatCurrency(
+                                  type.roomTypeID
+                                    ? walkInRoomTypePrices[type.roomTypeID]
+                                    : undefined
+                                )}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div>
-                    <label
-                      htmlFor="roomNumber"
-                      className="block text-sm font-medium mb-1"
-                    >
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2">
                       Available Rooms*
                     </label>
-                    <select
-                      id="roomNumber"
-                      name="roomNumber"
-                      required
-                      value={walkInData.roomNumber}
-                      onChange={handleWalkInInputChange}
-                      disabled={!selectedRoomType || loadingRooms}
-                      className="w-full p-2.5 border border-[#EBE3D7] rounded-md focus:outline-none focus:ring-2 focus:ring-[#CCBDA3] disabled:bg-gray-100"
-                    >
-                      <option value="">
-                        {loadingRooms
-                          ? "Loading rooms..."
-                          : !selectedRoomType
-                          ? "Select room type first"
-                          : availableRooms.length === 0
-                          ? "No rooms available"
-                          : "Select Room"}
-                      </option>
-                      {availableRooms.map((room) => (
-                        <option key={room.roomNumber} value={room.roomNumber}>
-                          {room.roomNumber} - Floor {room.floor}
-                        </option>
-                      ))}
-                    </select>
+                    {loadingRooms ? (
+                      <div className="p-4 border border-[#EBE3D7] rounded-md text-sm text-gray-500">
+                        Loading rooms...
+                      </div>
+                    ) : !selectedRoomType ? (
+                      <div className="p-4 border border-dashed border-[#EBE3D7] rounded-md text-sm text-gray-500">
+                        Select room type first
+                      </div>
+                    ) : availableRooms.length === 0 ? (
+                      <div className="p-4 border border-dashed border-[#EBE3D7] rounded-md text-sm text-gray-500">
+                        No rooms available
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {availableRooms.map((room) => (
+                          <button
+                            type="button"
+                            key={room.roomNumber}
+                            onClick={() => selectWalkInRoom(room.roomNumber)}
+                            className={`p-3 border rounded-md text-left transition ${
+                              walkInData.roomNumber === room.roomNumber
+                                ? "border-[#CCBDA3] bg-[#CCBDA3]/10 ring-2 ring-[#CCBDA3]/40"
+                                : "border-[#EBE3D7] hover:border-[#CCBDA3]"
+                            }`}
+                          >
+                            <p className="font-semibold">Room {room.roomNumber}</p>
+                            <p className="text-xs text-gray-500">
+                              Floor {room.floor ?? "-"}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Number of Guests */}
@@ -1549,65 +1621,76 @@ function ManualCheckinModal({ isOpen, onClose }: ManualCheckinModalProps) {
                   </div>
 
                   {/* Room Selection */}
-                  <div>
-                    <label
-                      htmlFor="hourlyRoomType"
-                      className="block text-sm font-medium mb-1"
-                    >
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2">
                       Room Type*
                     </label>
-                    <select
-                      id="hourlyRoomType"
-                      name="roomType"
-                      required
-                      className="w-full p-2.5 border border-[#EBE3D7] rounded-md focus:outline-none focus:ring-2 focus:ring-[#CCBDA3]"
-                      value={hourlyData.roomType}
-                      onChange={handleHourlyInputChange}
-                      disabled={!checkInDate || !checkInTime || !duration}
-                    >
-                      <option value="">
-                        {!checkInDate || !checkInTime || !duration
-                          ? "Select date, time & duration first"
-                          : "Select Room Type"}
-                      </option>
-                      {roomTypes.map((type) => (
-                        <option key={type.roomTypeID} value={type.roomTypeID}>
-                          {type.typeName}
-                        </option>
-                      ))}
-                    </select>
+                    {!checkInDate || !checkInTime || !duration ? (
+                      <div className="p-4 border border-dashed border-[#EBE3D7] rounded-md text-sm text-gray-500">
+                        Select date, time and duration first
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {roomTypes.map((type) => (
+                          <button
+                            type="button"
+                            key={type.roomTypeID}
+                            onClick={() => selectHourlyRoomType(type.roomTypeID || "")}
+                            className={`text-left p-4 border rounded-md transition ${
+                              hourlyData.roomType === type.roomTypeID
+                                ? "border-[#CCBDA3] bg-[#CCBDA3]/10 ring-2 ring-[#CCBDA3]/40"
+                                : "border-[#EBE3D7] hover:border-[#CCBDA3]"
+                            }`}
+                          >
+                            <p className="font-semibold">
+                              {type.typeName || "Room type"}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Base {formatCurrency(Number(type.basePrice || 0))}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div>
-                    <label
-                      htmlFor="hourlyRoomNumber"
-                      className="block text-sm font-medium mb-1"
-                    >
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2">
                       Available Rooms*
                     </label>
-                    <select
-                      id="hourlyRoomNumber"
-                      name="roomNumber"
-                      disabled={!hourlyData.roomType || loadingHourlyRooms}
-                      value={hourlyData.roomNumber}
-                      onChange={handleHourlyInputChange}
-                      className="w-full p-2.5 border border-[#EBE3D7] rounded-md focus:outline-none focus:ring-2 focus:ring-[#CCBDA3] disabled:bg-gray-100"
-                    >
-                      <option value="">
-                        {loadingHourlyRooms
-                          ? "Loading rooms..."
-                          : !hourlyData.roomType
-                          ? "Select room type first"
-                          : hourlyAvailableRooms.length === 0
-                          ? "No rooms available"
-                          : "Select Room"}
-                      </option>
-                      {hourlyAvailableRooms.map((room) => (
-                        <option key={room.roomNumber} value={room.roomNumber}>
-                          {room.roomNumber} - Floor {room.floor}
-                        </option>
-                      ))}
-                    </select>
+                    {loadingHourlyRooms ? (
+                      <div className="p-4 border border-[#EBE3D7] rounded-md text-sm text-gray-500">
+                        Loading rooms...
+                      </div>
+                    ) : !hourlyData.roomType ? (
+                      <div className="p-4 border border-dashed border-[#EBE3D7] rounded-md text-sm text-gray-500">
+                        Select room type first
+                      </div>
+                    ) : hourlyAvailableRooms.length === 0 ? (
+                      <div className="p-4 border border-dashed border-[#EBE3D7] rounded-md text-sm text-gray-500">
+                        No rooms available
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {hourlyAvailableRooms.map((room) => (
+                          <button
+                            type="button"
+                            key={room.roomNumber}
+                            onClick={() => selectHourlyRoom(room.roomNumber)}
+                            className={`p-3 border rounded-md text-left transition ${
+                              hourlyData.roomNumber === room.roomNumber
+                                ? "border-[#CCBDA3] bg-[#CCBDA3]/10 ring-2 ring-[#CCBDA3]/40"
+                                : "border-[#EBE3D7] hover:border-[#CCBDA3]"
+                            }`}
+                          >
+                            <p className="font-semibold">Room {room.roomNumber}</p>
+                            <p className="text-xs text-gray-500">
+                              Floor {room.floor ?? "-"}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Number of Guests */}

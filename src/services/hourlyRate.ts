@@ -1,7 +1,8 @@
 import type { HourlyRateCalculation } from "../types/HourlyRate";
-import { api } from "./apiClient";
+import { api, roomTypesApi } from "./apiClient";
+import { calculateHourlyRoomRate } from "./pricingService";
 
-const ENDPOINT = "/hourly-rate";
+const ENDPOINT = "/api/principle/hourly-rate-policies";
 
 export interface HourlyRateRequest {
   roomTypeId: string;
@@ -16,8 +17,17 @@ export const calculateHourlyRate = async (
   request: HourlyRateRequest
 ): Promise<HourlyRateCalculation> => {
   try {
-    const response = await api.post(`${ENDPOINT}/calculate`, request);
-    return response.data;
+    const roomType = await roomTypesApi.get(`/${request.roomTypeId}`);
+    const response = await calculateHourlyRoomRate({
+      roomTypeId: request.roomTypeId,
+      basePrice: Number(roomType.data?.basePrice || 0),
+      hours: request.hours,
+      checkInDateTime: request.checkInDateTime,
+    });
+    return {
+      ...response,
+      isWeekend: response.weekend ?? response.isWeekend ?? false,
+    } as HourlyRateCalculation;
   } catch (error) {
     console.error("Error calculating hourly rate:", error);
     throw error;
@@ -33,14 +43,16 @@ export const calculateCustomHourlyRate = async (
   checkInDateTime: string
 ): Promise<HourlyRateCalculation> => {
   try {
-    const response = await api.get(`${ENDPOINT}/calculate-custom`, {
-      params: {
-        basePrice,
-        hours,
-        checkInDateTime,
-      },
+    const response = await calculateHourlyRoomRate({
+      roomTypeId: "CUSTOM",
+      basePrice,
+      hours,
+      checkInDateTime,
     });
-    return response.data;
+    return {
+      ...response,
+      isWeekend: response.weekend ?? response.isWeekend ?? false,
+    } as HourlyRateCalculation;
   } catch (error) {
     console.error("Error calculating custom hourly rate:", error);
     throw error;

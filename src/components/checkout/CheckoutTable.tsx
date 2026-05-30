@@ -70,16 +70,21 @@ export default function CheckoutTable({
     }
   };
 
-  const getRoomInfo = (booking: Booking): string => {
-    return (booking.bookingDetails ?? [])
-      .map(
-        (detail) =>
-          `${detail.room.roomNumber} - ${
-            detail.room.roomType?.roomTypeName || ""
-          }`
-      )
-      .join(", ");
-  };
+const getRoomInfo = (booking: Booking): string => {
+  return (booking.bookingDetails ?? [])
+    .map((detail: any) => {
+      const roomNumber = detail.room?.roomNumber ?? detail.roomNumber ?? "";
+      const roomType =
+        detail.room?.roomType?.typeName ?? detail.room?.roomType?.roomTypeName ?? "";
+      const floor = detail.room?.floor ?? "";
+
+      return [roomNumber, roomType, floor && `Tầng ${floor}`]
+        .filter(Boolean)
+        .join(" - ");
+    })
+    .filter(Boolean)
+    .join(", ") || "N/A";
+};
 
   const getTrustScore = (score: number) => {
     return {
