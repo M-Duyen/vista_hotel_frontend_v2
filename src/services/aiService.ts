@@ -8,6 +8,10 @@ export interface AiChatRequest {
 export interface AiChatResponse {
   content: string;
   showRoomCards: boolean;
+  uiType?: string;
+  uiData?: any;
+  intent?: string;
+  bookingDraft?: any;
 }
 
 export interface MessageDTO {

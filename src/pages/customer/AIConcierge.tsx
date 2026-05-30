@@ -8,7 +8,6 @@ import {
     getUserChatSessions,
     getSessionMessages,
     deleteChatSession,
-    type ChatHistoryItem,
 } from '../../services/aiService';
 import * as roomService from '../../services/roomService';
 import type { RoomType } from '../../types/RoomType';
@@ -22,6 +21,7 @@ interface Message {
     uiType?: string;
     uiData?: any;
     intent?: string;
+    bookingDraft?: any;
 }
 
 interface RoomCard {
@@ -57,14 +57,13 @@ const AIConcierge: React.FC = () => {
     const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [loading, setLoading] = useState(false);
-    // Booking confirm popup state
-    const [bookingPopup, setBookingPopup] = useState<any>(null);
     const [selectedBookingType, setSelectedBookingType] = useState<'DAILY' | 'HOURLY'>('DAILY');
     const [selectedServices, setSelectedServices] = useState<string[]>([]);
     const [checkInDate, setCheckInDate] = useState('');
     const [checkOutDate, setCheckOutDate] = useState('');
     const [checkInTime, setCheckInTime] = useState('14:00');
     const [durationHours, setDurationHours] = useState(3);
+    const [guestCount, setGuestCount] = useState(1);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -192,11 +191,11 @@ const AIConcierge: React.FC = () => {
 
     const convertRoomTypesToCards = (types: RoomType[]): RoomCard[] => {
         return types.slice(0, 3).map((type) => ({
-            id: type.roomTypeID,
-            name: type.typeName,
+            id: type.roomTypeID || '',
+            name: type.typeName || 'Room',
             features: `${type.maxOccupancy} Guests • ${type.area}m²`,
             price: `${type.basePrice?.toLocaleString('vi-VN')} VND per night`,
-            image: type.roomTypeImage || 'https://via.placeholder.com/300',
+            image: typeof type.roomTypeImage === 'string' ? type.roomTypeImage : 'https://via.placeholder.com/300',
         }));
     };
 
@@ -223,8 +222,16 @@ const AIConcierge: React.FC = () => {
             const response = await sendChatMessage(user.id, content);
             setIsTyping(false);
 
-            if (response.uiType === 'BOOKING_CONFIRM') {
-                setBookingPopup(response.uiData);
+            if (response.uiType === 'SERVICE_LIST') {
+                setSelectedServices([]);
+            }
+            if (response.uiType === 'DATE_PICKER' && response.uiData?.bookingType) {
+                setSelectedBookingType(response.uiData.bookingType);
+                setCheckInDate(response.bookingDraft?.checkInDate || '');
+                setCheckOutDate(response.bookingDraft?.checkOutDate || '');
+                setCheckInTime(response.bookingDraft?.checkInTime || '14:00');
+                setDurationHours(response.bookingDraft?.durationHours || 3);
+                setGuestCount(response.bookingDraft?.guests || response.uiData?.guests || 1);
             }
 
             const botMessage: Message = {
@@ -241,6 +248,7 @@ const AIConcierge: React.FC = () => {
                 uiType: response.uiType,
                 uiData: response.uiData,
                 intent: response.intent,
+                bookingDraft: response.bookingDraft,
             };
 
             setMessages((prev) => [...prev, botMessage]);
@@ -306,6 +314,64 @@ const AIConcierge: React.FC = () => {
     const handleRoomSelect = async (roomName: string) => {
         if (!user) return;
         await sendDirectMessage(`Tôi muốn đặt phòng ${roomName}`);
+    };
+
+    const showLocalAiMessage = (content: string) => {
+        setMessages((prev) => [
+            ...prev,
+            {
+                id: Date.now() + 1,
+                type: 'ai',
+                content,
+                time: new Date().toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                }),
+            },
+        ]);
+    };
+
+    const validateDateSelection = (bookingType?: string): string | null => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const inDate = checkInDate ? new Date(checkInDate) : null;
+        const outDate = checkOutDate ? new Date(checkOutDate) : null;
+
+        if (!inDate || Number.isNaN(inDate.getTime())) {
+            return 'Vui lòng chọn ngày nhận phòng hợp lệ.';
+        }
+
+        if (inDate < today) {
+            return 'Ngày nhận phòng không được nằm trong quá khứ. Vui lòng chọn từ hôm nay trở đi.';
+        }
+
+        if (!Number.isFinite(guestCount) || guestCount < 1) {
+            return 'Số khách phải từ 1 trở lên.';
+        }
+
+        if (bookingType === 'HOURLY') {
+            if (!Number.isFinite(durationHours) || durationHours < 1) {
+                return 'Số giờ thuê phải từ 1 giờ trở lên.';
+            }
+            return null;
+        }
+
+        if (!outDate || Number.isNaN(outDate.getTime())) {
+            return 'Vui lòng chọn ngày trả phòng hợp lệ.';
+        }
+
+        if (outDate <= inDate) {
+            return 'Ngày trả phòng phải sau ngày nhận phòng.';
+        }
+
+        return null;
+    };
+
+    const asList = (value: any, key: string): any[] => {
+        if (Array.isArray(value)) return value;
+        if (Array.isArray(value?.[key])) return value[key];
+        return [];
     };
 
     const handleNewChat = async () => {
@@ -710,13 +776,13 @@ const AIConcierge: React.FC = () => {
                                                     {/* === ROOM GRID UI === */}
                                                     {message.uiType === 'ROOM_GRID' && message.uiData && (
                                                         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                            {(message.uiData as any[]).map((room: any) => (
-                                                                <div key={room.roomTypeID} className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all">
-                                                                    {room.roomTypeImage && (
-                                                                        <img src={room.roomTypeImage} alt={room.typeName} className="w-full h-32 object-cover" />
+                                                            {asList(message.uiData, 'rooms').map((room: any) => (
+                                                                <div key={room.roomNumber || room.roomId || room.roomTypeID} className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all">
+                                                                    {(room.roomTypeImage || room.image) && (
+                                                                        <img src={room.roomTypeImage || room.image} alt={room.typeName || room.roomTypeName} className="w-full h-32 object-cover" />
                                                                     )}
                                                                     <div className="p-3">
-                                                                        <h4 className="font-bold text-gray-800 text-sm">{room.typeName}</h4>
+                                                                        <h4 className="font-bold text-gray-800 text-sm">{room.roomNumber ? `Phong ${room.roomNumber}` : (room.typeName || room.roomTypeName)}</h4>
                                                                         <p className="text-xs text-gray-500 mt-1">{room.maxOccupancy} khách • {room.area}m²</p>
                                                                         <p className="font-bold text-[#CCBDA3] text-sm mt-1">{room.basePrice?.toLocaleString('vi-VN')} VND/đêm</p>
                                                                         <button
@@ -739,6 +805,10 @@ const AIConcierge: React.FC = () => {
                                                                     key={opt.value}
                                                                     onClick={() => {
                                                                         setSelectedBookingType(opt.value);
+                                                                        setSelectedServices([]);
+                                                                        setCheckInDate('');
+                                                                        setCheckOutDate('');
+                                                                        setGuestCount(1);
                                                                         sendDirectMessage(`Tôi muốn đặt theo ${opt.label}`);
                                                                     }}
                                                                     className="flex-1 p-3 bg-white border-2 border-[#CCBDA3] rounded-xl text-center hover:bg-[#CCBDA3] hover:text-white transition-all"
@@ -770,6 +840,11 @@ const AIConcierge: React.FC = () => {
                                                                         <input type="number" min="1" max="24" value={durationHours} onChange={e => setDurationHours(Number(e.target.value))}
                                                                             className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm" />
                                                                     </div>
+                                                                    <div>
+                                                                        <label className="text-xs font-semibold text-gray-600">Số khách</label>
+                                                                        <input type="number" min="1" max="10" value={guestCount} onChange={e => setGuestCount(Number(e.target.value))}
+                                                                            className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm" />
+                                                                    </div>
                                                                 </>
                                                             ) : (
                                                                 <>
@@ -783,14 +858,24 @@ const AIConcierge: React.FC = () => {
                                                                         <input type="date" value={checkOutDate} onChange={e => setCheckOutDate(e.target.value)}
                                                                             className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm" />
                                                                     </div>
+                                                                    <div>
+                                                                        <label className="text-xs font-semibold text-gray-600">Số khách</label>
+                                                                        <input type="number" min="1" max="10" value={guestCount} onChange={e => setGuestCount(Number(e.target.value))}
+                                                                            className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm" />
+                                                                    </div>
                                                                 </>
                                                             )}
                                                             <button
                                                                 onClick={() => {
+                                                                    const validationError = validateDateSelection(message.uiData?.bookingType);
+                                                                    if (validationError) {
+                                                                        showLocalAiMessage(validationError);
+                                                                        return;
+                                                                    }
                                                                     const msg = message.uiData?.bookingType === 'HOURLY'
                                                                         ? `Nhận phòng ngày ${checkInDate} lúc ${checkInTime}, thuê ${durationHours} giờ`
                                                                         : `Nhận phòng ngày ${checkInDate}, trả phòng ngày ${checkOutDate}`;
-                                                                    sendDirectMessage(msg);
+                                                                    sendDirectMessage(`${msg} cho ${guestCount} khach`);
                                                                 }}
                                                                 className="w-full py-2 bg-[#CCBDA3] text-white rounded-lg text-sm font-semibold hover:bg-[#b8ac94] transition-all"
                                                             >Xác nhận thời gian</button>
@@ -800,7 +885,7 @@ const AIConcierge: React.FC = () => {
                                                     {/* === SERVICE LIST UI === */}
                                                     {message.uiType === 'SERVICE_LIST' && message.uiData && (
                                                         <div className="mt-3 space-y-2">
-                                                            {(message.uiData as any[]).map((svc: any) => (
+                                                            {asList(message.uiData, 'services').map((svc: any) => (
                                                                 <div key={svc.serviceID} className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all ${selectedServices.includes(svc.serviceID)
                                                                     ? 'border-[#CCBDA3] bg-[#CCBDA3]/10'
                                                                     : 'border-gray-200 hover:border-[#CCBDA3]'
@@ -822,6 +907,10 @@ const AIConcierge: React.FC = () => {
                                                             ))}
                                                             <button
                                                                 onClick={() => {
+                                                                    if (selectedServices.length === 0) {
+                                                                        sendDirectMessage('khong dat dich vu');
+                                                                        return;
+                                                                    }
                                                                     const msg = selectedServices.length > 0
                                                                         ? `Tôi muốn thêm dịch vụ: ${selectedServices.join(', ')}`
                                                                         : 'Không đặt dịch vụ';
@@ -886,18 +975,23 @@ const AIConcierge: React.FC = () => {
                                                         <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl">
                                                             <p className="text-sm text-green-700 font-semibold mb-2">Sẵn sàng đặt phòng!</p>
                                                             <button
-                                                                onClick={() => navigate('/customer/bookingPage', {
+                                                                onClick={() => {
+                                                                    const draft = message.bookingDraft || message.uiData?.draft || {};
+                                                                    navigate('/customer/bookingPage', {
                                                                     state: {
-                                                                        bookingType: selectedBookingType,
+                                                                        bookingType: draft.bookingType || selectedBookingType,
                                                                         fromAI: true,
-                                                                        checkInDate: checkInDate,
-                                                                        checkOutDate: checkOutDate,
-                                                                        hourlyCheckInDate: checkInDate,
-                                                                        checkInTime: checkInTime,
-                                                                        duration: durationHours,
-                                                                        selectedServices: selectedServices
+                                                                        checkInDate: draft.checkInDate || checkInDate,
+                                                                        checkOutDate: draft.checkOutDate || checkOutDate,
+                                                                        hourlyCheckInDate: draft.checkInDate || checkInDate,
+                                                                        checkInTime: draft.checkInTime || checkInTime,
+                                                                        duration: draft.durationHours || durationHours,
+                                                                        guests: draft.guests || guestCount,
+                                                                        selectedServices: draft.selectedServiceIds || selectedServices,
+                                                                        selectedRooms: draft.selectedRoomNumber ? [draft.selectedRoomNumber] : undefined
                                                                     }
-                                                                })}
+                                                                    });
+                                                                }}
                                                                 className="w-full py-2.5 bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white rounded-lg text-sm font-bold hover:bg-green-700 transition-all"
                                                             >Đến trang đặt phòng &amp; thanh toán</button>
                                                         </div>
