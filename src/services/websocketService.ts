@@ -131,7 +131,7 @@ class WebSocketService {
         let topics: string[] = [];
 
         if (userType === 'CUSTOMER') {
-            topics = []; // customer không nhận broadcast theo role
+            topics = ['/topic/notifications/customer'];
         } else if (userType === 'EMPLOYEE') {
             topics = [
                 '/topic/notifications/employee',

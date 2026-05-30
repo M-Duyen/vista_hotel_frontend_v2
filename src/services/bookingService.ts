@@ -58,7 +58,7 @@ const mappingBookingDetails = async (res: any, parentBookingId?: string) => {
     roomsApi.get(`/${res.roomNumber}`),
     bookingId
       ? api
-        .get(`/reviews/booking/${bookingId}/room/${res.roomNumber}`)
+        .get(`/api/reviews/booking/${bookingId}/room/${res.roomNumber}`)
         .catch(() => null)
       : Promise.resolve(null),
   ]);
@@ -161,6 +161,20 @@ export const getBookingsByCustomerId = async (
     );
   } catch (error) {
     console.error(`Error fetching bookings for customer ${customerId}:`, error);
+    throw error;
+  }
+};
+
+export const getMyBookingsByCustomerId = async (
+  customerId: string,
+): Promise<Booking[]> => {
+  try {
+    const response = await bookingsApi.get(
+      `/customer/${customerId}/my-bookings`,
+    );
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error(`Error fetching my bookings for customer ${customerId}:`, error);
     throw error;
   }
 };
@@ -645,4 +659,5 @@ export default {
   overlapBookingExists,
   saveBookingWithDetails,
   getBookingsByCustomerId,
+  getMyBookingsByCustomerId,
 };

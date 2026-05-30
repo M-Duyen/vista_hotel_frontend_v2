@@ -5,7 +5,7 @@ import { FaTimes, FaSave, FaCloudUploadAlt } from 'react-icons/fa';
 import TinyMCE from './TinyMCE';
 
 import { uploadImageToCloudinary } from '../../services/cloudinaryService';
-import { axiosInstance } from '../../config/api';
+import { updateNews } from '../../services/newsService';
 
 import {
     Select,
@@ -175,10 +175,7 @@ const EditNewsModal: React.FC<EditNewsModalProps> = ({
         setLoading(true);
 
         try {
-            await axiosInstance.put(
-                `/news/update/${formData.newsId}`,
-                formData,
-            );
+            await updateNews(formData.newsId, formData);
 
             onUpdated();
             onClose();

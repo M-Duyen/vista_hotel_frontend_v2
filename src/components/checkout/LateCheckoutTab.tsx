@@ -5,21 +5,14 @@ import {
     getAllLateCheckouts,
     approveLateCheckout,
 } from '../../services/lateCheckoutService';
-
-type LateCheckoutResponse = {
-    requestID: string;
-    requestTime: string;
-    approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
-    additionalFee: number;
-    requestDate: string;
-    booking?: any;
-};
+import type { LateCheckoutResponse } from '../../types/LateCheckout';
 
 type LateCheckoutTabProps = {
     onViewDetails: (req: LateCheckoutResponse | any) => void;
+    onRefresh?: () => void;
 };
 
-const LateCheckoutTab = ({ onViewDetails }: LateCheckoutTabProps) => {
+const LateCheckoutTab = ({ onViewDetails, onRefresh }: LateCheckoutTabProps) => {
     const [requests, setRequests] = useState<LateCheckoutResponse[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string>('');
@@ -31,10 +24,9 @@ const LateCheckoutTab = ({ onViewDetails }: LateCheckoutTabProps) => {
             setError('');
             try {
                 const res = await getAllLateCheckouts();
-                const list = Array.isArray(res) ? res : [];
-                setRequests(list);
+                setRequests(res);
             } catch (e) {
-                setError('Không tải được danh sách checkout muộn');
+                setError('Unable to load late check-out requests');
             } finally {
                 setLoading(false);
             }
@@ -55,7 +47,7 @@ const LateCheckoutTab = ({ onViewDetails }: LateCheckoutTabProps) => {
                 return;
             }
 
-            await approveLateCheckout(id, status);
+            await approveLateCheckout(id, status, 'Staff');
 
             setRequests((prev) =>
                 prev.map((req) =>
@@ -64,6 +56,7 @@ const LateCheckoutTab = ({ onViewDetails }: LateCheckoutTabProps) => {
                         : req,
                 ),
             );
+            onRefresh?.();
         } catch (err) {
             console.error(err);
         } finally {
@@ -71,30 +64,58 @@ const LateCheckoutTab = ({ onViewDetails }: LateCheckoutTabProps) => {
         }
     };
 
-    const formatCurrency = (v: number) => v?.toLocaleString('vi-VN') + ' VND';
+    const formatCurrency = (value: number) =>
+        `${(value || 0).toLocaleString('vi-VN')} VND`;
 
-    const formatTime = (dateString: string) => {
+    const formatTime = (dateString?: string) => {
         if (!dateString) return 'N/A';
-        const d = new Date(dateString);
-        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const date = new Date(dateString);
+        if (Number.isNaN(date.getTime())) return 'N/A';
+
+        return date.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+        });
     };
 
-    if (loading)
-        return (
-            <div className="p-6 text-center text-sm text-gray-500">
-                Đang tải yêu cầu checkout muộn...
-            </div>
-        );
-    if (error)
-        return (
-            <div className="p-6 text-center text-sm text-red-600">{error}</div>
-        );
-    if (!requests.length)
-        return (
-            <div className="p-6 text-center text-sm text-gray-500">
-                Không có yêu cầu checkout muộn.
-            </div>
-        );
+    const getGuestName = (req: LateCheckoutResponse) =>
+        req.booking?.customer?.fullName ||
+        req.booking?.customer?.username ||
+        'N/A';
+
+    const getGuestEmail = (req: LateCheckoutResponse) =>
+        req.booking?.customer?.email || 'No email';
+
+    const getRoomLabel = (req: LateCheckoutResponse) => {
+        const details = req.booking?.bookingDetails || [];
+        if (!details.length) return 'N/A - N/A';
+
+        return details
+            .map((detail) => {
+                const hydratedDetail = detail as any;
+                const roomNumber =
+                    hydratedDetail.room?.roomNumber ||
+                    hydratedDetail.roomNumber ||
+                    'N/A';
+                const roomType =
+                    hydratedDetail.room?.roomType?.typeName ||
+                    hydratedDetail.room?.roomType?.name ||
+                    'N/A';
+                return `${roomNumber} - ${roomType}`;
+            })
+            .join(', ');
+    };
+
+    const getRegularCheckoutTime = (req: LateCheckoutResponse) => {
+        if (!req.booking?.checkOutDate) return '12:00';
+
+        const checkout = new Date(req.booking.checkOutDate);
+        if (Number.isNaN(checkout.getTime())) return '12:00';
+
+        const hasExplicitTime =
+            checkout.getHours() !== 0 || checkout.getMinutes() !== 0;
+        return hasExplicitTime ? formatTime(req.booking.checkOutDate) : '12:00';
+    };
 
     const renderStatusBadge = (status: string) => {
         switch (status) {
@@ -125,6 +146,28 @@ const LateCheckoutTab = ({ onViewDetails }: LateCheckoutTabProps) => {
         }
     };
 
+    if (loading) {
+        return (
+            <div className="p-6 text-center text-sm text-gray-500">
+                Loading late check-out requests...
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="p-6 text-center text-sm text-red-600">{error}</div>
+        );
+    }
+
+    if (!requests.length) {
+        return (
+            <div className="p-6 text-center text-sm text-gray-500">
+                No late check-out requests.
+            </div>
+        );
+    }
+
     return (
         <div className="overflow-x-auto">
             <table className="min-w-full bg-white">
@@ -146,100 +189,95 @@ const LateCheckoutTab = ({ onViewDetails }: LateCheckoutTabProps) => {
                 </thead>
 
                 <tbody>
-                    {requests.map((req) => {
-                        const booking = req.booking || {};
-                        const customer = booking.customer || {};
-                        const room = booking.bookingDetails?.[0]?.room || {};
+                    {requests.map((req) => (
+                        <tr
+                            key={req.requestID}
+                            className="border-b border-[#EBE3D7]/50 hover:bg-[#EBE3D7]/10"
+                        >
+                            <td className="py-4 px-4">{req.requestID}</td>
 
-                        return (
-                            <tr
-                                key={req.requestID}
-                                className="border-b border-[#EBE3D7]/50 hover:bg-[#EBE3D7]/10"
-                            >
-                                <td className="py-4 px-4">{req.requestID}</td>
+                            <td className="py-4 px-4">
+                                <div>
+                                    <p className="font-medium">
+                                        {getGuestName(req)}
+                                    </p>
+                                    <p className="text-sm text-gray-500">
+                                        {getGuestEmail(req)}
+                                    </p>
+                                </div>
+                            </td>
 
-                                <td className="py-4 px-4">
-                                    <div>
-                                        <p className="font-medium">
-                                            {customer.fullName || 'N/A'}
-                                        </p>
-                                        <p className="text-sm text-gray-500">
-                                            {customer.email || 'No email'}
-                                        </p>
-                                    </div>
-                                </td>
+                            <td className="py-4 px-4">{getRoomLabel(req)}</td>
 
-                                <td className="py-4 px-4">
-                                    {room.roomNumber || 'N/A'} -{' '}
-                                    {room.roomType?.typeName || 'N/A'}
-                                </td>
+                            <td className="py-4 px-4">
+                                {getRegularCheckoutTime(req)}
+                            </td>
 
-                                <td className="py-4 px-4">12:00</td>
+                            <td className="py-4 px-4">
+                                {formatTime(req.requestTime)}
+                            </td>
 
-                                <td className="py-4 px-4">
-                                    {formatTime(req.requestTime)}
-                                </td>
+                            <td className="py-4 px-4">
+                                {formatCurrency(req.additionalFee)}
+                            </td>
 
-                                <td className="py-4 px-4">
-                                    {formatCurrency(req.additionalFee)}
-                                </td>
+                            <td className="py-4 px-4">
+                                {renderStatusBadge(req.approvalStatus)}
+                            </td>
 
-                                <td className="py-4 px-4">
-                                    {renderStatusBadge(req.approvalStatus)}
-                                </td>
+                            <td className="py-4 px-4">
+                                <div className="flex gap-2 items-center">
+                                    {req.approvalStatus === 'PENDING' && (
+                                        <>
+                                            <button
+                                                disabled={
+                                                    processingId ===
+                                                    req.requestID
+                                                }
+                                                onClick={() =>
+                                                    handleApprove(
+                                                        req.requestID,
+                                                        'APPROVED',
+                                                    )
+                                                }
+                                                className="p-2.5 rounded-full bg-[#F5F0EB] hover:bg-green-100 text-green-600"
+                                                title="Approve"
+                                            >
+                                                <FaCheck size={14} />
+                                            </button>
 
-                                <td className="py-4 px-4">
-                                    <div className="flex gap-2 items-center">
-                                        {req.approvalStatus === 'PENDING' && (
-                                            <>
-                                                <button
-                                                    disabled={
-                                                        processingId ===
-                                                        req.requestID
-                                                    }
-                                                    onClick={() =>
-                                                        handleApprove(
-                                                            req.requestID,
-                                                            'APPROVED',
-                                                        )
-                                                    }
-                                                    className="p-2.5 rounded-full bg-[#F5F0EB] hover:bg-green-100 text-green-600"
-                                                    title="Approve"
-                                                >
-                                                    <FaCheck size={14} />
-                                                </button>
+                                            <button
+                                                disabled={
+                                                    processingId ===
+                                                    req.requestID
+                                                }
+                                                onClick={() =>
+                                                    handleApprove(
+                                                        req.requestID,
+                                                        'REJECTED',
+                                                    )
+                                                }
+                                                className="p-2.5 rounded-full bg-[#F5F0EB] hover:bg-red-100 text-red-600"
+                                                title="Reject"
+                                            >
+                                                <FaTimes size={14} />
+                                            </button>
+                                        </>
+                                    )}
 
-                                                <button
-                                                    disabled={
-                                                        processingId ===
-                                                        req.requestID
-                                                    }
-                                                    onClick={() =>
-                                                        handleApprove(
-                                                            req.requestID,
-                                                            'REJECTED',
-                                                        )
-                                                    }
-                                                    className="p-2.5 rounded-full bg-[#F5F0EB] hover:bg-red-100 text-red-600"
-                                                    title="Reject"
-                                                >
-                                                    <FaTimes size={14} />
-                                                </button>
-                                            </>
-                                        )}
-
-                                        <button
-                                            onClick={() => onViewDetails(req)}
-                                            className="p-2.5 rounded-full bg-[#F5F0EB] hover:bg-[#b9ad96] hover:text-white text-gray-600"
-                                            title="View Details"
-                                        >
-                                            <FaEye size={14} />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        );
-                    })}
+                                    <button
+                                        onClick={() =>
+                                            onViewDetails(req.booking || req)
+                                        }
+                                        className="p-2.5 rounded-full bg-[#F5F0EB] hover:bg-[#b9ad96] hover:text-white text-gray-600"
+                                        title="View Details"
+                                    >
+                                        <FaEye size={14} />
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
                 </tbody>
             </table>
         </div>

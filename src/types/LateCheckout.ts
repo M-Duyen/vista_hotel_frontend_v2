@@ -1,3 +1,5 @@
+import type { Booking } from './Booking';
+
 export interface LateCheckout {
     requestID: string;
     requestTime: string;
@@ -16,8 +18,18 @@ export interface LateCheckout {
     checkInDate: string;
     checkOutDate: string;
 
-    employee?: {
+    employee?: string | {
         id: string;
         fullName?: string;
     };
+}
+
+export interface LateCheckoutResponse {
+    requestID: string;
+    requestTime: string;
+    approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+    additionalFee: number;
+    requestDate: string;
+    booking: Booking | null;
+    employee?: string;
 }

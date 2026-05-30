@@ -7,6 +7,7 @@ import CheckoutDetailsModal from '../../components/checkout/CheckoutDetailsModal
 import PaymentModal from '../../components/checkout/PaymentModal';
 import CashConfirmationModal from '../../components/checkout/CashConfirmationModal';
 import PaymentSuccessModal from '../../components/checkout/PaymentSuccessModal';
+import LateCheckoutTab from '../../components/checkout/LateCheckoutTab';
 import * as bookingService from '../../services/bookingService';
 import type { Booking } from '../../types/Booking';
 import CustomCalendar from '../../components/checkin/CustomCalendar';
@@ -95,20 +96,7 @@ export default function CheckOutManager() {
                     break;
                 }
                 case 'late': {
-                    const yesterday = new Date(currentDate);
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    const yesterdayStr = yesterday.toISOString().split('T')[0];
-                    data = await bookingService.getBookingsByCheckOutDateRange(
-                        yesterdayStr,
-                        selectedDateStr,
-                    );
-                    data = data.filter((b) => {
-                        const checkoutDate = new Date(b.checkOutDate);
-                        return (
-                            b.status === 'CHECKED_IN' &&
-                            checkoutDate < currentDate
-                        );
-                    });
+                    data = [];
                     break;
                 }
                 case 'completed': {
@@ -240,7 +228,7 @@ export default function CheckOutManager() {
             bookingId: booking.bookingID,
             guestName: booking.customer?.fullName || '',
             guestEmail: booking.customer?.email || '',
-            guestPhone: booking.customer?.phoneNumber || '',
+            guestPhone: booking.customer?.phone || '',
             guestImage: booking.customer?.avatarUrl || '',
             roomNumber: roomInfo,
             balanceDue: `${balanceDue.toLocaleString('vi-VN')} VND`,
@@ -434,6 +422,11 @@ export default function CheckOutManager() {
                                     Loading checkout data...
                                 </p>
                             </div>
+                        ) : activeTab === 'late' ? (
+                            <LateCheckoutTab
+                                onViewDetails={handleViewDetails}
+                                onRefresh={loadCheckoutData}
+                            />
                         ) : (
                             <CheckoutTable
                                 data={filteredData}

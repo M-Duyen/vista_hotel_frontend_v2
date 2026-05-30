@@ -1,7 +1,7 @@
 import type { Review } from "../types/Review";
 import { api } from "./apiClient";
 
-const ENDPOINT = "/reviews";
+const ENDPOINT = "/api/reviews";
 
 export const getReviewsByRoomNumber = async (id: string) => {
   try {

@@ -17,6 +17,7 @@ import TomorrowTab from '../../components/checkin/TomorrowTab';
 import EarlyTab from '../../components/checkin/EarlyTab';
 import HourlyTab from '../../components/checkin/HourlyTab';
 import { getBookingsByCheckInDateRange } from '../../services/bookingService';
+import { getAllEarlyCheckins } from '../../services/earlyCheckinService';
 import type { Booking } from '../../types/Booking';
 import CustomCalendar from '../../components/checkin/CustomCalendar';
 
@@ -36,6 +37,7 @@ const CheckInManager: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [earlyRequestCount, setEarlyRequestCount] = useState(0);
 
     const datePickerRef = useRef<HTMLDivElement>(null);
 
@@ -91,14 +93,15 @@ const CheckInManager: React.FC = () => {
             const startDate = formatDateForAPI(today);
             const endDate = formatDateForAPI(dayAfterSelected);
 
-            const data = await getBookingsByCheckInDateRange(
-                startDate,
-                endDate,
-            );
+            const [data, earlyRequests] = await Promise.all([
+                getBookingsByCheckInDateRange(startDate, endDate),
+                getAllEarlyCheckins().catch(() => []),
+            ]);
             const activeBookings = data.filter(
                 (booking) => booking.status !== 'CANCELLED',
             );
             setBookings(activeBookings);
+            setEarlyRequestCount(earlyRequests.length);
         } catch (err) {
             setError('Failed to fetch bookings: ' + err);
         } finally {
@@ -197,16 +200,14 @@ const CheckInManager: React.FC = () => {
                 return checkInDate.getTime() === nextDay.getTime();
             }).length,
 
-            early: filteredBookings.filter(
-                (booking) => booking.earlyCheckin !== null,
-            ).length,
+            early: earlyRequestCount,
 
             hourly: filteredBookings.filter(
                 (booking) =>
                     booking.hourlyRate !== null && booking.hourlyRate > 0,
             ).length,
         };
-    }, [filteredBookings, currentDate]);
+    }, [filteredBookings, currentDate, earlyRequestCount]);
 
     const formatDate = (date: Date) => {
         return date.toLocaleDateString('en-US', {

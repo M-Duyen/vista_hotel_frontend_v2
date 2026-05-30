@@ -1,4 +1,4 @@
-import { useState, useEffect, type JSX } from 'react';
+import { useState, useEffect, useRef, type JSX } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Search,
@@ -15,7 +15,7 @@ import {
 import Header from '../../components/Header';
 import {
     getBookingById,
-    getBookingsByCustomerId,
+    getMyBookingsByCustomerId,
 } from '../../services/bookingService';
 import type { Booking } from '../../types/Booking';
 import { useToastContext } from '../../hooks/useToastContext';
@@ -46,6 +46,7 @@ export default function MyBookingsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string>('');
     const toast = useToastContext();
+    const didFetchBookings = useRef(false);
 
     // Get current user from localStorage or context
     const getCurrentUser = () => {
@@ -67,6 +68,11 @@ export default function MyBookingsPage() {
 
     // Fetch user's bookings from API
     useEffect(() => {
+        if (didFetchBookings.current) {
+            return;
+        }
+        didFetchBookings.current = true;
+
         const fetchUserBookings = async () => {
             try {
                 setLoading(true);
@@ -81,7 +87,7 @@ export default function MyBookingsPage() {
                     return;
                 }
 
-                const userBookings = await getBookingsByCustomerId(
+                const userBookings = await getMyBookingsByCustomerId(
                     currentUser.id,
                 );
                 console.log('User bookings:', userBookings);

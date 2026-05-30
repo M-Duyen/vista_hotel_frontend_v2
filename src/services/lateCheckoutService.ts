@@ -1,5 +1,6 @@
 import { requestApi } from './apiClient';
 import { earlyCheckinNotificationService } from './earlyCheckinNotificationService';
+import type { LateCheckoutResponse } from '../types/LateCheckout';
 
 const ENDPOINT = '/late-checkout';
 
@@ -73,13 +74,13 @@ export const approveLateCheckout = async (
 /**
  * Lấy tất cả yêu cầu checkout muộn
  */
-export const getAllLateCheckouts = async () => {
+export const getAllLateCheckouts = async (): Promise<LateCheckoutResponse[]> => {
     try {
-        const res = await requestApi.get(ENDPOINT);
-        return res.data;
+        const res = await requestApi.get(`${ENDPOINT}/full`);
+        return Array.isArray(res.data) ? res.data : [];
     } catch (error) {
         console.error('Error fetching all late checkouts:', error);
-        throw error;
+        return [];
     }
 };
 

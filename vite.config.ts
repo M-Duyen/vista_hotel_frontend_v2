@@ -18,10 +18,12 @@ export default defineConfig({
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api/, ''),
             },
-            // WebSocket proxy: route directly to notification-service (port 8092).
-            // Do NOT route through API Gateway (port 8080) — Spring Cloud Gateway
-            // (Netty/reactive) cannot reliably proxy WebSocket to Tomcat (servlet)
-            // backends with SockJS. Vite's Node.js proxy handles this correctly.
+            // WebSocket proxy: route through API Gateway (port 8080).
+            '/ws-native': {
+                target: 'http://localhost:8080',
+                ws: true,
+                changeOrigin: true,
+            },
             '/ws': {
                 target: 'http://localhost:8080',
                 ws: true,

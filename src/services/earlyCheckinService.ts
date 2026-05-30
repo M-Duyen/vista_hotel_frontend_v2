@@ -1,6 +1,7 @@
 /* eslint-disable */
 import { api } from './apiClient';
 import { earlyCheckinNotificationService } from './earlyCheckinNotificationService';
+import type { EarlyCheckinResponse } from '../types/EarlyCheckin';
 
 const ENDPOINT = '/api/early-checkin';
 
@@ -98,10 +99,10 @@ export const approveEarlyCheckin = async (
 /**
  * Get all early check-in requests.
  */
-export const getAllEarlyCheckins = async () => {
+export const getAllEarlyCheckins = async (): Promise<EarlyCheckinResponse[]> => {
     try {
-        const res = await api.get(ENDPOINT);
-        return res.data;
+        const res = await api.get(`${ENDPOINT}/full`);
+        return Array.isArray(res.data) ? res.data : [];
     } catch (error) {
         console.error('Get all early check-ins error:', error);
         return [];

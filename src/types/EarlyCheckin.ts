@@ -14,7 +14,7 @@ export interface EarlyCheckin {
     approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
     additionalFee: number;
     requestDate: string;
-    employee?: {
+    employee?: string | {
         id: string;
         fullName?: string;
     };
@@ -22,5 +22,5 @@ export interface EarlyCheckin {
 
 /** Response server trả về khi lấy danh sách yêu cầu */
 export interface EarlyCheckinResponse extends EarlyCheckin {
-    booking: Booking;
+    booking: Booking | null;
 }
