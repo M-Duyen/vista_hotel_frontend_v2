@@ -1,5 +1,4 @@
-/*eslint-disable*/
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import type { RoomType } from '../../../types/RoomType';
 import {
     getAllRoomTypes,
@@ -10,9 +9,12 @@ import {
     getAllSeasonalPrices_RoomType,
     saveSeasonalPriceWithRoomTypes,
     deleteSeasonalPrice,
-} from '@/services/seasonPriceService';
+} from '@/services/SeasonPriceService';
 
-import type { SeasonPrice } from '../../../types/SeasonPrice';
+import type {
+    SeasonPrice,
+    SeasonalPriceDTO,
+} from '../../../types/SeasonPrice';
 
 // Replace large per-tab JSX with component usage — keep logic/state in this file
 import BasePricesTab from './components/BasePricesTab';
@@ -21,17 +23,24 @@ import ByHourTab from './components/ByHourTab';
 import ExtraFeesTab from './components/ExtraFeesTab';
 import ConfirmDialog from '../../../components/dialog/ConfirmDialog';
 
+function toIdString(value: unknown): string {
+    return typeof value === 'string' || typeof value === 'number'
+        ? String(value)
+        : '';
+}
+
+function toLabelString(value: unknown, fallback: string): string {
+    return typeof value === 'string' || typeof value === 'number'
+        ? String(value)
+        : fallback;
+}
+
 export default function PricingManager() {
     const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
-    const [editing, setEditing] = useState<any | null>(null);
-
+    const [editing, setEditing] = useState<RoomType | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [yearForHolidays, setYearForHolidays] = useState<string>(
-        String(new Date().getFullYear()),
-    );
-    const [msg, setMsg] = useState<string | null>(null);
 
     const [activeTab, setActiveTab] = useState<
         'base' | 'season' | 'byHour' | 'extra'
@@ -54,31 +63,70 @@ export default function PricingManager() {
     });
     const [seasonLoading, setSeasonLoading] = useState(false);
 
-    // sort by price state
-    const [sortOrder, setSortOrder] = useState<'price_asc' | 'price_desc' | ''>(
-        '',
+    function normalizeSeasonPrice(dto: any): SeasonPrice {
+        const source =
+            dto?.seasonalPrice && typeof dto.seasonalPrice === 'object'
+                ? dto.seasonalPrice
+                : dto ?? {};
+
+        const roomTypeIdsSource =
+            dto?.roomTypeIds ??
+            dto?.roomTypeIDs ??
+            dto?.roomTypes ??
+            source.roomTypeIds ??
+            source.roomTypeIDs ??
+            source.roomTypes ??
+            [];
+
+        const roomTypes = Array.isArray(roomTypeIdsSource)
+            ? roomTypeIdsSource.map(String)
+            : roomTypeIdsSource instanceof Set
+                ? Array.from(roomTypeIdsSource).map(String)
+                : [];
+
+        return {
+            id: Number(source.id ?? 0),
+            seasonName: String(source.seasonName ?? ''),
+            priceMultiplier: Number(source.priceMultiplier ?? 0),
+            startDate: String(source.startDate ?? ''),
+            endDate: String(source.endDate ?? ''),
+            description: String(source.description ?? ''),
+            roomTypes,
+        };
+    }
+
+    const allRoomTypeIds = useMemo(
+        () =>
+            roomTypes
+                .map((rt) =>
+                    toIdString(rt.roomTypeID ?? rt.id ?? rt.typeId ?? ''),
+                )
+                .filter(Boolean),
+        [roomTypes],
     );
 
-    // dropdown options (used by custom Dropdown)
-    const sortOptions = [
-        { value: '', label: 'All' },
-        { value: 'price_asc', label: 'Price: Low → High' },
-        { value: 'price_desc', label: 'Price: High → Low' },
-    ];
+    function isAllRoomTypesSelected(roomTypeIds: string[]) {
+        return (
+            allRoomTypeIds.length > 0 &&
+            roomTypeIds.length === allRoomTypeIds.length &&
+            allRoomTypeIds.every((id) => roomTypeIds.includes(id))
+        );
+    }
 
-    const getPrice = (rt: RoomType) =>
-        Number((rt as any).basePrice ?? (rt as any).roomPrice ?? 0);
+    function resolveSelectedRoomTypeIds() {
+        const selected = newSeason.roomTypes ?? [];
 
-    // memoized sorted list (empty = original order)
-    const sortedRooms = useMemo(() => {
-        const list = [...roomTypes];
-        if (sortOrder === 'price_asc') {
-            list.sort((a, b) => getPrice(a) - getPrice(b));
-        } else if (sortOrder === 'price_desc') {
-            list.sort((a, b) => getPrice(b) - getPrice(a));
+        if (selected.includes('ALL')) {
+            return [...allRoomTypeIds];
         }
-        return list;
-    }, [roomTypes, sortOrder]);
+
+        return selected.filter((id) => id !== 'ALL');
+    }
+
+    const sortedRooms = useMemo(
+        () => [...roomTypes],
+        [roomTypes, editing, loading, saving],
+    );
 
     useEffect(() => {
         loadRoomTypes();
@@ -100,11 +148,12 @@ export default function PricingManager() {
             const data = await getAllRoomTypes();
             setRoomTypes(data || []);
             if (data?.length && !selectedId) {
-                setSelectedId(String(data[0].id ?? data[0].typeId));
+                setSelectedId(
+                    toIdString(data[0].id ?? data[0].typeId ?? '') || null,
+                );
             }
         } catch (e) {
             console.error(e);
-            setMsg('Failed to load room types');
         } finally {
             setLoading(false);
         }
@@ -114,16 +163,13 @@ export default function PricingManager() {
         setLoading(true);
         try {
             const rt = await getRoomTypeById(id);
-            const normalized = {
-                ...rt,
-                pricingRules: rt.pricingRules ?? [],
-                specialPrices: rt.specialPrices ?? [],
-                basePrice: rt.basePrice ?? rt.roomPrice ?? 0,
+            const normalized: RoomType = {
+                ...(rt as RoomType),
+                basePrice: Number((rt as any).basePrice ?? (rt as any).roomPrice ?? 0),
             };
             setEditing(normalized);
         } catch (e) {
             console.error(e);
-            setMsg('Failed to load room type');
             setEditing(null);
         } finally {
             setLoading(false);
@@ -133,35 +179,8 @@ export default function PricingManager() {
     async function loadSeasonalPrices() {
         setSeasonLoading(true);
         try {
-            // Use the API that returns PriceDTO with room type details
             const data = await getAllSeasonalPrices_RoomType();
-
-            console.log('Loaded seasonal prices with room types:', data);
-
-            // Transform PriceDTO[] to SeasonPrice[] if needed
-            // Backend returns: { seasonalPrice: {...}, roomTypeIDs: [...] }
-            const seasonalPrices = data.map((dto: any) => {
-                console.log('Processing DTO:', dto);
-                // If backend returns PriceDTO format
-                if (dto.seasonalPrice && dto.roomTypeIDs !== undefined) {
-                    const result = {
-                        ...dto.seasonalPrice,
-                        roomTypes: dto.roomTypeIDs || [], // ensure it's an array
-                    };
-                    console.log('  -> Transformed to:', result);
-                    return result;
-                }
-                // If backend already returns SeasonPrice format
-                const result = {
-                    ...dto,
-                    roomTypes: dto.roomTypes || [], // ensure it's an array
-                };
-                console.log('  -> Using direct format:', result);
-                return result;
-            });
-
-            console.log('Normalized seasonal prices:', seasonalPrices);
-            setSeasonalPrices(seasonalPrices);
+            setSeasonalPrices(data.map((dto: any) => normalizeSeasonPrice(dto)));
         } catch (err) {
             console.error('Failed to load seasonal prices', err);
         } finally {
@@ -205,7 +224,6 @@ export default function PricingManager() {
 
             await saveRoomType(payload);
             await loadRoomTypes();
-            setMsg('Saved price');
             cancelRowEdit(targetId);
         } catch (err: any) {
             console.error('Error saving room type:', err);
@@ -227,7 +245,6 @@ export default function PricingManager() {
     });
 
     async function handleAddSeason() {
-        // basic validation
         if (
             !newSeason.name ||
             !newSeason.startDate ||
@@ -238,32 +255,21 @@ export default function PricingManager() {
             return;
         }
 
-        // Build PriceDTO payload: roomTypeIDs empty array means "apply to all"
-        let roomTypeIDs: string[] = [];
+        const roomTypeIds = resolveSelectedRoomTypeIds();
 
-        if (newSeason.roomTypes && newSeason.roomTypes.length > 0) {
-            if (newSeason.roomTypes.includes('ALL')) {
-                // "ALL" selected -> send empty array (backend interprets as apply to all)
-                roomTypeIDs = [];
-            } else {
-                // Specific rooms selected -> send those IDs
-                roomTypeIDs = newSeason.roomTypes.filter((id) => id !== 'ALL');
-            }
+        if (roomTypeIds.length === 0) {
+            alert('Please select at least one room type');
+            return;
         }
 
-        const payload = {
-            seasonalPrice: {
-                // No id -> backend will create new
-                seasonName: newSeason.name,
-                priceMultiplier: Number(newSeason.multiplier),
-                startDate: newSeason.startDate,
-                endDate: newSeason.endDate,
-                description: newSeason.description ?? '',
-            },
-            roomTypeIDs: roomTypeIDs,
+        const payload: SeasonalPriceDTO = {
+            seasonName: newSeason.name,
+            priceMultiplier: Number(newSeason.multiplier),
+            startDate: newSeason.startDate,
+            endDate: newSeason.endDate,
+            description: newSeason.description ?? '',
+            roomTypeIds,
         };
-
-        console.log('Creating seasonal price:', payload);
 
         try {
             await saveSeasonalPriceWithRoomTypes(payload);
@@ -282,12 +288,6 @@ export default function PricingManager() {
     }
 
     async function handleEditSeason(id: number) {
-        console.log('=== handleEditSeason called ===');
-        console.log('Editing season ID:', id);
-        console.log('Current newSeason state:', newSeason);
-        console.log('Available roomTypes:', roomTypes);
-
-        // basic validation
         if (
             !newSeason.name ||
             !newSeason.startDate ||
@@ -298,64 +298,27 @@ export default function PricingManager() {
             return;
         }
 
-        // Build PriceDTO payload - same logic as add
-        let roomTypeIDs: string[] = [];
+        const roomTypeIds = resolveSelectedRoomTypeIds();
 
-        console.log('newSeason.roomTypes:', newSeason.roomTypes);
-
-        if (newSeason.roomTypes && newSeason.roomTypes.length > 0) {
-            if (newSeason.roomTypes.includes('ALL')) {
-                console.log('  -> User selected ALL, sending empty array');
-                roomTypeIDs = [];
-            } else {
-                console.log('  -> User selected specific rooms');
-                // Ensure we're sending the correct ID format
-                roomTypeIDs = newSeason.roomTypes
-                    .filter((id) => id !== 'ALL')
-                    .map((id) => {
-                        // Find the room type to verify it exists
-                        const rt = roomTypes.find(
-                            (r) =>
-                                String(r.roomTypeID ?? r.id ?? r.typeId) ===
-                                String(id),
-                        );
-                        if (!rt) {
-                            console.warn(`Room type not found for ID: ${id}`);
-                        } else {
-                            console.log(`  -> Mapping ${id} to room type:`, rt);
-                        }
-                        // Return the ID as-is (backend should handle the format)
-                        return String(id);
-                    });
-                console.log('  -> Filtered roomTypeIDs:', roomTypeIDs);
-            }
-        } else {
-            console.log(
-                '  -> newSeason.roomTypes is empty/null, sending empty array',
-            );
-            roomTypeIDs = [];
+        if (roomTypeIds.length === 0) {
+            alert('Please select at least one room type');
+            return;
         }
 
-        const payload = {
-            seasonalPrice: {
-                id: id,
-                seasonName: newSeason.name,
-                priceMultiplier: Number(newSeason.multiplier),
-                startDate: newSeason.startDate,
-                endDate: newSeason.endDate,
-                description: newSeason.description ?? '',
-            },
-            roomTypeIDs: roomTypeIDs,
+        const payload: SeasonalPriceDTO = {
+            id,
+            seasonName: newSeason.name,
+            priceMultiplier: Number(newSeason.multiplier),
+            startDate: newSeason.startDate,
+            endDate: newSeason.endDate,
+            description: newSeason.description ?? '',
+            roomTypeIds,
         };
-
-        console.log('Final payload to send:', JSON.stringify(payload, null, 2));
 
         try {
             await saveSeasonalPriceWithRoomTypes(payload);
-            console.log('Update successful, reloading data...');
             setNewSeason({ roomTypes: [] });
             await loadSeasonalPrices();
-            console.log('Data reloaded, checking result...');
             // Show success dialog
             setSuccessDialog({
                 isOpen: true,
@@ -428,11 +391,12 @@ export default function PricingManager() {
         if (cur.includes('ALL')) return 'All room types';
 
         const first = roomTypes.find(
-            (r) => String(r.roomTypeID ?? r.id ?? r.typeId) === cur[0],
+            (r) =>
+                toIdString(r.roomTypeID ?? r.id ?? r.typeId ?? '') === cur[0],
         );
         const firstLabel = first
-            ? String(first.typeName ?? first.name ?? cur[0])
-            : String(cur[0]);
+            ? toLabelString(first.typeName ?? first.name ?? cur[0], cur[0])
+            : cur[0];
         return cur.length === 1
             ? firstLabel
             : `${firstLabel} +${cur.length - 1} more`;
@@ -446,14 +410,18 @@ export default function PricingManager() {
             return ['All room types'];
         }
 
+        if (isAllRoomTypesSelected(ids)) {
+            return ['All room types'];
+        }
+
         // Map room type IDs to readable labels
         const labels: string[] = ids.map((rid) => {
             const rt = roomTypes.find(
-                (r) => String(r.roomTypeID ?? r.id ?? r.typeId) === String(rid),
+                (r) => toIdString(r.roomTypeID ?? r.id ?? r.typeId ?? '') === rid,
             );
             const label = rt
-                ? String(rt.typeName ?? rt.name ?? rid)
-                : String(rid);
+                ? toLabelString(rt.typeName ?? rt.name ?? rid, rid)
+                : rid;
             return label;
         });
 
@@ -466,12 +434,12 @@ export default function PricingManager() {
         const arr = labels as unknown[];
         return (
             <div className="flex flex-wrap gap-2 mt-2">
-                {arr.slice(0, 3).map((l, i) => (
+                {arr.slice(0, 3).map((l) => (
                     <span
-                        key={i}
+                        key={String(l)}
                         className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800"
                     >
-                        {String(l)}
+                        {toLabelString(l, String(l))}
                     </span>
                 ))}
                 {arr.length > 3 && (
@@ -503,8 +471,8 @@ export default function PricingManager() {
                                     key={t.key}
                                     onClick={() => setActiveTab(t.key as any)}
                                     className={`w-full text-sm py-2 rounded-full ${active
-                                            ? 'bg-white shadow-md font-semibold'
-                                            : 'text-gray-600 hover:bg-white/50'
+                                        ? 'bg-white shadow-md font-semibold'
+                                        : 'text-gray-600 hover:bg-white/50'
                                         }`}
                                 >
                                     {t.label}

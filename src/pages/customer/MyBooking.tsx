@@ -760,7 +760,7 @@ export default function MyBookingsPage() {
                                                     {/* ACTIONS */}
                                                     <div className="flex gap-3 mt-6">
                                                         {/* Report Incident button - only show for CHECKED_IN status */}
-                                                        {booking.status ===
+                                                        {/* {booking.status ===
                                                             'CHECKED_IN' && (
                                                             <button
                                                                 onClick={() =>
@@ -775,7 +775,7 @@ export default function MyBookingsPage() {
                                                                 />
                                                                 Report Incident
                                                             </button>
-                                                        )}
+                                                        )} */}
 
                                                         <button
                                                             onClick={() =>

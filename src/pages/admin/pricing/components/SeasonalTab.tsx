@@ -171,6 +171,15 @@ const SeasonalTab: FC<Props> = (props) => {
     // filtered & sorted seasonal prices
     const filteredSeasonalPrices = useMemo(() => {
         return seasonalPrices.filter((s) => {
+            const appliesToAllRoomTypes =
+                roomTypes.length > 0 &&
+                s.roomTypes.length === roomTypes.length &&
+                roomTypes.every((rt) =>
+                    s.roomTypes.includes(
+                        String(rt.roomTypeID ?? rt.id ?? rt.typeId ?? ''),
+                    ),
+                );
+
             // filter by name
             if (
                 searchName &&
@@ -189,8 +198,7 @@ const SeasonalTab: FC<Props> = (props) => {
             // filter by room type
             if (filterRoomType) {
                 if (filterRoomType === 'ALL') {
-                    // show rules that apply to all
-                    if (s.roomTypes && s.roomTypes.length > 0) return false;
+                    if (!appliesToAllRoomTypes) return false;
                 } else {
                     // show rules that include this specific room type
                     if (!s.roomTypes || !s.roomTypes.includes(filterRoomType))
@@ -209,35 +217,21 @@ const SeasonalTab: FC<Props> = (props) => {
 
     // Open modal for editing
     function openEditModal(season: SeasonPrice) {
-        console.log('Opening edit modal for season:', season);
-        console.log('  - seasonName:', season.seasonName);
-        console.log('  - roomTypes from backend:', season.roomTypes);
-        console.log(
-            '  - is empty?',
-            !season.roomTypes || season.roomTypes.length === 0,
-        );
-        console.log(
-            '  - roomTypes detail:',
-            season.roomTypes?.map((id) => {
-                const rt = roomTypes.find(
-                    (r) =>
-                        String(r.roomTypeID ?? r.id ?? r.typeId) === String(id),
-                );
-                return { id, roomType: rt?.typeName ?? 'NOT FOUND' };
-            }),
-        );
-
         setEditingSeasonId(season.id);
 
-        // Determine roomTypes for UI:
-        // - If backend roomTypes is empty/null -> user selected "ALL"
-        // - Otherwise -> use the specific IDs
+        const appliesToAllRoomTypes =
+            roomTypes.length > 0 &&
+            season.roomTypes.length === roomTypes.length &&
+            roomTypes.every((rt) =>
+                season.roomTypes.includes(
+                    String(rt.roomTypeID ?? rt.id ?? rt.typeId ?? ''),
+                ),
+            );
+
         const uiRoomTypes =
-            !season.roomTypes || season.roomTypes.length === 0
+            !season.roomTypes || season.roomTypes.length === 0 || appliesToAllRoomTypes
                 ? ['ALL']
                 : season.roomTypes;
-
-        console.log('  - UI roomTypes set to:', uiRoomTypes);
 
         setNewSeason({
             name: season.seasonName,
@@ -281,7 +275,7 @@ const SeasonalTab: FC<Props> = (props) => {
                     <div className="flex items-center justify-between mt-3">
                         <div>
                             <CardTitle className="text-xl font-semibold text-gray-900">
-                                Seasonal Pricing
+                                Active Rules
                             </CardTitle>
                             <CardDescription className="text-sm text-gray-500 mt-1">
                                 Create dynamic pricing rules based on seasons
@@ -407,8 +401,8 @@ const SeasonalTab: FC<Props> = (props) => {
                                                 filterEndDate
                                                     ? new Date(filterEndDate)
                                                     : filterStartDate
-                                                    ? new Date(filterStartDate)
-                                                    : new Date()
+                                                        ? new Date(filterStartDate)
+                                                        : new Date()
                                             }
                                             onSelect={(date) => {
                                                 setFilterEndDate(
@@ -434,9 +428,9 @@ const SeasonalTab: FC<Props> = (props) => {
                                         ...roomTypes.map((rt) => ({
                                             value: String(
                                                 rt.roomTypeID ??
-                                                    rt.id ??
-                                                    rt.typeId ??
-                                                    '',
+                                                rt.id ??
+                                                rt.typeId ??
+                                                '',
                                             ),
                                             label: rt.typeName ?? '',
                                         })),
@@ -453,18 +447,18 @@ const SeasonalTab: FC<Props> = (props) => {
                             filterStartDate ||
                             filterEndDate ||
                             filterRoomType) && (
-                            <button
-                                onClick={() => {
-                                    setSearchName('');
-                                    setFilterStartDate('');
-                                    setFilterEndDate('');
-                                    setFilterRoomType('');
-                                }}
-                                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                            >
-                                Clear all filters
-                            </button>
-                        )}
+                                <button
+                                    onClick={() => {
+                                        setSearchName('');
+                                        setFilterStartDate('');
+                                        setFilterEndDate('');
+                                        setFilterRoomType('');
+                                    }}
+                                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                                >
+                                    Clear all filters
+                                </button>
+                            )}
                     </div>
                 </CardHeader>
 
@@ -564,7 +558,7 @@ const SeasonalTab: FC<Props> = (props) => {
 
                                                 <TableCell className="py-4 px-6">
                                                     {labels.length === 1 &&
-                                                    labels[0] ===
+                                                        labels[0] ===
                                                         'All room types' ? (
                                                         <span className="inline-flex items-left px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
                                                             All types
@@ -585,12 +579,12 @@ const SeasonalTab: FC<Props> = (props) => {
                                                                 ))}
                                                             {labels.length >
                                                                 3 && (
-                                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-50 text-gray-600">
-                                                                    +
-                                                                    {labels.length -
-                                                                        3}
-                                                                </span>
-                                                            )}
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-50 text-gray-600">
+                                                                        +
+                                                                        {labels.length -
+                                                                            3}
+                                                                    </span>
+                                                                )}
                                                         </div>
                                                     )}
                                                 </TableCell>
@@ -713,8 +707,8 @@ const SeasonalTab: FC<Props> = (props) => {
                                                     selected={
                                                         newSeason.startDate
                                                             ? new Date(
-                                                                  newSeason.startDate,
-                                                              )
+                                                                newSeason.startDate,
+                                                            )
                                                             : new Date()
                                                     }
                                                     onSelect={(date) => {
@@ -764,13 +758,13 @@ const SeasonalTab: FC<Props> = (props) => {
                                                     selected={
                                                         newSeason.endDate
                                                             ? new Date(
-                                                                  newSeason.endDate,
-                                                              )
+                                                                newSeason.endDate,
+                                                            )
                                                             : newSeason.startDate
-                                                            ? new Date(
-                                                                  newSeason.startDate,
-                                                              )
-                                                            : new Date()
+                                                                ? new Date(
+                                                                    newSeason.startDate,
+                                                                )
+                                                                : new Date()
                                                     }
                                                     onSelect={(date) => {
                                                         setNewSeason({
@@ -856,11 +850,10 @@ const SeasonalTab: FC<Props> = (props) => {
                                                 {roomSelectionLabel()}
                                             </span>
                                             <svg
-                                                className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
-                                                    roomSelectOpen
+                                                className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${roomSelectOpen
                                                         ? 'rotate-180'
                                                         : ''
-                                                }`}
+                                                    }`}
                                                 fill="none"
                                                 stroke="currentColor"
                                                 viewBox="0 0 24 24"
@@ -905,10 +898,10 @@ const SeasonalTab: FC<Props> = (props) => {
                                                             newSeason.roomTypes ??
                                                             []
                                                         ).includes('ALL') && (
-                                                            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
-                                                                Selected
-                                                            </span>
-                                                        )}
+                                                                <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
+                                                                    Selected
+                                                                </span>
+                                                            )}
                                                     </label>
                                                 </div>
 
@@ -924,9 +917,9 @@ const SeasonalTab: FC<Props> = (props) => {
                                                         roomTypes.map((rt) => {
                                                             const id = String(
                                                                 rt.roomTypeID ??
-                                                                    rt.id ??
-                                                                    rt.typeId ??
-                                                                    '',
+                                                                rt.id ??
+                                                                rt.typeId ??
+                                                                '',
                                                             );
                                                             const label =
                                                                 rt.typeName ??
@@ -945,13 +938,12 @@ const SeasonalTab: FC<Props> = (props) => {
                                                             return (
                                                                 <label
                                                                     key={id}
-                                                                    className={`flex items-center justify-between px-4 py-3 rounded-lg transition-all cursor-pointer group ${
-                                                                        isDisabled
+                                                                    className={`flex items-center justify-between px-4 py-3 rounded-lg transition-all cursor-pointer group ${isDisabled
                                                                             ? 'opacity-50 cursor-not-allowed'
                                                                             : checked
-                                                                            ? 'bg-blue-50 hover:bg-blue-100'
-                                                                            : 'hover:bg-gray-50'
-                                                                    }`}
+                                                                                ? 'bg-blue-50 hover:bg-blue-100'
+                                                                                : 'hover:bg-gray-50'
+                                                                        }`}
                                                                 >
                                                                     <div className="flex items-center gap-3 flex-1">
                                                                         <input
@@ -967,19 +959,17 @@ const SeasonalTab: FC<Props> = (props) => {
                                                                                     id,
                                                                                 )
                                                                             }
-                                                                            className={`w-5 h-5 text-blue-600 border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
-                                                                                isDisabled
+                                                                            className={`w-5 h-5 text-blue-600 border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${isDisabled
                                                                                     ? 'cursor-not-allowed'
                                                                                     : 'cursor-pointer'
-                                                                            }`}
+                                                                                }`}
                                                                         />
                                                                         <span
-                                                                            className={`text-sm font-medium ${
-                                                                                checked &&
-                                                                                !isDisabled
+                                                                            className={`text-sm font-medium ${checked &&
+                                                                                    !isDisabled
                                                                                     ? 'text-blue-700'
                                                                                     : 'text-gray-700'
-                                                                            } group-hover:text-gray-900`}
+                                                                                } group-hover:text-gray-900`}
                                                                         >
                                                                             {String(
                                                                                 label,
@@ -1012,12 +1002,11 @@ const SeasonalTab: FC<Props> = (props) => {
                                                         []
                                                     ).includes('ALL')
                                                         ? 'All room types are selected'
-                                                        : `${
-                                                              (
-                                                                  newSeason.roomTypes ??
-                                                                  []
-                                                              ).length
-                                                          } room type(s) selected`}
+                                                        : `${(
+                                                            newSeason.roomTypes ??
+                                                            []
+                                                        ).length
+                                                        } room type(s) selected`}
                                                 </div>
                                             </div>
                                         )}

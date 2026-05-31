@@ -1,6 +1,6 @@
 import { api } from './apiClient';
 import axios from 'axios';
-import type { SeasonPrice } from '../types/SeasonPrice';
+import type { SeasonPrice, SeasonalPriceDTO } from '../types/SeasonPrice';
 
 const ENDPOINT = '/api/principle/seasonal-prices';
 
@@ -8,7 +8,7 @@ export const getAllSeasonalPrices = async (): Promise<SeasonPrice[]> => {
     try {
         const response = await api.get(ENDPOINT);
         return response.data;
-    } catch (error: Error | unknown) {
+    } catch (error: unknown) {
         console.error('Error fetching seasonal prices:', error);
         throw formatAxiosError(error);
     }
@@ -20,7 +20,7 @@ export const getSeasonalPriceById = async (
     try {
         const response = await api.get(`${ENDPOINT}/${id}`);
         return response.data;
-    } catch (error: Error | unknown) {
+    } catch (error: unknown) {
         console.error(`Error fetching seasonal price ${id}:`, error);
         throw formatAxiosError(error);
     }
@@ -32,21 +32,17 @@ export const getSeasonalPriceById = async (
  * Backend method: createOrUpdateSeasonPrice
  * - If seasonalPrice.id is null/undefined -> create new
  * - If seasonalPrice.id exists -> update existing
- * @param priceDTO - Contains seasonalPrice and roomTypeIDs
+ * @param priceDTO - Matches backend SeasonalPriceDTO
  * @returns Promise<SeasonPrice>
  */
-export async function saveSeasonalPriceWithRoomTypes(priceDTO: {
-    seasonalPrice: Partial<SeasonPrice>;
-    roomTypeIDs?: string[];
-}): Promise<SeasonPrice> {
+export async function saveSeasonalPriceWithRoomTypes(
+    priceDTO: SeasonalPriceDTO,
+): Promise<SeasonPrice> {
     try {
-        const res = await api.post(
-            `${ENDPOINT}`,
-            priceDTO,
-        );
+        const res = await api.post(`${ENDPOINT}`, priceDTO);
         return res.data;
-    } catch (err: Error | unknown) {
-        const action = priceDTO.seasonalPrice.id ? 'updating' : 'creating';
+    } catch (err: unknown) {
+        const action = priceDTO.id ? 'updating' : 'creating';
         console.error(`Error ${action} seasonal price:`, err);
         throw formatAxiosError(err);
     }
@@ -61,13 +57,13 @@ export const deleteSeasonalPrice = async (id: string | number) => {
         console.error(`Error deleting seasonal price ${id}:`, err);
         if (axios.isAxiosError(err)) {
             const resp = err.response;
-            if (resp && resp.data) {
+            if (resp?.data) {
                 const data = resp.data;
                 const msg =
                     typeof data === 'string'
                         ? data
                         : (data as { message?: string }).message ??
-                          JSON.stringify(data);
+                        JSON.stringify(data);
                 throw new Error(msg);
             }
         }
@@ -75,12 +71,12 @@ export const deleteSeasonalPrice = async (id: string | number) => {
     }
 };
 
-// Additional endpoints that return PriceDTOs (seasonal prices with room-type details)
-export const getAllSeasonalPrices_RoomType = async (): Promise<[]> => {
+// Additional endpoints that return seasonal prices with room-type details
+export const getAllSeasonalPrices_RoomType = async (): Promise<unknown[]> => {
     try {
         const response = await api.get(`${ENDPOINT}`);
         return response.data;
-    } catch (error: Error | unknown) {
+    } catch (error: unknown) {
         console.error('Error fetching seasonal prices room types:', error);
         throw formatAxiosError(error);
     }
@@ -88,21 +84,21 @@ export const getAllSeasonalPrices_RoomType = async (): Promise<[]> => {
 
 export const getSeasonalPrice_RoomTypeById = async (
     id: string | number,
-): Promise<Error | unknown> => {
+): Promise<any> => {
     try {
         const response = await api.get(`${ENDPOINT}/room-types/${id}`);
         return response.data;
-    } catch (error: Error | unknown) {
+    } catch (error: unknown) {
         console.error(`Error fetching seasonal price room type ${id}:`, error);
         throw formatAxiosError(error);
     }
 };
 
 // helper to normalize axios/server errors
-function formatAxiosError(err: Error | unknown): Error {
+function formatAxiosError(err: unknown): Error {
     if (axios.isAxiosError(err)) {
         const resp = err.response;
-        if (resp && resp.data) {
+        if (resp?.data) {
             const data = resp.data;
             const msg =
                 typeof data === 'string'

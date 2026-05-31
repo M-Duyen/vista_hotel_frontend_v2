@@ -1,4 +1,4 @@
-/*eslint-disable */
+/* eslint-disable no-unused-vars, @typescript-eslint/no-unused-vars */
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Header from '../../components/Header';
@@ -117,12 +117,6 @@ export default function BookingDetailPage() {
         ) {
             setShowCancelModal(true);
         }
-    };
-
-    const hasSubmittedRequest = (type?: 'EARLY' | 'LATE') => {
-        if (type === 'EARLY') return Boolean(earlyCheckinRequest);
-        if (type === 'LATE') return Boolean(lateCheckoutRequest);
-        return Boolean(earlyCheckinRequest || lateCheckoutRequest);
     };
 
     const isActionLocked = () => {
@@ -317,6 +311,11 @@ export default function BookingDetailPage() {
         0,
     );
 
+    const roomSubtotal = details.reduce(
+        (sum, detail) => sum + (detail.roomPrice || 0),
+        0,
+    );
+
     const mapBookingServices = (
         rawServices: any[],
         checkInDate?: string,
@@ -364,16 +363,16 @@ export default function BookingDetailPage() {
                 roomNumbers: Array.isArray(item.roomNumber)
                     ? item.roomNumber
                     : item.roomNumber
-                      ? [item.roomNumber]
-                      : undefined,
+                        ? [item.roomNumber]
+                        : undefined,
                 room:
                     item.room ||
                     (item.roomNumber
                         ? {
-                              roomNumber: Array.isArray(item.roomNumber)
-                                  ? item.roomNumber[0]
-                                  : item.roomNumber,
-                          }
+                            roomNumber: Array.isArray(item.roomNumber)
+                                ? item.roomNumber[0]
+                                : item.roomNumber,
+                        }
                         : undefined),
                 scheduledDate:
                     item.scheduledDate || checkInDate?.split('T')[0] || '',
@@ -470,11 +469,11 @@ export default function BookingDetailPage() {
         const roomNumbers =
             serviceForm.roomNumber === 'ALL'
                 ? details
-                      .map((d) => d.room.roomNumber)
-                      .filter((rn): rn is string => Boolean(rn))
+                    .map((d) => d.room.roomNumber)
+                    .filter((rn): rn is string => Boolean(rn))
                 : serviceForm.roomNumber
-                  ? [serviceForm.roomNumber]
-                  : [];
+                    ? [serviceForm.roomNumber]
+                    : [];
 
         if (roomNumbers.length === 0) {
             alert('Please select at least one room for this service.');
@@ -490,12 +489,10 @@ export default function BookingDetailPage() {
         }
 
         const totalQuantity = serviceForm.quantity;
-        const totalAmount = selectedService.price * totalQuantity;
         const servicePayload = {
             serviceId: selectedService.serviceID,
             quantity: totalQuantity,
             roomNumber: roomNumbers,
-            totalAmount,
             orderStatus: editingService?.orderStatus || 'PLACE',
             paymentMethod: editingService?.paymentMethod || 'CASH',
         };
@@ -793,7 +790,7 @@ export default function BookingDetailPage() {
                 {/* BACK */}
                 <div className="mb-6">
                     <button
-                        onClick={() => window.history.back()}
+                        onClick={() => globalThis.history.back()}
                         className="text-black flex items-center gap-2 font-medium"
                     >
                         <svg
@@ -914,9 +911,9 @@ export default function BookingDetailPage() {
                                 Rooms Booked
                             </h3>
                             <div className="space-y-4">
-                                {details.map((detail, i) => (
+                                {details.map((detail) => (
                                     <div
-                                        key={i}
+                                        key={detail.room.roomNumber}
                                         className="bg-[#F5F0EB] p-5 rounded-xl border"
                                     >
                                         <div className="flex justify-between">
@@ -945,10 +942,11 @@ export default function BookingDetailPage() {
                                         <div className="flex gap-2 mt-3 overflow-x-auto">
                                             {detail.room.images
                                                 ?.slice(0, 3)
-                                                .map((img, idx) => (
+                                                .map((img) => (
                                                     <img
-                                                        key={idx}
+                                                        key={img}
                                                         src={img}
+                                                        alt={detail.room.roomNumber}
                                                         className="w-24 h-20 rounded-lg object-cover border"
                                                     />
                                                 ))}
@@ -1029,13 +1027,13 @@ export default function BookingDetailPage() {
                                                         </span>
                                                         {item.service
                                                             .serviceCategory && (
-                                                            <span className="text-xs text-gray-500">
-                                                                {getServiceCategoryLabel(
-                                                                    item.service
-                                                                        .serviceCategory,
-                                                                )}
-                                                            </span>
-                                                        )}
+                                                                <span className="text-xs text-gray-500">
+                                                                    {getServiceCategoryLabel(
+                                                                        item.service
+                                                                            .serviceCategory,
+                                                                    )}
+                                                                </span>
+                                                            )}
                                                     </div>
                                                     <div className="flex flex-wrap gap-4 text-sm">
                                                         <div className="flex items-center gap-1">
@@ -1059,21 +1057,21 @@ export default function BookingDetailPage() {
                                                             (item.roomNumbers &&
                                                                 item.roomNumbers
                                                                     .length >
-                                                                    0)) && (
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="text-black/60">
-                                                                    Room:
-                                                                </span>
-                                                                <span className="font-medium text-[#c9b8a8]">
-                                                                    {item.roomNumbers?.join(
-                                                                        ', ',
-                                                                    ) ||
-                                                                        item
-                                                                            .room
-                                                                            ?.roomNumber}
-                                                                </span>
-                                                            </div>
-                                                        )}
+                                                                0)) && (
+                                                                <div className="flex items-center gap-1">
+                                                                    <span className="text-black/60">
+                                                                        Room:
+                                                                    </span>
+                                                                    <span className="font-medium text-[#c9b8a8]">
+                                                                        {item.roomNumbers?.join(
+                                                                            ', ',
+                                                                        ) ||
+                                                                            item
+                                                                                .room
+                                                                                ?.roomNumber}
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col items-end gap-2 ml-4">
@@ -1091,9 +1089,9 @@ export default function BookingDetailPage() {
                                                         (booking.status ===
                                                             'PENDING' ||
                                                             booking.status ===
-                                                                'WAITING' ||
+                                                            'WAITING' ||
                                                             booking.status ===
-                                                                'CHECKED_IN') &&
+                                                            'CHECKED_IN') &&
                                                         !isActionLocked() && (
                                                             <div className="flex gap-2">
                                                                 <button
@@ -1111,7 +1109,7 @@ export default function BookingDetailPage() {
                                                                     onClick={() =>
                                                                         setShowDeleteConfirm(
                                                                             item.id ||
-                                                                                null,
+                                                                            null,
                                                                         )
                                                                     }
                                                                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
@@ -1182,7 +1180,7 @@ export default function BookingDetailPage() {
                                         Room Subtotal
                                     </span>
                                     <span>
-                                        {booking.totalAmount?.toLocaleString()}{' '}
+                                        {roomSubtotal.toLocaleString()}{' '}
                                         VNĐ
                                     </span>
                                 </div>
@@ -1199,28 +1197,28 @@ export default function BookingDetailPage() {
                                 )}
                                 {earlyCheckinRequest?.approvalStatus ===
                                     'APPROVED' && (
-                                    <div className="flex justify-between">
-                                        <span className="text-black/70">
-                                            Early Check-in Fee
-                                        </span>
-                                        <span>
-                                            {earlyCheckinRequest.additionalFee?.toLocaleString()}{' '}
-                                            VNĐ
-                                        </span>
-                                    </div>
-                                )}
+                                        <div className="flex justify-between">
+                                            <span className="text-black/70">
+                                                Early Check-in Fee
+                                            </span>
+                                            <span>
+                                                {earlyCheckinRequest.additionalFee?.toLocaleString()}{' '}
+                                                VNĐ
+                                            </span>
+                                        </div>
+                                    )}
                                 {lateCheckoutRequest?.approvalStatus ===
                                     'APPROVED' && (
-                                    <div className="flex justify-between">
-                                        <span className="text-black/70">
-                                            Late Check-out Fee
-                                        </span>
-                                        <span>
-                                            {lateCheckoutRequest.additionalFee?.toLocaleString()}{' '}
-                                            VNĐ
-                                        </span>
-                                    </div>
-                                )}
+                                        <div className="flex justify-between">
+                                            <span className="text-black/70">
+                                                Late Check-out Fee
+                                            </span>
+                                            <span>
+                                                {lateCheckoutRequest.additionalFee?.toLocaleString()}{' '}
+                                                VNĐ
+                                            </span>
+                                        </div>
+                                    )}
                             </div>
                             <div className="border-t border-white/20 pt-4 flex justify-between items-center">
                                 <span className="text-lg font-semibold">
@@ -1228,16 +1226,16 @@ export default function BookingDetailPage() {
                                 </span>
                                 <span className="text-2xl font-bold">
                                     {(
-                                        (booking.totalAmount || 0) +
+                                        roomSubtotal +
                                         (earlyCheckinRequest?.approvalStatus ===
-                                        'APPROVED'
+                                            'APPROVED'
                                             ? earlyCheckinRequest.additionalFee ||
-                                              0
+                                            0
                                             : 0) +
                                         (lateCheckoutRequest?.approvalStatus ===
-                                        'APPROVED'
+                                            'APPROVED'
                                             ? lateCheckoutRequest.additionalFee ||
-                                              0
+                                            0
                                             : 0) +
                                         totalServicesCost
                                     ).toLocaleString()}{' '}
@@ -1254,7 +1252,7 @@ export default function BookingDetailPage() {
                             <div className="space-y-3">
                                 {renderEarlyCheckinButton()}
                                 {renderLateCheckoutButton()}
-                                {booking?.status === 'CHECKED_IN' &&
+                                {/* {booking?.status === 'CHECKED_IN' &&
                                     !isActionLocked() && (
                                         <button
                                             onClick={handleIncidentReport}
@@ -1263,7 +1261,7 @@ export default function BookingDetailPage() {
                                             <i className="fas fa-exclamation-triangle"></i>{' '}
                                             Report Incident
                                         </button>
-                                    )}
+                                    )} */}
                                 {canCancelBooking() && (
                                     <button
                                         onClick={handleCancelBooking}
@@ -1368,8 +1366,8 @@ export default function BookingDetailPage() {
                                                     getAppliedRoomCount(
                                                         p.roomNumber,
                                                     ),
-                                                    parseInt(e.target.value) ||
-                                                        1,
+                                                    Number.parseInt(e.target.value) ||
+                                                    1,
                                                 ),
                                             }))
                                         }
