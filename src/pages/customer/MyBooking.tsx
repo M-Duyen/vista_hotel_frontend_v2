@@ -226,20 +226,6 @@ export default function MyBookingsPage() {
         navigate(`/customer/mybooking/${bookingId}`);
     };
 
-    const handleReportIncident = (booking: Booking) => {
-        // Navigate to incident report page with booking details
-        const roomNumber = booking.bookingDetails?.[0]?.room?.roomNumber || '';
-        const roomId = booking.bookingDetails?.[0]?.room?.roomID || '';
-
-        navigate('/customer/room/incident', {
-            state: {
-                bookingId: booking.bookingID,
-                roomNumber: roomNumber,
-                roomId: roomId,
-                booking: booking,
-            },
-        });
-    };
 
     const formatDate = (dateString: string): string => {
         const date = new Date(dateString);
@@ -760,24 +746,7 @@ export default function MyBookingsPage() {
 
                                                     {/* ACTIONS */}
                                                     <div className="flex gap-3 mt-6">
-                                                        {/* Report Incident button - only show for CHECKED_IN status */}
-                                                        {booking.status ===
-                                                            'CHECKED_IN' && (
-                                                            <button
-                                                                onClick={() =>
-                                                                    handleReportIncident(
-                                                                        booking,
-                                                                    )
-                                                                }
-                                                                className="cursor-pointer flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg flex items-center justify-center gap-2"
-                                                            >
-                                                                <AlertTriangle
-                                                                    size={18}
-                                                                />
-                                                                Report Incident
-                                                            </button>
-                                                        )}
-
+                                                    
                                                         <button
                                                             onClick={() =>
                                                                 handleViewDetails(

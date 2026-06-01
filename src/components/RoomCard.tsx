@@ -156,26 +156,35 @@ function WishlistButton({ roomNumber }: { roomNumber?: string | number }) {
   };
 
   useEffect(() => {
-    const customerId = getCustomerId();
-    if (!customerId || !id) {
-      setInCart(false);
-      return;
-    }
-
-    // Fetch cart từ backend
-    getCartBeanByCustomerId(customerId)
-      .then((cart) => {
-        if (cart?.items) {
-          const isInCart = cart.items.some((room) => room.roomNumber === id);
-          setInCart(isInCart);
-        } else {
-          setInCart(false);
-        }
-      })
-      .catch((err) => {
-        console.debug("Failed to fetch cart", err);
+    const fetchCartStatus = () => {
+      const customerId = getCustomerId();
+      if (!customerId || !id) {
         setInCart(false);
-      });
+        return;
+      }
+
+      // Fetch cart từ backend
+      getCartBeanByCustomerId(customerId)
+        .then((cart) => {
+          if (cart?.items) {
+            const isInCart = cart.items.some((room) => room.roomNumber === id);
+            setInCart(isInCart);
+          } else {
+            setInCart(false);
+          }
+        })
+        .catch((err) => {
+          console.debug("Failed to fetch cart", err);
+          setInCart(false);
+        });
+    };
+
+    fetchCartStatus();
+
+    window.addEventListener("cartUpdated", fetchCartStatus);
+    return () => {
+      window.removeEventListener("cartUpdated", fetchCartStatus);
+    };
   }, [id]);
 
   const toggle = async (e: React.MouseEvent) => {
@@ -199,6 +208,7 @@ function WishlistButton({ roomNumber }: { roomNumber?: string | number }) {
         await addRoomToCart(customerId, id);
         setInCart(true);
       }
+      window.dispatchEvent(new Event("cartUpdated"));
     } catch (err) {
       console.error("Failed to toggle cart", err);
       alert("Failed to update cart. Please try again.");
