@@ -8,6 +8,9 @@ export interface AiChatRequest {
 export interface AiChatResponse {
   content: string;
   showRoomCards: boolean;
+  uiType?: string;
+  uiData?: unknown;
+  intent?: string;
 }
 
 export interface MessageDTO {
@@ -15,6 +18,9 @@ export interface MessageDTO {
   content: string;
   timestamp: string; // ISO string
   showRoomCards: boolean;
+  uiType?: string;
+  uiData?: unknown;
+  intent?: string;
 }
 
 export interface ChatHistoryItem {

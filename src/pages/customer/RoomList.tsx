@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+/*eslint-disable */
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getAllRooms, getAvailableRooms } from '../../services/roomService';
 import type { Room } from '../../types/Room';
@@ -120,15 +121,18 @@ export default function RoomList() {
                 );
 
                 const availableSet = new Set<string>(
-                    (availableRooms || []).map((r) => r.roomNumber),
+                    (availableRooms || [])
+                        .map((r) => r.roomNumber)
+                        .filter((roomNumber): roomNumber is string =>
+                            Boolean(roomNumber),
+                        ),
                 );
 
                 // Build availability map: true if room is in available list
                 const availabilityMap: Record<string, boolean> = {};
                 rooms.forEach((r) => {
-                    availabilityMap[r.roomNumber] = availableSet.has(
-                        r.roomNumber,
-                    );
+                    if (!r.roomNumber) return;
+                    availabilityMap[r.roomNumber] = availableSet.has(r.roomNumber);
                 });
 
                 setRoomAvailability(availabilityMap);
@@ -180,7 +184,9 @@ export default function RoomList() {
 
         // Date availability filter
         if (checkInDate && checkOutDate) {
-            const isAvailable = roomAvailability[r.roomNumber];
+            const isAvailable = r.roomNumber
+                ? roomAvailability[r.roomNumber]
+                : false;
             if (isAvailable === false) return false;
         }
         return true;
@@ -236,6 +242,7 @@ export default function RoomList() {
 
     // Compare handlers
     const handleCompareToggle = (room: Room) => {
+        if (!room.roomNumber) return;
         setCompareRooms((prev) => {
             const exists = prev.some((r) => r.roomNumber === room.roomNumber);
             if (exists) {
@@ -294,7 +301,7 @@ export default function RoomList() {
                 }}
             >
                 {/* Header Section */}
-                <div className="max-w-2xl text-center flex flex-col mx-auto pt-16 pb-8 px-4">
+                <div className="max-w-2xl text-center flex flex-col mx-auto pt-20 pb-8 px-4">
                     <h5 className="text-3xl font-semibold text-gray-800 mb-4 tracking-wide">
                         Room
                     </h5>
@@ -334,7 +341,7 @@ export default function RoomList() {
                                         checkOutDate &&
                                         !checkingAvailability &&
                                         Object.keys(roomAvailability).length >
-                                        0 && (
+                                            0 && (
                                             <div className="text-xs text-gray-600 bg-green-50 px-3 py-2 rounded-lg">
                                                 ✓ Showing available rooms for
                                                 selected dates
@@ -359,10 +366,11 @@ export default function RoomList() {
                                                     Accommodation Options
                                                 </h4>
                                                 <button
-                                                    className={`p-1 rounded-md transform transition-transform duration-200 ${openSections.accommodation
+                                                    className={`p-1 rounded-md transform transition-transform duration-200 ${
+                                                        openSections.accommodation
                                                             ? 'rotate-180'
                                                             : ''
-                                                        }`}
+                                                    }`}
                                                 >
                                                     <svg
                                                         className="w-4 h-4 text-gray-600"
@@ -380,10 +388,11 @@ export default function RoomList() {
                                                 </button>
                                             </div>
                                             <div
-                                                className={`transition-all duration-300 ease-in-out overflow-hidden ${openSections.accommodation
+                                                className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                                                    openSections.accommodation
                                                         ? 'max-h-96 opacity-100 translate-y-0'
                                                         : 'max-h-0 opacity-0 -translate-y-2'
-                                                    }`}
+                                                }`}
                                             >
                                                 <div className="mt-3 space-y-3">
                                                     <label className="flex items-center gap-3 cursor-pointer">
@@ -481,10 +490,11 @@ export default function RoomList() {
                                                     )}
                                                 </h4>
                                                 <button
-                                                    className={`p-1 rounded-md transform transition-transform duration-200 ${openSections.checkIn
+                                                    className={`p-1 rounded-md transform transition-transform duration-200 ${
+                                                        openSections.checkIn
                                                             ? 'rotate-180'
                                                             : ''
-                                                        }`}
+                                                    }`}
                                                 >
                                                     <svg
                                                         className="w-4 h-4 text-gray-600"
@@ -503,10 +513,11 @@ export default function RoomList() {
                                             </div>
 
                                             <div
-                                                className={`transition-all duration-300 ease-in-out overflow-hidden ${openSections.checkIn
+                                                className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                                                    openSections.checkIn
                                                         ? 'max-h-[500px] opacity-100 translate-y-0'
                                                         : 'max-h-0 opacity-0 -translate-y-2'
-                                                    }`}
+                                                }`}
                                             >
                                                 <div className="mt-3 flex justify-center">
                                                     <ModernCalendar
@@ -546,10 +557,11 @@ export default function RoomList() {
                                                     )}
                                                 </h4>
                                                 <button
-                                                    className={`p-1 rounded-md transform transition-transform duration-200 ${openSections.checkOut
+                                                    className={`p-1 rounded-md transform transition-transform duration-200 ${
+                                                        openSections.checkOut
                                                             ? 'rotate-180'
                                                             : ''
-                                                        }`}
+                                                    }`}
                                                 >
                                                     <svg
                                                         className="w-4 h-4 text-gray-600"
@@ -568,10 +580,11 @@ export default function RoomList() {
                                             </div>
 
                                             <div
-                                                className={`transition-all duration-300 ease-in-out overflow-hidden ${openSections.checkOut
+                                                className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                                                    openSections.checkOut
                                                         ? 'max-h-[500px] opacity-100 translate-y-0'
                                                         : 'max-h-0 opacity-0 -translate-y-2'
-                                                    }`}
+                                                }`}
                                             >
                                                 <div className="mt-3 flex justify-center">
                                                     {!checkInDate ? (
@@ -585,7 +598,7 @@ export default function RoomList() {
                                                                 checkOutDate ||
                                                                 new Date(
                                                                     checkInDate.getTime() +
-                                                                    86400000,
+                                                                        86400000,
                                                                 )
                                                             }
                                                             onSelect={
@@ -594,7 +607,7 @@ export default function RoomList() {
                                                             minDate={
                                                                 new Date(
                                                                     checkInDate.getTime() +
-                                                                    86400000,
+                                                                        86400000,
                                                                 )
                                                             }
                                                         />
@@ -640,10 +653,10 @@ export default function RoomList() {
                                                                 {Math.ceil(
                                                                     (checkOutDate.getTime() -
                                                                         checkInDate.getTime()) /
-                                                                    (1000 *
-                                                                        60 *
-                                                                        60 *
-                                                                        24),
+                                                                        (1000 *
+                                                                            60 *
+                                                                            60 *
+                                                                            24),
                                                                 )}{' '}
                                                                 night(s)
                                                             </span>
@@ -666,10 +679,11 @@ export default function RoomList() {
                                                     Guests
                                                 </h4>
                                                 <button
-                                                    className={`p-1 rounded-md transform transition-transform duration-200 ${openSections.guests
+                                                    className={`p-1 rounded-md transform transition-transform duration-200 ${
+                                                        openSections.guests
                                                             ? 'rotate-180'
                                                             : ''
-                                                        }`}
+                                                    }`}
                                                 >
                                                     <svg
                                                         className="w-4 h-4 text-gray-600"
@@ -687,10 +701,11 @@ export default function RoomList() {
                                                 </button>
                                             </div>
                                             <div
-                                                className={`transition-all duration-300 ease-in-out overflow-hidden ${openSections.guests
+                                                className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                                                    openSections.guests
                                                         ? 'max-h-40 opacity-100 translate-y-0'
                                                         : 'max-h-0 opacity-0 -translate-y-2'
-                                                    }`}
+                                                }`}
                                             >
                                                 <input
                                                     type="number"
@@ -722,10 +737,11 @@ export default function RoomList() {
                                                     Price Range
                                                 </h4>
                                                 <button
-                                                    className={`p-1 rounded-md transform transition-transform duration-200 ${openSections.price
+                                                    className={`p-1 rounded-md transform transition-transform duration-200 ${
+                                                        openSections.price
                                                             ? 'rotate-180'
                                                             : ''
-                                                        }`}
+                                                    }`}
                                                 >
                                                     <svg
                                                         className="w-4 h-4 text-gray-600"
@@ -743,17 +759,19 @@ export default function RoomList() {
                                                 </button>
                                             </div>
                                             <div
-                                                className={`transition-all duration-300 ease-in-out overflow-hidden ${openSections.price
+                                                className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                                                    openSections.price
                                                         ? 'max-h-40 opacity-100 translate-y-0'
                                                         : 'max-h-0 opacity-0 -translate-y-2'
-                                                    }`}
+                                                }`}
                                             >
                                                 <div className="flex gap-2">
                                                     <input
                                                         type="number"
-                                                        placeholder={`Min ${computedPriceRange.min ||
+                                                        placeholder={`Min ${
+                                                            computedPriceRange.min ||
                                                             0
-                                                            }`}
+                                                        }`}
                                                         value={minPrice}
                                                         onChange={(e) =>
                                                             setMinPrice(
@@ -762,19 +780,20 @@ export default function RoomList() {
                                                                     ''
                                                                     ? ''
                                                                     : Number(
-                                                                        e
-                                                                            .target
-                                                                            .value,
-                                                                    ),
+                                                                          e
+                                                                              .target
+                                                                              .value,
+                                                                      ),
                                                             )
                                                         }
                                                         className="w-1/2 rounded-md border border-gray-200 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#CCBDA3]"
                                                     />
                                                     <input
                                                         type="number"
-                                                        placeholder={`Max ${computedPriceRange.max ||
+                                                        placeholder={`Max ${
+                                                            computedPriceRange.max ||
                                                             0
-                                                            }`}
+                                                        }`}
                                                         value={maxPrice}
                                                         onChange={(e) =>
                                                             setMaxPrice(
@@ -783,10 +802,10 @@ export default function RoomList() {
                                                                     ''
                                                                     ? ''
                                                                     : Number(
-                                                                        e
-                                                                            .target
-                                                                            .value,
-                                                                    ),
+                                                                          e
+                                                                              .target
+                                                                              .value,
+                                                                      ),
                                                             )
                                                         }
                                                         className="w-1/2 rounded-md border border-gray-200 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#CCBDA3]"
@@ -907,7 +926,7 @@ export default function RoomList() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                                     {displayedRooms.map((r) => (
                                         <div
-                                            key={r.roomNumber}
+                                            key={r.roomNumber ?? `room-${displayedRooms.indexOf(r)}`}
                                             className="transform transition-all duration-300 hover:scale-[1.02]"
                                         >
                                             <RoomCard

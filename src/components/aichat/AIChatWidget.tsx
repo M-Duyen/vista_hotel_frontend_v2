@@ -150,11 +150,14 @@ const AIChatWidget: React.FC = () => {
 
   const convertRoomTypesToCards = (types: RoomType[]): RoomCard[] => {
     return types.slice(0, 3).map((type) => ({
-      id: type.roomTypeID,
-      name: type.typeName,
+      id: type.roomTypeID ?? type.typeName ?? "room-type",
+      name: type.typeName ?? "Room",
       features: `${type.maxOccupancy} Guests • ${type.area}m²`,
       price: `${type.basePrice?.toLocaleString("vi-VN")} VND per night`,
-      image: type.roomTypeImage || "https://via.placeholder.com/300",
+      image:
+        typeof type.roomTypeImage === "string" && type.roomTypeImage.trim()
+          ? type.roomTypeImage
+          : "https://via.placeholder.com/300",
     }));
   };
 

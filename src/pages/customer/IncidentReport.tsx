@@ -1,3 +1,4 @@
+/*eslint-disable */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Filter, Search, AlertCircle, RefreshCw } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';

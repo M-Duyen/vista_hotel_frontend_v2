@@ -5,7 +5,13 @@ export interface Booking {
     actualCheckInTime: string | null;
     actualCheckOUtTime: string | null;
     numberOfGuests: number;
-    status: 'PENDING' | 'WAITING' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED';
+    status:
+        | 'PENDING'
+        | 'WAITING'
+        | 'CONFIRMED'
+        | 'CHECKED_IN'
+        | 'CHECKED_OUT'
+        | 'CANCELLED';
     specialRequests?: string;
     bookingDate: string;
     cancellationDate?: string;

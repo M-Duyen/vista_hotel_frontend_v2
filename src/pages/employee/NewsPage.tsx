@@ -158,10 +158,9 @@ const NewsPage: React.FC = () => {
                                 <div className="mt-4">
                                     <a
                                         href={`/news/${highlightNews.newsId}`}
-                                        className="text-[12px] uppercase tracking-widest text-slate-700 hover:text-black inline-flex items-center gap-2 transition-colors"
+                                        className="text-[12px] uppercase tracking-widest text-slate-700 hover:text-black inline-flex items-center gap-2 transition-colors hover:underline hover:underline-offset-4 hover:decoration-slate-700"
                                     >
                                         Chi tiết
-                                        <span className="inline-block h-px w-6 bg-slate-400" />
                                     </a>
                                 </div>
                             </div>

@@ -224,7 +224,7 @@ const Contact: React.FC = () => {
 
                         <p className="mt-10 text-sm text-gray-500 text-justify">
                             By clicking "Send", you confirm that you have read
-                            the Privacy Statement and agree to Vélvere's
+                            the Privacy Statement and agree to Vista
                             processing of your personal data.
                         </p>
                     </div>
