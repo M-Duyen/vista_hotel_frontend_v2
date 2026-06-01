@@ -1,6 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Check, Minus, Minimize2, Maximize2 } from 'lucide-react';
 import type { Room } from '../../types/Room';
+import {
+    addRoomToCart,
+    removeRoomFromCart,
+    getCartBeanByCustomerId,
+} from '../../services/cartBeanService';
 
 interface RoomCompareModalProps {
     rooms: Room[];
@@ -15,8 +21,89 @@ export default function RoomCompareModal({
     onRemoveRoom,
     onMinimizeChange,
 }: RoomCompareModalProps) {
+    const navigate = useNavigate();
     const [isMinimized, setIsMinimized] = useState(false);
     const [showDifferencesOnly, setShowDifferencesOnly] = useState(false);
+
+    const [cartRoomNumbers, setCartRoomNumbers] = useState<string[]>([]);
+    const [cartLoading, setCartLoading] = useState<Record<string, boolean>>({});
+
+    const getCustomerId = (): string | null => {
+        try {
+            const userDataStr = localStorage.getItem("user");
+            const userData = userDataStr ? JSON.parse(userDataStr) : null;
+            return userData?.data?.id || userData?.id || null;
+        } catch (error) {
+            console.debug("Failed to get customer ID", error);
+            return null;
+        }
+    };
+
+    useEffect(() => {
+        const customerId = getCustomerId();
+        if (!customerId) return;
+
+        getCartBeanByCustomerId(customerId)
+            .then((cart) => {
+                if (cart?.items) {
+                    setCartRoomNumbers(cart.items.map((item: any) => item.roomNumber?.toString()));
+                }
+            })
+            .catch((err) => {
+                console.debug("Failed to fetch cart in compare modal", err);
+            });
+    }, [rooms]);
+
+    const handleToggleCart = async (roomNumber: string) => {
+        const customerId = getCustomerId();
+        if (!customerId) {
+            alert("Please log in to add items to cart");
+            navigate("/auth/login");
+            return;
+        }
+
+        if (cartLoading[roomNumber]) return;
+
+        const inCart = cartRoomNumbers.includes(roomNumber);
+
+        try {
+            setCartLoading(prev => ({ ...prev, [roomNumber]: true }));
+            if (inCart) {
+                await removeRoomFromCart(customerId, roomNumber);
+                setCartRoomNumbers(prev => prev.filter(id => id !== roomNumber));
+            } else {
+                await addRoomToCart(customerId, roomNumber);
+                setCartRoomNumbers(prev => [...prev, roomNumber]);
+            }
+
+            // Dispatch event to notify RoomCard or other components about cart changes
+            window.dispatchEvent(new Event("cartUpdated"));
+        } catch (err) {
+            console.error("Failed to update cart", err);
+            alert("Failed to update cart. Please try again.");
+        } finally {
+            setCartLoading(prev => ({ ...prev, [roomNumber]: false }));
+        }
+    };
+
+    const handleBookNow = (roomNumber: string) => {
+        const userDataStr = localStorage.getItem("user");
+        const userData = userDataStr ? JSON.parse(userDataStr) : null;
+        const isLoggedIn = !!(userData?.data?.id || userData?.id);
+
+        if (!isLoggedIn) {
+            alert("Please log in to book a room");
+            navigate("/auth/login");
+            return;
+        }
+
+        navigate("/customer/bookingPage", {
+            state: {
+                selectedRooms: [roomNumber],
+                bookingType: "DAILY"
+            }
+        });
+    };
 
     const handleMinimize = (minimized: boolean) => {
         setIsMinimized(minimized);
@@ -376,9 +463,47 @@ export default function RoomCompareModal({
                                                         );
                                                     })}
                                                 </tr>
-                                            ),
+                                            )
                                         )
                                     )}
+                                    {/* Actions Row */}
+                                    <tr className="bg-white">
+                                        <td className="sticky left-0 px-4 py-4 text-sm font-medium text-gray-700 border-b border-gray-200 z-10 bg-inherit">
+                                            Actions
+                                        </td>
+                                        {rooms.map((room) => (
+                                            <td
+                                                key={room.roomNumber}
+                                                className="px-6 py-4 text-center border-b border-l border-gray-200"
+                                            >
+                                                <div className="flex flex-col gap-2 px-2">
+                                                    <button
+                                                        onClick={() => room.roomNumber && handleBookNow(room.roomNumber)}
+                                                        className="w-full px-4 py-2 text-sm font-semibold text-white bg-[#CCBDA3] rounded-lg hover:bg-[#b8a88a] transition-all duration-200 shadow-sm hover:shadow"
+                                                    >
+                                                        Book Now
+                                                    </button>
+                                                    <button
+                                                        onClick={() => room.roomNumber && handleToggleCart(room.roomNumber)}
+                                                        disabled={room.roomNumber ? cartLoading[room.roomNumber] : false}
+                                                        className={`w-full px-4 py-2 text-sm font-semibold rounded-lg border transition-all duration-200 flex items-center justify-center gap-2 ${
+                                                            room.roomNumber && cartRoomNumbers.includes(room.roomNumber)
+                                                                ? 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
+                                                                : 'bg-white border-[#CCBDA3] text-[#CCBDA3] hover:bg-[#CCBDA3]/10'
+                                                        }`}
+                                                    >
+                                                        {room.roomNumber && cartLoading[room.roomNumber] ? (
+                                                            <span className="animate-spin text-xs">⏳ Loading...</span>
+                                                        ) : room.roomNumber && cartRoomNumbers.includes(room.roomNumber) ? (
+                                                            'Remove from Cart'
+                                                        ) : (
+                                                            'Add to Cart'
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        ))}
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -391,9 +516,6 @@ export default function RoomCompareModal({
                                     className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                                 >
                                     Close
-                                </button>
-                                <button className="px-6 py-2.5 text-sm font-medium text-white bg-[#CCBDA3] rounded-lg hover:bg-[#b8a88a] transition-colors">
-                                    Book Now
                                 </button>
                             </div>
                         </div>
