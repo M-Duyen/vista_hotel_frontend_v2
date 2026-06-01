@@ -6,6 +6,7 @@ import {
   FaChartLine,
 } from "react-icons/fa";
 import type { RevenueData } from "../../types/Report";
+import { formatVnd } from "./serviceReportUtils";
 
 interface RevenueSummaryProps {
   data: RevenueData[];
@@ -15,20 +16,24 @@ const RevenueSummary: React.FC<RevenueSummaryProps> = ({ data }) => {
   const calculateSummary = () => {
     if (data.length === 0) return null;
 
-    const totalRevenue = data.reduce((sum, item) => sum + item.totalRevenue, 0);
+    const totalRevenue = data.reduce(
+      (sum, item) => sum + Number(item.totalRevenue || 0),
+      0
+    );
     const totalRoomRevenue = data.reduce(
-      (sum, item) => sum + item.roomRevenue,
+      (sum, item) => sum + Number(item.roomRevenue || 0),
       0
     );
     const totalServiceRevenue = data.reduce(
-      (sum, item) => sum + item.serviceRevenue,
+      (sum, item) => sum + Number(item.serviceRevenue || 0),
       0
     );
     const totalBookings = data.reduce(
-      (sum, item) => sum + item.bookingCount,
+      (sum, item) => sum + Number(item.bookingCount || 0),
       0
     );
-    const avgRevenuePerBooking = totalRevenue / totalBookings;
+    const avgRevenuePerBooking =
+      totalBookings > 0 ? totalRevenue / totalBookings : 0;
 
     // Calculate growth rate (compare last period with previous period)
     const halfLength = Math.floor(data.length / 2);
@@ -36,11 +41,11 @@ const RevenueSummary: React.FC<RevenueSummaryProps> = ({ data }) => {
     const secondHalf = data.slice(halfLength);
 
     const firstHalfRevenue = firstHalf.reduce(
-      (sum, item) => sum + item.totalRevenue,
+      (sum, item) => sum + Number(item.totalRevenue || 0),
       0
     );
     const secondHalfRevenue = secondHalf.reduce(
-      (sum, item) => sum + item.totalRevenue,
+      (sum, item) => sum + Number(item.totalRevenue || 0),
       0
     );
     const growthRate =
@@ -72,8 +77,8 @@ const RevenueSummary: React.FC<RevenueSummaryProps> = ({ data }) => {
       iconColor: "#00C853",
       bgColor: "rgba(0, 200, 83, 0.1)",
       title: "Total Revenue",
-      value: `${summary.totalRevenue.toLocaleString("vi-VN")} VND`,
-      subtitle: `Room: ${summary.totalRoomRevenue.toLocaleString("vi-VN")} VND`,
+      value: formatVnd(summary.totalRevenue),
+      subtitle: `Room: ${formatVnd(summary.totalRoomRevenue)}`,
     },
     {
       icon: <FaChartLine />,
@@ -94,10 +99,11 @@ const RevenueSummary: React.FC<RevenueSummaryProps> = ({ data }) => {
       iconColor: "#2196F3",
       bgColor: "rgba(33, 150, 243, 0.1)",
       title: "Service Revenue",
-      value: `${summary.totalServiceRevenue.toLocaleString("vi-VN")} VND`,
+      value: formatVnd(summary.totalServiceRevenue),
       subtitle: `${(
-        (summary.totalServiceRevenue / summary.totalRevenue) *
-        100
+        summary.totalRevenue > 0
+          ? (summary.totalServiceRevenue / summary.totalRevenue) * 100
+          : 0
       ).toFixed(1)}% of total`,
     },
     {
@@ -105,7 +111,7 @@ const RevenueSummary: React.FC<RevenueSummaryProps> = ({ data }) => {
       iconColor: "#FF9800",
       bgColor: "rgba(255, 152, 0, 0.1)",
       title: "Avg Revenue/Booking",
-      value: `${summary.avgRevenuePerBooking.toLocaleString("vi-VN")} VND`,
+      value: formatVnd(summary.avgRevenuePerBooking),
       subtitle: `From ${summary.totalBookings} bookings`,
     },
   ];

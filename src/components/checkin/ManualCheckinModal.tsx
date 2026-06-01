@@ -1,6 +1,10 @@
 /*eslint-disable*/
 import React, { useState, useEffect, useRef } from "react";
 import { FaCalendarCheck, FaWalking, FaClock, FaSearch } from "react-icons/fa";
+import { DatePicker } from "antd";
+import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
+import "antd/dist/reset.css";
 import { searchBookings } from "../../services/bookingService";
 import IDScannerModal from "./IDScannerModal";
 import type { IDCardInfo } from "../../types/IDCardInfo";
@@ -19,6 +23,7 @@ import WalkInService, {
 import { calculateHourlyRate } from "../../services/hourlyRate";
 import type { HourlyRateCalculation } from "../../types/HourlyRate";
 import { calculateRoomPrice } from "../../services/pricingService";
+import { FiMaximize2, FiMinimize2, FiX } from "react-icons/fi";
 
 type ManualCheckinModalProps = {
   isOpen: boolean;
@@ -28,6 +33,15 @@ type ManualCheckinModalProps = {
 
 function ManualCheckinModal({ isOpen, onClose, onSuccess }: ManualCheckinModalProps) {
   const [activeOption, setActiveOption] = useState("booking");
+  const [isMaximized, setIsMaximized] = useState(false);
+  const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStateRef = useRef({
+    startX: 0,
+    startY: 0,
+    initialX: 0,
+    initialY: 0,
+  });
 
   // Walk-in states
   const [walkInData, setWalkInData] = useState({
@@ -89,6 +103,44 @@ function ManualCheckinModal({ isOpen, onClose, onSuccess }: ManualCheckinModalPr
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isCalculatingRate, setIsCalculatingRate] = useState(false);
 
+  const today = dayjs().startOf("day");
+
+  const toDatePickerValue = (value: string): Dayjs | null =>
+    value ? dayjs(value, "YYYY-MM-DD") : null;
+
+  const setWalkInDate = (field: "birthDate" | "checkInDate" | "checkOutDate", value: Dayjs | null) => {
+    setWalkInData((prev) => {
+      const next = {
+        ...prev,
+        [field]: value ? value.format("YYYY-MM-DD") : "",
+      };
+      if (field === "checkInDate" && next.checkOutDate && value && !dayjs(next.checkOutDate).isAfter(value, "day")) {
+        next.checkOutDate = "";
+        next.roomNumber = "";
+      }
+      if (field === "checkOutDate") {
+        next.roomNumber = "";
+      }
+      return next;
+    });
+    if (field === "checkInDate" || field === "checkOutDate") {
+      setSelectedRoomType("");
+      setAvailableRooms([]);
+    }
+  };
+
+  const setHourlyDate = (field: "birthDate" | "checkInDate", value: Dayjs | null) => {
+    const formatted = value ? value.format("YYYY-MM-DD") : "";
+    if (field === "birthDate") {
+      setHourlyData((prev) => ({ ...prev, birthDate: formatted }));
+      return;
+    }
+    setCheckInDate(formatted);
+    setHourlyData((prev) => ({ ...prev, roomType: "", roomNumber: "" }));
+    setHourlyAvailableRooms([]);
+    setHourlyRateCalculation(null);
+  };
+
   useEffect(() => {
     if (activeOption === "walkin") {
       loadRoomTypes();
@@ -102,6 +154,27 @@ function ManualCheckinModal({ isOpen, onClose, onSuccess }: ManualCheckinModalPr
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      setModalPosition({
+        x: dragStateRef.current.initialX + event.clientX - dragStateRef.current.startX,
+        y: dragStateRef.current.initialY + event.clientY - dragStateRef.current.startY,
+      });
+    };
+
+    const handleMouseUp = () => setIsDragging(false);
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging]);
 
   useEffect(() => {
     if (checkInDate && checkInTime && duration && hourlyData.roomType) {
@@ -155,10 +228,20 @@ function ManualCheckinModal({ isOpen, onClose, onSuccess }: ManualCheckinModalPr
     if (!hourlyData.firstName.trim()) return "First name is required";
     if (!hourlyData.lastName.trim()) return "Last name is required";
     if (!hourlyData.phone.trim()) return "Phone number is required";
+    const birthDateError = validateBirthDate(hourlyData.birthDate);
+    if (birthDateError) return birthDateError;
     if (!hourlyData.roomNumber) return "Please select a room";
     if (!checkInDate) return "Check-in date is required";
     if (!checkInTime) return "Check-in time is required";
     if (!duration) return "Duration is required";
+
+    const checkInDateError = validateFutureDate(checkInDate, "Check-in date");
+    if (checkInDateError) return checkInDateError;
+
+    const checkInDateTime = dayjs(`${checkInDate}T${checkInTime}`);
+    if (!checkInDateTime.isValid()) return "Check-in time is invalid";
+    if (checkInDateTime.isBefore(dayjs())) return "Check-in time cannot be in the past";
+
     if (!hourlyRateCalculation || !hourlyRateCalculation.totalAmount) {
       return "Please wait for rate calculation to complete";
     }
@@ -570,20 +653,46 @@ function ManualCheckinModal({ isOpen, onClose, onSuccess }: ManualCheckinModalPr
     setCheckOutTime(`${checkOutHours}:${checkOutMinutes}`);
   };
 
+  const validateBirthDate = (birthDate: string, label = "Birth date"): string | null => {
+    if (!birthDate) return null;
+
+    const date = dayjs(birthDate);
+    if (!date.isValid()) return `${label} is invalid`;
+    if (!date.isBefore(today, "day")) return `${label} must be before today`;
+
+    const age = today.diff(date, "year");
+    if (age < 16) return `${label} must indicate the guest is at least 16 years old`;
+
+    return null;
+  };
+
+  const validateFutureDate = (dateValue: string, label: string): string | null => {
+    const date = dayjs(dateValue);
+    if (!date.isValid()) return `${label} is invalid`;
+    if (date.isBefore(today, "day")) return `${label} cannot be in the past`;
+    return null;
+  };
+
   const validateWalkInForm = (): string | null => {
     if (!walkInData.firstName.trim()) return "First name is required";
     if (!walkInData.lastName.trim()) return "Last name is required";
     if (!walkInData.phone.trim()) return "Phone number is required";
+    const birthDateError = validateBirthDate(walkInData.birthDate);
+    if (birthDateError) return birthDateError;
     if (!walkInData.roomNumber) return "Please select a room";
     if (!walkInData.checkInDate) return "Check-in date is required";
     if (!walkInData.checkOutDate) return "Check-out date is required";
     if (walkInData.numberOfGuests < 1)
       return "Number of guests must be at least 1";
 
-    const checkIn = new Date(walkInData.checkInDate);
-    const checkOut = new Date(walkInData.checkOutDate);
+    const checkInError = validateFutureDate(walkInData.checkInDate, "Check-in date");
+    if (checkInError) return checkInError;
 
-    if (checkOut <= checkIn) {
+    const checkIn = dayjs(walkInData.checkInDate);
+    const checkOut = dayjs(walkInData.checkOutDate);
+
+    if (!checkOut.isValid()) return "Check-out date is invalid";
+    if (!checkOut.isAfter(checkIn, "day")) {
       return "Check-out date must be after check-in date";
     }
 
@@ -774,27 +883,87 @@ function ManualCheckinModal({ isOpen, onClose, onSuccess }: ManualCheckinModalPr
     setShowIDScanner(false);
   };
 
+  const handleModalDragStart = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (isMaximized || event.button !== 0) return;
+
+    dragStateRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      initialX: modalPosition.x,
+      initialY: modalPosition.y,
+    };
+    setIsDragging(true);
+  };
+
+  const toggleMaximized = () => {
+    setIsMaximized((prev) => !prev);
+    setModalPosition({ x: 0, y: 0 });
+  };
+
   if (!isOpen) return null;
 
   return (
     <>
       <div className="fixed inset-0 bg-black/60 z-40" onClick={onClose}></div>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="fixed inset-0 z-50 pointer-events-none">
         <div
-          className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-xl animate-[modalFadeIn_0.3s]"
+          className={`bg-white rounded-lg shadow-xl animate-[modalFadeIn_0.3s] pointer-events-auto ${
+            isMaximized ? "fixed overflow-y-auto" : "fixed overflow-auto"
+          }`}
           onClick={(e) => e.stopPropagation()}
+          style={
+            isMaximized
+              ? {
+                  inset: "1rem",
+                  width: "calc(100vw - 2rem)",
+                  height: "calc(100vh - 2rem)",
+                }
+              : {
+                  left: "50%",
+                  top: "50%",
+                  width: "min(96vw, 1120px)",
+                  maxHeight: "92vh",
+                  minWidth: "min(760px, calc(100vw - 2rem))",
+                  minHeight: "560px",
+                  resize: "both",
+                  transform: `translate(calc(-50% + ${modalPosition.x}px), calc(-50% + ${modalPosition.y}px))`,
+                }
+          }
         >
           {/* Header */}
-          <div className="p-5 border-b border-[#EBE3D7] sticky top-0 bg-white z-10 flex justify-between items-center">
+          <div
+            className={`p-5 border-b border-[#EBE3D7] sticky top-0 bg-white z-10 flex justify-between items-center ${
+              isMaximized ? "" : isDragging ? "cursor-grabbing" : "cursor-grab"
+            }`}
+            onMouseDown={handleModalDragStart}
+          >
             <h2 className="text-2xl font-playfair font-semibold">
               Manual Check-in
             </h2>
-            <button
-              onClick={onClose}
-              className="text-2xl text-gray-500 hover:text-black"
-            >
-              &times;
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={toggleMaximized}
+                className="w-9 h-9 flex items-center justify-center rounded-md border border-[#EBE3D7] text-gray-600 hover:bg-[#F5F0EB] hover:text-black transition"
+                aria-label={isMaximized ? "Restore modal" : "Maximize modal"}
+              >
+                {isMaximized ? (
+                  <FiMinimize2 size={18} />
+                ) : (
+                  <FiMaximize2 size={18} />
+                )}
+              </button>
+              <button
+                type="button"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={onClose}
+                className="w-9 h-9 flex items-center justify-center rounded-md border border-[#EBE3D7] text-gray-600 hover:bg-[#F5F0EB] hover:text-black transition"
+                aria-label="Close modal"
+              >
+                <FiX size={18} />
+              </button>
+            </div>
           </div>
 
           <div className="p-6">
@@ -1178,13 +1347,16 @@ function ManualCheckinModal({ isOpen, onClose, onSuccess }: ManualCheckinModalPr
                     >
                       Birth Date
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
                       id="birthDate"
-                      name="birthDate"
-                      value={walkInData.birthDate}
-                      onChange={handleWalkInInputChange}
-                      className="w-full p-2.5 border border-[#EBE3D7] rounded-md focus:outline-none focus:ring-2 focus:ring-[#CCBDA3]"
+                      value={toDatePickerValue(walkInData.birthDate)}
+                      onChange={(value) => setWalkInDate("birthDate", value)}
+                      disabledDate={(current) =>
+                        Boolean(current && current.isAfter(today.subtract(16, "year"), "day"))
+                      }
+                      format="MM/DD/YYYY"
+                      placeholder="Select birth date"
+                      className="w-full h-[42px] border-[#EBE3D7]"
                     />
                   </div>
 
@@ -1213,15 +1385,16 @@ function ManualCheckinModal({ isOpen, onClose, onSuccess }: ManualCheckinModalPr
                     >
                       Check-in Date*
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
                       id="checkInDate"
-                      name="checkInDate"
-                      required
-                      value={walkInData.checkInDate}
-                      onChange={handleWalkInInputChange}
-                      min={new Date().toISOString().split("T")[0]}
-                      className="w-full p-2.5 border border-[#EBE3D7] rounded-md focus:outline-none focus:ring-2 focus:ring-[#CCBDA3]"
+                      value={toDatePickerValue(walkInData.checkInDate)}
+                      onChange={(value) => setWalkInDate("checkInDate", value)}
+                      disabledDate={(current) =>
+                        Boolean(current && current.isBefore(today, "day"))
+                      }
+                      format="MM/DD/YYYY"
+                      placeholder="Select check-in date"
+                      className="w-full h-[42px] border-[#EBE3D7]"
                     />
                   </div>
 
@@ -1232,18 +1405,20 @@ function ManualCheckinModal({ isOpen, onClose, onSuccess }: ManualCheckinModalPr
                     >
                       Check-out Date*
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
                       id="checkOutDate"
-                      name="checkOutDate"
-                      required
-                      value={walkInData.checkOutDate}
-                      onChange={handleWalkInInputChange}
-                      min={
-                        walkInData.checkInDate ||
-                        new Date().toISOString().split("T")[0]
-                      }
-                      className="w-full p-2.5 border border-[#EBE3D7] rounded-md focus:outline-none focus:ring-2 focus:ring-[#CCBDA3]"
+                      value={toDatePickerValue(walkInData.checkOutDate)}
+                      onChange={(value) => setWalkInDate("checkOutDate", value)}
+                      disabledDate={(current) => {
+                        if (!current) return false;
+                        const minDate = walkInData.checkInDate
+                          ? dayjs(walkInData.checkInDate)
+                          : today;
+                        return !current.isAfter(minDate, "day");
+                      }}
+                      format="MM/DD/YYYY"
+                      placeholder="Select check-out date"
+                      className="w-full h-[42px] border-[#EBE3D7]"
                     />
                   </div>
 
@@ -1515,13 +1690,16 @@ function ManualCheckinModal({ isOpen, onClose, onSuccess }: ManualCheckinModalPr
                     >
                       Birth Date
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
                       id="hourlyBirthDate"
-                      name="birthDate"
-                      value={hourlyData.birthDate}
-                      onChange={handleHourlyInputChange}
-                      className="w-full p-2.5 border border-[#EBE3D7] rounded-md focus:outline-none focus:ring-2 focus:ring-[#CCBDA3]"
+                      value={toDatePickerValue(hourlyData.birthDate)}
+                      onChange={(value) => setHourlyDate("birthDate", value)}
+                      disabledDate={(current) =>
+                        Boolean(current && current.isAfter(today.subtract(16, "year"), "day"))
+                      }
+                      format="MM/DD/YYYY"
+                      placeholder="Select birth date"
+                      className="w-full h-[42px] border-[#EBE3D7]"
                     />
                   </div>
 
@@ -1550,14 +1728,16 @@ function ManualCheckinModal({ isOpen, onClose, onSuccess }: ManualCheckinModalPr
                     >
                       Check-in Date*
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
                       id="checkInDate"
-                      required
-                      value={checkInDate}
-                      onChange={(e) => setCheckInDate(e.target.value)}
-                      min={new Date().toISOString().split("T")[0]}
-                      className="w-full p-2.5 border border-[#EBE3D7] rounded-md focus:outline-none focus:ring-2 focus:ring-[#CCBDA3]"
+                      value={toDatePickerValue(checkInDate)}
+                      onChange={(value) => setHourlyDate("checkInDate", value)}
+                      disabledDate={(current) =>
+                        Boolean(current && current.isBefore(today, "day"))
+                      }
+                      format="MM/DD/YYYY"
+                      placeholder="Select check-in date"
+                      className="w-full h-[42px] border-[#EBE3D7]"
                     />
                   </div>
 
@@ -1721,7 +1901,6 @@ function ManualCheckinModal({ isOpen, onClose, onSuccess }: ManualCheckinModalPr
                     <div className="p-4 bg-[#F5F0EB] rounded-md space-y-3">
                       {isCalculatingRate ? (
                         <div className="text-center text-gray-500 py-4">
-                          <span className="animate-spin inline-block">⏳</span>
                           <p className="text-sm mt-2">Calculating rate...</p>
                         </div>
                       ) : hourlyRateCalculation ? (

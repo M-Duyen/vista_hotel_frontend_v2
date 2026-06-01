@@ -14,28 +14,42 @@ import {
   AreaChart,
 } from "recharts";
 import type { RevenueData } from "../../types/Report";
+import { formatVnd } from "./serviceReportUtils";
 
 interface RevenueChartProps {
   data: RevenueData[];
   chartType?: "line" | "bar" | "area";
 }
 
+type RevenueTooltipPayload = {
+  name: string;
+  value: number;
+  color: string;
+  payload: { date: string };
+};
+
 const RevenueChart: React.FC<RevenueChartProps> = ({
   data,
   chartType = "area",
 }) => {
   const formatCurrency = (value: number) => {
-    return `${(value / 1000000).toFixed(1)}M`;
+    return `${(value / 1000000).toFixed(1)}M VND`;
   };
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+  }: {
+    active?: boolean;
+    payload?: RevenueTooltipPayload[];
+  }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-4 border border-[#EBE3D7] rounded-lg shadow-lg">
           <p className="font-semibold mb-2">{payload[0].payload.date}</p>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry, index) => (
             <p key={index} style={{ color: entry.color }} className="text-sm">
-              {entry.name}: {entry.value.toLocaleString("vi-VN")} VND
+              {entry.name}: {formatVnd(entry.value)}
             </p>
           ))}
         </div>

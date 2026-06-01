@@ -10,33 +10,70 @@ import {
     ResponsiveContainer,
 } from 'recharts';
 import type { ServiceData } from '../../types/Report';
+import {
+    formatVnd,
+    getServiceColor,
+    getServiceItems,
+} from './serviceReportUtils';
 
 interface ServiceChartProps {
     data: ServiceData[];
 }
 
-const ServiceChart: React.FC<ServiceChartProps> = ({ data }) => {
-    const formatCurrency = (value: number) => {
-        return `${(value / 1000000).toFixed(1)}M`;
-    };
+type ServiceTooltipPayload = {
+    name: string;
+    value: number;
+    color: string;
+    payload: { date: string };
+};
 
-    const CustomTooltip = ({ active, payload }: any) => {
+const ServiceChart: React.FC<ServiceChartProps> = ({ data }) => {
+    const serviceItems = getServiceItems(data).slice(0, 8);
+    const serviceNames = serviceItems.map((item) => item.serviceName);
+
+    const chartData = data.map((row) => {
+        const rowData: Record<string, string | number> = { date: row.date };
+
+        if (Array.isArray(row.services) && row.services.length > 0) {
+            row.services.forEach((service) => {
+                rowData[service.serviceName] = Number(service.revenue || 0);
+            });
+        } else {
+            rowData['Food & Beverage'] = Number(row.foodBeverage || 0);
+            rowData.Laundry = Number(row.laundry || 0);
+            rowData.Spa = Number(row.spa || 0);
+            rowData.Transport = Number(row.transport || 0);
+            rowData.Tour = Number(row.tour || 0);
+            rowData.Others = Number(row.others || 0);
+        }
+
+        return rowData;
+    });
+
+    const CustomTooltip = ({
+        active,
+        payload,
+    }: {
+        active?: boolean;
+        payload?: ServiceTooltipPayload[];
+    }) => {
         if (active && payload && payload.length) {
             return (
                 <div className="bg-white p-4 border border-[#EBE3D7] rounded-lg shadow-lg">
                     <p className="font-semibold mb-2">
                         {payload[0].payload.date}
                     </p>
-                    {payload.map((entry: any, index: number) => (
-                        <p
-                            key={index}
-                            style={{ color: entry.color }}
-                            className="text-sm"
-                        >
-                            {entry.name}: {entry.value.toLocaleString('vi-VN')}{' '}
-                            VND
-                        </p>
-                    ))}
+                    {payload
+                        .filter((entry) => Number(entry.value || 0) > 0)
+                        .map((entry, index) => (
+                            <p
+                                key={index}
+                                style={{ color: entry.color }}
+                                className="text-sm"
+                            >
+                                {entry.name}: {formatVnd(entry.value)}
+                            </p>
+                        ))}
                 </div>
             );
         }
@@ -45,152 +82,37 @@ const ServiceChart: React.FC<ServiceChartProps> = ({ data }) => {
 
     return (
         <ResponsiveContainer width="100%" height={400}>
-            <AreaChart data={data}>
-                <defs>
-                    <linearGradient id="colorFood" x1="0" y1="0" x2="0" y2="1">
-                        <stop
-                            offset="5%"
-                            stopColor="#FF6B6B"
-                            stopOpacity={0.8}
-                        />
-                        <stop
-                            offset="95%"
-                            stopColor="#FF6B6B"
-                            stopOpacity={0.1}
-                        />
-                    </linearGradient>
-                    <linearGradient
-                        id="colorLaundry"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                    >
-                        <stop
-                            offset="5%"
-                            stopColor="#4ECDC4"
-                            stopOpacity={0.8}
-                        />
-                        <stop
-                            offset="95%"
-                            stopColor="#4ECDC4"
-                            stopOpacity={0.1}
-                        />
-                    </linearGradient>
-                    <linearGradient id="colorSpa" x1="0" y1="0" x2="0" y2="1">
-                        <stop
-                            offset="5%"
-                            stopColor="#9B59B6"
-                            stopOpacity={0.8}
-                        />
-                        <stop
-                            offset="95%"
-                            stopColor="#9B59B6"
-                            stopOpacity={0.1}
-                        />
-                    </linearGradient>
-                    <linearGradient
-                        id="colorTransport"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                    >
-                        <stop
-                            offset="5%"
-                            stopColor="#3498DB"
-                            stopOpacity={0.8}
-                        />
-                        <stop
-                            offset="95%"
-                            stopColor="#3498DB"
-                            stopOpacity={0.1}
-                        />
-                    </linearGradient>
-                    <linearGradient id="colorTour" x1="0" y1="0" x2="0" y2="1">
-                        <stop
-                            offset="5%"
-                            stopColor="#E67E22"
-                            stopOpacity={0.8}
-                        />
-                        <stop
-                            offset="95%"
-                            stopColor="#E67E22"
-                            stopOpacity={0.1}
-                        />
-                    </linearGradient>
-                    <linearGradient
-                        id="colorOthers"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                    >
-                        <stop
-                            offset="5%"
-                            stopColor="#95A5A6"
-                            stopOpacity={0.8}
-                        />
-                        <stop
-                            offset="95%"
-                            stopColor="#95A5A6"
-                            stopOpacity={0.1}
-                        />
-                    </linearGradient>
-                </defs>
+            <AreaChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#EBE3D7" />
                 <XAxis dataKey="date" stroke="#666" />
-                <YAxis tickFormatter={formatCurrency} stroke="#666" />
+                <YAxis
+                    tickFormatter={(value) => formatVnd(Number(value)).replace(' VND', '')}
+                    stroke="#666"
+                />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                <Area
-                    type="monotone"
-                    dataKey="foodBeverage"
-                    stackId="1"
-                    stroke="#FF6B6B"
-                    fill="url(#colorFood)"
-                    name="Food & Beverage"
-                />
-                <Area
-                    type="monotone"
-                    dataKey="laundry"
-                    stackId="1"
-                    stroke="#4ECDC4"
-                    fill="url(#colorLaundry)"
-                    name="Laundry"
-                />
-                <Area
-                    type="monotone"
-                    dataKey="spa"
-                    stackId="1"
-                    stroke="#9B59B6"
-                    fill="url(#colorSpa)"
-                    name="Spa"
-                />
-                <Area
-                    type="monotone"
-                    dataKey="transport"
-                    stackId="1"
-                    stroke="#3498DB"
-                    fill="url(#colorTransport)"
-                    name="Transport"
-                />
-                <Area
-                    type="monotone"
-                    dataKey="tour"
-                    stackId="1"
-                    stroke="#E67E22"
-                    fill="url(#colorTour)"
-                    name="Tour"
-                />
-                <Area
-                    type="monotone"
-                    dataKey="others"
-                    stackId="1"
-                    stroke="#95A5A6"
-                    fill="url(#colorOthers)"
-                    name="Others"
-                />
+                {serviceNames.map((serviceName, index) => {
+                    const color = getServiceColor(index);
+                    const gradientId = `serviceColor${index}`;
+                    return (
+                        <React.Fragment key={serviceName}>
+                            <defs>
+                                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={color} stopOpacity={0.8} />
+                                    <stop offset="95%" stopColor={color} stopOpacity={0.1} />
+                                </linearGradient>
+                            </defs>
+                            <Area
+                                type="monotone"
+                                dataKey={serviceName}
+                                stackId="1"
+                                stroke={color}
+                                fill={`url(#${gradientId})`}
+                                name={serviceName}
+                            />
+                        </React.Fragment>
+                    );
+                })}
             </AreaChart>
         </ResponsiveContainer>
     );

@@ -6,6 +6,7 @@ import type {
   ReviewData,
   BookingData,
   ServiceData,
+  ServiceRevenueItem,
   RoomOccupancyData,
 } from "../types/Report";
 
@@ -86,6 +87,7 @@ export interface ServiceReportData {
   others: number;
   totalOrders: number;
   avgOrderValue: number;
+  services?: ServiceRevenueItem[];
 }
 
 export const reportService = {

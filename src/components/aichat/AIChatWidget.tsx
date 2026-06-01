@@ -1,5 +1,6 @@
 /* eslint-disable */
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   sendChatMessage,
   startNewChat,
@@ -15,6 +16,10 @@ interface Message {
   content: string;
   time: string;
   roomCards?: RoomCard[];
+  uiType?: string;
+  uiData?: any;
+  intent?: string;
+  bookingDraft?: any;
 }
 
 interface RoomCard {
@@ -32,6 +37,7 @@ interface User {
 }
 
 const AIChatWidget: React.FC = () => {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -41,6 +47,13 @@ const AIChatWidget: React.FC = () => {
   const [, setCurrentSessionId] = useState<string | null>(null);
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
   const [hasNewMessage, setHasNewMessage] = useState(false);
+  const [selectedBookingType, setSelectedBookingType] = useState<"DAILY" | "HOURLY">("DAILY");
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [checkInDate, setCheckInDate] = useState("");
+  const [checkOutDate, setCheckOutDate] = useState("");
+  const [checkInTime, setCheckInTime] = useState("14:00");
+  const [durationHours, setDurationHours] = useState(3);
+  const [guestCount, setGuestCount] = useState(1);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -127,6 +140,18 @@ const AIChatWidget: React.FC = () => {
       }
     } catch (error) {
       console.error("Error initializing chat:", error);
+      setMessages([
+        {
+          id: 1,
+          type: "ai",
+          content:
+            "Hello! I'm Vista's AI concierge. How can I assist you today?",
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        },
+      ]);
     }
   };
 
@@ -158,14 +183,71 @@ const AIChatWidget: React.FC = () => {
     }));
   };
 
+  const asList = (value: any, key: string): any[] => {
+    if (Array.isArray(value)) return value;
+    if (Array.isArray(value?.[key])) return value[key];
+    return [];
+  };
+
+  const formatCurrency = (value: any) => {
+    const amount = Number(value);
+    return Number.isFinite(amount) ? `${amount.toLocaleString("vi-VN")} VND` : "";
+  };
+
+  const showLocalAiMessage = (content: string) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now() + 1,
+        type: "ai",
+        content,
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      },
+    ]);
+  };
+
+  const validateDateSelection = (bookingType?: string): string | null => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const inDate = checkInDate ? new Date(checkInDate) : null;
+    const outDate = checkOutDate ? new Date(checkOutDate) : null;
+
+    if (!inDate || Number.isNaN(inDate.getTime())) {
+      return "Vui lòng chọn ngày nhận phòng hợp lệ.";
+    }
+    if (inDate < today) {
+      return "Ngày nhận phòng không được nằm trong quá khứ.";
+    }
+    if (!Number.isFinite(guestCount) || guestCount < 1) {
+      return "Số khách phải từ 1 trở lên.";
+    }
+    if (bookingType === "HOURLY") {
+      if (!Number.isFinite(durationHours) || durationHours < 1) {
+        return "Số giờ thuê phải từ 1 giờ trở lên.";
+      }
+      return null;
+    }
+    if (!outDate || Number.isNaN(outDate.getTime())) {
+      return "Vui lòng chọn ngày trả phòng hợp lệ.";
+    }
+    if (outDate <= inDate) {
+      return "Ngày trả phòng phải sau ngày nhận phòng.";
+    }
+    return null;
+  };
+
   const handleChatPage = () => {
     window.location.href = "/chat";
   }
-  
-  const handleSend = async () => {
-    if (inputValue.trim() === "" || !user) return;
 
-    const userMessageContent = inputValue;
+  const sendDirectMessage = async (content: string) => {
+    if (content.trim() === "" || !user) return;
+
+    const userMessageContent = content.trim();
     const newMessage: Message = {
       id: Date.now(),
       type: "user",
@@ -188,6 +270,18 @@ const AIChatWidget: React.FC = () => {
       const response = await sendChatMessage(user.id, userMessageContent);
       setIsTyping(false);
 
+      if (response.uiType === "SERVICE_LIST") {
+        setSelectedServices([]);
+      }
+      if (response.uiType === "DATE_PICKER" && response.uiData?.bookingType) {
+        setSelectedBookingType(response.uiData.bookingType);
+        setCheckInDate(response.bookingDraft?.checkInDate || "");
+        setCheckOutDate(response.bookingDraft?.checkOutDate || "");
+        setCheckInTime(response.bookingDraft?.checkInTime || "14:00");
+        setDurationHours(response.bookingDraft?.durationHours || 3);
+        setGuestCount(response.bookingDraft?.guests || response.uiData?.guests || 1);
+      }
+
       const botMessage: Message = {
         id: Date.now() + 1,
         type: "ai",
@@ -196,9 +290,13 @@ const AIChatWidget: React.FC = () => {
           hour: "2-digit",
           minute: "2-digit",
         }),
-        roomCards: response.showRoomCards
+        roomCards: response.showRoomCards && (!response.uiType || response.uiType === "ROOM_GRID")
           ? convertRoomTypesToCards(roomTypes)
           : undefined,
+        uiType: response.uiType,
+        uiData: response.uiData,
+        intent: response.intent,
+        bookingDraft: response.bookingDraft,
       };
 
       setMessages((prev) => [...prev, botMessage]);
@@ -216,6 +314,10 @@ const AIChatWidget: React.FC = () => {
       };
       setMessages((prev) => [...prev, errorMessage]);
     }
+  };
+
+  const handleSend = async () => {
+    await sendDirectMessage(inputValue);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -241,6 +343,267 @@ const AIChatWidget: React.FC = () => {
 
   const handleMinimize = () => {
     setIsMinimized(!isMinimized);
+  };
+
+  const renderRichContent = (message: Message) => {
+    if (message.type !== "ai" || !message.uiType) return null;
+
+    if (message.uiType === "ROOM_GRID" && message.uiData) {
+      return (
+        <div className="mt-3 space-y-2">
+          {asList(message.uiData, "rooms").map((room: any) => {
+            const roomName = room.typeName || room.roomTypeName || room.name || `Phòng ${room.roomNumber || ""}`;
+            return (
+              <div
+                key={room.roomId || room.roomID || room.roomTypeID || room.roomNumber || roomName}
+                className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden"
+              >
+                {(room.roomTypeImage || room.image) && (
+                  <img
+                    src={room.roomTypeImage || room.image}
+                    alt={roomName}
+                    className="w-full h-24 object-cover"
+                  />
+                )}
+                <div className="p-2">
+                  <h4 className="font-bold text-xs text-gray-800">{roomName}</h4>
+                  <p className="text-xs text-gray-600">
+                    {room.maxOccupancy ? `${room.maxOccupancy} khách` : ""}
+                    {room.area ? ` • ${room.area}m²` : ""}
+                  </p>
+                  <p className="font-bold text-[#CCBDA3] text-xs mt-1">
+                    {formatCurrency(room.basePrice || room.price)}
+                  </p>
+                  <button
+                    onClick={() => sendDirectMessage(`Tôi muốn đặt phòng ${roomName}`)}
+                    className="mt-2 w-full py-1.5 bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white rounded-lg text-xs font-semibold"
+                  >
+                    Chọn phòng này
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (message.uiType === "BOOKING_TYPE_SELECT" && message.uiData?.options) {
+      return (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {(message.uiData.options as any[]).map((opt: any) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                setSelectedBookingType(opt.value === "HOURLY" ? "HOURLY" : "DAILY");
+                setSelectedServices([]);
+                setCheckInDate("");
+                setCheckOutDate("");
+                setGuestCount(1);
+                sendDirectMessage(`Tôi muốn đặt theo ${opt.label}`);
+              }}
+              className="p-2 bg-white border border-[#CCBDA3] rounded-lg text-left hover:bg-[#CCBDA3] hover:text-white transition-colors"
+            >
+              <div className="font-bold text-xs">{opt.label}</div>
+              {opt.description && (
+                <div className="text-[11px] mt-1 opacity-80">{opt.description}</div>
+              )}
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    if (message.uiType === "DATE_PICKER") {
+      const bookingType = message.uiData?.bookingType || selectedBookingType;
+      return (
+        <div className="mt-3 bg-gray-50 rounded-lg p-2 space-y-2">
+          <div>
+            <label className="text-xs font-semibold text-gray-600">Ngày nhận phòng</label>
+            <input
+              type="date"
+              value={checkInDate}
+              onChange={(e) => setCheckInDate(e.target.value)}
+              className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm"
+            />
+          </div>
+
+          {bookingType === "HOURLY" ? (
+            <>
+              <div>
+                <label className="text-xs font-semibold text-gray-600">Giờ nhận phòng</label>
+                <input
+                  type="time"
+                  value={checkInTime}
+                  onChange={(e) => setCheckInTime(e.target.value)}
+                  className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600">Số giờ thuê</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="24"
+                  value={durationHours}
+                  onChange={(e) => setDurationHours(Number(e.target.value))}
+                  className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm"
+                />
+              </div>
+            </>
+          ) : (
+            <div>
+              <label className="text-xs font-semibold text-gray-600">Ngày trả phòng</label>
+              <input
+                type="date"
+                value={checkOutDate}
+                onChange={(e) => setCheckOutDate(e.target.value)}
+                className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm"
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="text-xs font-semibold text-gray-600">Số khách</label>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              value={guestCount}
+              onChange={(e) => setGuestCount(Number(e.target.value))}
+              className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm"
+            />
+          </div>
+
+          <button
+            onClick={() => {
+              const validationError = validateDateSelection(bookingType);
+              if (validationError) {
+                showLocalAiMessage(validationError);
+                return;
+              }
+              const timeText =
+                bookingType === "HOURLY"
+                  ? `Nhận phòng ngày ${checkInDate} lúc ${checkInTime}, thuê ${durationHours} giờ`
+                  : `Nhận phòng ngày ${checkInDate}, trả phòng ngày ${checkOutDate}`;
+              sendDirectMessage(`${timeText} cho ${guestCount} khách`);
+            }}
+            className="w-full py-2 bg-[#CCBDA3] text-white rounded-lg text-sm font-semibold hover:bg-[#b8ac94]"
+          >
+            Xác nhận thời gian
+          </button>
+        </div>
+      );
+    }
+
+    if (message.uiType === "SERVICE_LIST" && message.uiData) {
+      return (
+        <div className="mt-3 space-y-2">
+          {asList(message.uiData, "services").map((svc: any) => {
+            const serviceId = String(svc.serviceID || svc.serviceId || svc.id || svc.serviceName);
+            const selected = selectedServices.includes(serviceId);
+            return (
+              <button
+                key={serviceId}
+                onClick={() => {
+                  setSelectedServices((prev) =>
+                    prev.includes(serviceId)
+                      ? prev.filter((id) => id !== serviceId)
+                      : [...prev, serviceId]
+                  );
+                }}
+                className={`w-full text-left p-2 rounded-lg border transition-colors ${
+                  selected
+                    ? "border-[#CCBDA3] bg-[#CCBDA3]/10"
+                    : "border-gray-200 bg-white hover:border-[#CCBDA3]"
+                }`}
+              >
+                <div className="flex justify-between gap-2">
+                  <div>
+                    <div className="text-xs font-semibold text-gray-800">{svc.serviceName || svc.name}</div>
+                    {svc.description && <div className="text-[11px] text-gray-500">{svc.description}</div>}
+                  </div>
+                  <div className="text-xs font-bold text-[#CCBDA3] whitespace-nowrap">
+                    {formatCurrency(svc.price)}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+          <button
+            onClick={() => {
+              const msg =
+                selectedServices.length > 0
+                  ? `Tôi muốn thêm dịch vụ: ${selectedServices.join(", ")}`
+                  : "Không đặt dịch vụ";
+              sendDirectMessage(msg);
+            }}
+            className="w-full py-2 bg-[#CCBDA3] text-white rounded-lg text-sm font-semibold hover:bg-[#b8ac94]"
+          >
+            Tiếp tục
+          </button>
+        </div>
+      );
+    }
+
+    if (message.uiType === "INVOICE_VIEW" && message.uiData) {
+      return (
+        <div className="mt-3 space-y-2">
+          {asList(message.uiData, "bookings").map((booking: any) => (
+            <div key={booking.bookingID || booking.id} className="bg-gray-50 border border-gray-200 rounded-lg p-2">
+              <div className="flex justify-between gap-2">
+                <div>
+                  <div className="font-bold text-xs text-gray-800">#{booking.bookingID || booking.id}</div>
+                  <div className="text-[11px] text-gray-500">
+                    {booking.checkInDate || ""} {booking.checkOutDate ? `→ ${booking.checkOutDate}` : ""}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[11px] px-2 py-1 rounded-full bg-gray-100 text-gray-700 font-semibold">
+                    {booking.status}
+                  </span>
+                  <div className="font-bold text-[#CCBDA3] text-xs mt-1">
+                    {formatCurrency(booking.totalAmount)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (message.uiType === "BOOKING_CONFIRM") {
+      return (
+        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+          <p className="text-sm text-green-700 font-semibold mb-2">Sẵn sàng đặt phòng!</p>
+          <button
+            onClick={() => {
+              const draft = message.bookingDraft || message.uiData?.draft || {};
+              navigate("/customer/bookingPage", {
+                state: {
+                  bookingType: draft.bookingType || selectedBookingType,
+                  fromAI: true,
+                  checkInDate: draft.checkInDate || checkInDate,
+                  checkOutDate: draft.checkOutDate || checkOutDate,
+                  hourlyCheckInDate: draft.checkInDate || checkInDate,
+                  checkInTime: draft.checkInTime || checkInTime,
+                  duration: draft.durationHours || durationHours,
+                  guests: draft.guests || guestCount,
+                  selectedServices: draft.selectedServiceIds || selectedServices,
+                  selectedRooms: draft.selectedRoomNumber ? [draft.selectedRoomNumber] : undefined,
+                },
+              });
+            }}
+            className="w-full py-2 bg-gradient-to-r from-[#CCBDA3] to-[#b8ac94] text-white rounded-lg text-sm font-bold"
+          >
+            Đến trang đặt phòng
+          </button>
+        </div>
+      );
+    }
+
+    return null;
   };
 
   if (!user) {
@@ -343,8 +706,10 @@ const AIChatWidget: React.FC = () => {
                             {message.content}
                           </p>
 
+                          {renderRichContent(message)}
+
                           {/* Room Cards */}
-                          {message.roomCards && (
+                          {!message.uiType && message.roomCards && (
                             <div className="mt-3 space-y-2">
                               {message.roomCards.map((room) => (
                                 <div

@@ -39,6 +39,7 @@ import ServiceDistribution from "../../../components/report/ServiceDistribution"
 import PopularServices from "../../../components/report/PopularServices";
 import { reportService } from "../../../services/reportService";
 import { getRevenueData } from "../../../services/revenueReportService";
+import { formatVnd } from "../../../components/report/serviceReportUtils";
 import LoyaltySummary from "../../../components/report/LoyaltySummary";
 import {
   exportLoyaltyToPDF,
@@ -372,13 +373,12 @@ const ReportPage: React.FC = () => {
                       </div>
                     </div>
                     <p className="text-3xl font-bold text-gray-900">
-                      $
-                      {(
+                      {formatVnd(
                         occupancyData.reduce(
                           (sum, item) => sum + item.averageRate,
                           0
                         ) / occupancyData.length
-                      ).toFixed(0)}
+                      )}
                     </p>
                     <p className="mt-1 text-sm text-gray-500">
                       Per room per night
@@ -395,10 +395,12 @@ const ReportPage: React.FC = () => {
                       </div>
                     </div>
                     <p className="text-3xl font-bold text-gray-900">
-                      $
-                      {occupancyData
-                        .reduce((sum, item) => sum + item.totalRevenue, 0)
-                        .toLocaleString()}
+                      {formatVnd(
+                        occupancyData.reduce(
+                          (sum, item) => sum + item.totalRevenue,
+                          0
+                        )
+                      )}
                     </p>
                     <p className="mt-1 text-sm text-gray-500">
                       Revenue from rooms
@@ -528,10 +530,10 @@ const ReportPage: React.FC = () => {
                               </span>
                             </td>
                             <td className="px-6 py-4 text-right text-gray-700">
-                              ${item.averageRate.toFixed(2)}
+                              {formatVnd(item.averageRate)}
                             </td>
                             <td className="px-6 py-4 text-right font-semibold text-[#B8935F]">
-                              ${item.totalRevenue.toLocaleString()}
+                              {formatVnd(item.totalRevenue)}
                             </td>
                           </tr>
                         ))}

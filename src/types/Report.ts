@@ -75,6 +75,15 @@ export interface ServiceData {
   others: number;
   totalOrders: number;
   avgOrderValue: number;
+  services?: ServiceRevenueItem[];
+}
+
+export interface ServiceRevenueItem {
+  serviceId?: string;
+  serviceName: string;
+  serviceCategory?: string;
+  orders: number;
+  revenue: number;
 }
 
 export interface RoomOccupancyData {
