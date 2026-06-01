@@ -33,7 +33,12 @@ export default function ReviewItem({
   // Hiển thị tên và avatar khách hàng
   const getCustomerName = () => {
     if (review.isAnonymous) return "Anonymous Guest";
-    return review.customer?.fullName || review.customer?.userName || "Guest";
+    return (
+      review.customer?.fullName ||
+      review.customer?.userName ||
+      review.customerId ||
+      "Guest"
+    );
   };
 
   const getCustomerAvatar = () => {

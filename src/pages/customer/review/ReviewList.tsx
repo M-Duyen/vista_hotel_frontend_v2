@@ -9,6 +9,7 @@ import { uploadReviewImagesToCloudinary } from "../../../services/cloudinaryServ
 import { useParams } from "react-router-dom";
 import type { Booking } from "../../../types/Booking";
 import { getBookingById } from "../../../services/bookingService";
+import { useToastContext } from "../../../hooks/useToastContext";
 
 interface ReviewModalState {
   isOpen: boolean;
@@ -18,6 +19,7 @@ interface ReviewModalState {
 
 export default function ReviewsList() {
   const { id } = useParams();
+  const toast = useToastContext();
   const [reviews, setReviews] = useState<Record<string, Review>>({});
   const [booking, setBooking] = useState<Booking>();
   const [modalState, setModalState] = useState<ReviewModalState>({
@@ -120,7 +122,7 @@ export default function ReviewsList() {
 
   const handleSubmitReview = async (reviewData: any) => {
     if (!modalState.bookingID || !modalState.bookingDetail) {
-      alert("Missing booking information");
+      toast.error("Missing booking information");
       return;
     }
 
@@ -143,7 +145,7 @@ export default function ReviewsList() {
           console.log("Successfully uploaded image URLs:", imageUrls);
         } catch (uploadError) {
           console.error("Failed to upload images:", uploadError);
-          alert("Failed to upload images. Please try again.");
+          toast.error("Failed to upload images. Please try again.");
           return;
         }
       }
@@ -173,11 +175,11 @@ export default function ReviewsList() {
         [`${bookingID}-${roomNumber}`]: { ...reviewData, images: imageUrls },
       }));
 
-      alert("Review submitted successfully!");
+      toast.success("Review submitted successfully!", { duration: 2000 });
       handleCloseReview();
     } catch (error) {
       console.error("Error saving review:", error);
-      alert("Failed to save review. Please try again.");
+      toast.error("Failed to save review. Please try again.");
     }
   };
 

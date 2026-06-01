@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type JSX } from 'react';
+import { useState, useEffect, type JSX } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Search,
@@ -46,7 +46,6 @@ export default function MyBookingsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string>('');
     const toast = useToastContext();
-    const didFetchBookings = useRef(false);
 
     // Get current user from localStorage or context
     const getCurrentUser = () => {
@@ -68,11 +67,6 @@ export default function MyBookingsPage() {
 
     // Fetch user's bookings from API
     useEffect(() => {
-        if (didFetchBookings.current) {
-            return;
-        }
-        didFetchBookings.current = true;
-
         const fetchUserBookings = async () => {
             try {
                 setLoading(true);
@@ -274,6 +268,11 @@ export default function MyBookingsPage() {
         navigate(`/customer/reviews/${bookingId}`);
     };
 
+    const hasBookingReview = (booking: Booking) =>
+        booking.bookingDetails?.some((bookingDetail) =>
+            Boolean(bookingDetail.review),
+        ) ?? false;
+
     const handlePayment = async (bookingId: string) => {
         try {
             const booking = await getBookingById(bookingId);
@@ -465,6 +464,8 @@ export default function MyBookingsPage() {
                                     const roomDetail =
                                         booking.bookingDetails?.[0];
                                     const room = roomDetail?.room;
+                                    const alreadyReviewed =
+                                        hasBookingReview(booking);
 
                                     return (
                                         <div
@@ -760,7 +761,7 @@ export default function MyBookingsPage() {
                                                     {/* ACTIONS */}
                                                     <div className="flex gap-3 mt-6">
                                                         {/* Report Incident button - only show for CHECKED_IN status */}
-                                                        {/* {booking.status ===
+                                                        {booking.status ===
                                                             'CHECKED_IN' && (
                                                             <button
                                                                 onClick={() =>
@@ -775,7 +776,7 @@ export default function MyBookingsPage() {
                                                                 />
                                                                 Report Incident
                                                             </button>
-                                                        )} */}
+                                                        )}
 
                                                         <button
                                                             onClick={() =>
@@ -795,16 +796,26 @@ export default function MyBookingsPage() {
                                                         {booking.status ===
                                                             'CHECKED_OUT' && (
                                                             <button
-                                                                className="flex-1 bg-black hover:bg-black/90 text-white py-3 px-6 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg flex items-center justify-center gap-2"
+                                                                className={`flex-1 py-3 px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${
+                                                                    alreadyReviewed
+                                                                        ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                                                                        : 'bg-amber-400 hover:bg-amber-400/90 text-white hover:shadow-lg'
+                                                                }`}
+                                                                disabled={
+                                                                    alreadyReviewed
+                                                                }
                                                                 onClick={() =>
                                                                     handleNavigate(
                                                                         booking.bookingID,
                                                                     )
                                                                 }
                                                             >
-                                                                Reviews
+                                                                {alreadyReviewed
+                                                                    ? 'Reviewed'
+                                                                    : 'Reviews'}
                                                             </button>
                                                         )}
+
                                                         {/* PAYMENT */}
                                                         {booking.paymentStatus ===
                                                             'PENDING' &&
