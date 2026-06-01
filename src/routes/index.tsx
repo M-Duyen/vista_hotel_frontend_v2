@@ -23,6 +23,7 @@ import IncidentManagement from "../pages/employee/IncidentManagement";
 
 import Home from "../pages/customer/Home";
 import RoomList from "../pages/customer/RoomList";
+import SearchResults from "../pages/search/SearchResults";
 import Dashboard from "../pages/admin/dashboard/Dashboard.tsx";
 import NewsDetail from "../pages/admin/news/NewsDetail.tsx";
 import RoomDetail from "../pages/customer/RoomDetail.tsx";
@@ -222,6 +223,7 @@ export const router = createBrowserRouter([
       { path: "incident-report", element: <IncidentReport /> },
       { path: "/contact", element: <Contact /> },
       { path: "/bookingPage", element: <BookingPage /> },
+      { path: "search", element: <SearchResults /> },
       { path: "room", element: <RoomList /> },
       { path: "room/:id", element: <RoomDetail /> },
       { path: "service", element: <ServiceList /> },
@@ -245,6 +247,7 @@ export const router = createBrowserRouter([
       { path: "room/:id", element: <RoomDetail /> },
       { path: "service", element: <ServiceList /> },
       { path: "bookingPage", element: <BookingPage /> },
+      { path: "search", element: <SearchResults /> },
       { path: "mybooking", element: <MyBookings /> },
       { path: "mybooking/:id", element: <BookingDetailPage /> },
       { path: "payment", element: <PaymentPage /> },

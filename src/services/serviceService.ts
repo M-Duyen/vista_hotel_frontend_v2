@@ -42,13 +42,20 @@ export const getServicesByAvailability = async (
 export const searchServicesByName = async (
   serviceName: string
 ): Promise<Service[]> => {
+  return searchServices({ q: serviceName });
+};
+
+// Tìm kiếm dịch vụ theo nhiều điều kiện
+export const searchServices = async (params: {
+  q?: string;
+  serviceCategory?: string;
+  availability?: boolean;
+}): Promise<Service[]> => {
   try {
-    const response = await api.get(`${ENDPOINT}/name`, {
-      params: { serviceName },
-    });
+    const response = await api.get(`${ENDPOINT}/search`, { params });
     return response.data;
   } catch (error) {
-    console.error("Error searching services by name:", error);
+    console.error("Error searching services:", error);
     throw error;
   }
 };

@@ -14,12 +14,14 @@ interface RoomCardProps {
   room: Room;
   onCompareToggle?: (room: Room) => void;
   isInCompare?: boolean;
+  to?: string;
 }
 
 export default function RoomCard({
   room,
   onCompareToggle,
   isInCompare = false,
+  to = `/customer/room/${room.roomNumber}`,
 }: RoomCardProps) {
   const images = (room.images as string[] | undefined) || room.images || [];
   const title = room.roomType?.typeName || room.roomNumber || "Room";
@@ -47,7 +49,7 @@ export default function RoomCard({
 
   return (
     <div className="relative group">
-      <Link to={`/customer/room/${room.roomNumber}`}>
+      <Link to={to}>
         <Card className="w-full max-w-md items-center mx-auto overflow-hidden rounded-xl hover:shadow-xl transition-shadow duration-300 ease-in-out mb-5 border-0 shadow-sm">
           <div className="relative ">
             <div className="relative h-[300px] w-[380px] ">
@@ -122,11 +124,10 @@ export default function RoomCard({
             e.stopPropagation();
             onCompareToggle(room);
           }}
-          className={`absolute top-3 right-3 p-2 rounded-full shadow-lg transition-all duration-200 ${
-            isInCompare
+          className={`absolute top-3 right-3 p-2 rounded-full shadow-lg transition-all duration-200 ${isInCompare
               ? "bg-[#CCBDA3] text-white scale-100"
               : "bg-white text-gray-700 opacity-0 group-hover:opacity-100 hover:scale-110"
-          }`}
+            }`}
           aria-label={isInCompare ? "Remove from compare" : "Add to compare"}
         >
           {isInCompare ? <Check size={20} /> : <Plus size={20} />}
@@ -164,7 +165,7 @@ function WishlistButton({ roomNumber }: { roomNumber?: string | number }) {
     // Fetch cart từ backend
     getCartBeanByCustomerId(customerId)
       .then((cart) => {
-        if (cart && cart.items) {
+        if (cart?.items) {
           const isInCart = cart.items.some((room) => room.roomNumber === id);
           setInCart(isInCart);
         } else {
@@ -210,11 +211,10 @@ function WishlistButton({ roomNumber }: { roomNumber?: string | number }) {
     <button
       onClick={toggle}
       disabled={loading}
-      className={`absolute top-3 right-14 p-2 rounded-full shadow-lg transition-all duration-200 ${
-        inCart
+      className={`absolute top-3 right-14 p-2 rounded-full shadow-lg transition-all duration-200 ${inCart
           ? "bg-[#CCBDA3] text-white"
           : "bg-white text-gray-700 opacity-0 group-hover:opacity-100 hover:scale-110"
-      } ${loading ? "opacity-50 cursor-wait" : ""}`}
+        } ${loading ? "opacity-50 cursor-wait" : ""}`}
       aria-label={inCart ? "Remove from wishlist" : "Add to wishlist"}
       title={inCart ? "Remove from wishlist" : "Add to wishlist"}
     >

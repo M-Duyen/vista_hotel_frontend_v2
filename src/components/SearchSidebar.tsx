@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -8,16 +9,152 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import type { SearchSidebarProps } from '../types/Header';
 
-const suggestions = [
-    { name: 'Túi xách', category: 'Phụ kiện' },
-    { name: 'Quý bà Dior', category: 'Thời trang' },
-    { name: 'Ví', category: 'Phụ kiện' },
-    { name: 'Khăn choàng cổ', category: 'Phụ kiện' },
-    { name: 'Giày', category: 'Giày dép' },
-    { name: 'Xô Caro', category: 'Phụ kiện' },
+// Project-specific default suggestions (rooms, room types, services)
+const defaultSuggestions = [
+    { name: 'Deluxe King', category: 'Room Type' },
+    { name: '101', category: 'Room' },
+    { name: 'Laundry Express', category: 'Service' },
+    { name: 'Breakfast Buffet', category: 'Service' },
+    { name: 'Family Suite', category: 'Room Type' },
 ];
 
+import { getAllRoomTypes, searchRooms } from '../services/roomService';
+import { getAll as getAllServices, searchServices } from '../services/serviceService';
+
 const SearchSidebar: React.FC<SearchSidebarProps> = ({ isOpen, onClose }) => {
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<Array<{ name: string; category: string }>>(
+        defaultSuggestions,
+    );
+    const debounceRef = useRef<number | null>(null);
+
+    const runSearch = useCallback(
+        async (q: string) => {
+            if (!q) {
+                setResults(defaultSuggestions);
+                return;
+            }
+
+            try {
+                const [roomsRes, typesRes] = await Promise.all([
+                    searchRooms({ q }),
+                    getAllRoomTypes(),
+                ]);
+                // services: prefer server-side search
+                let servicesRes: any[] = [];
+                try {
+                    servicesRes = await searchServices({ q });
+                } catch (error) {
+                    console.error('Search services error', error);
+                    const allSvc = await getAllServices();
+                    servicesRes = Array.isArray(allSvc) ? allSvc : [];
+                }
+
+                const flattened: Array<{ name: string; category: string }> = [];
+
+                if (Array.isArray(roomsRes)) {
+                    roomsRes.slice(0, 5).forEach((r: any) =>
+                        flattened.push({
+                            name: r.roomNumber || r.name || r.title || String(r.id),
+                            category: 'Room',
+                        }),
+                    );
+                }
+
+                if (Array.isArray(typesRes)) {
+                    typesRes
+                        .filter((t: any) =>
+                            (t.typeName || t.name || '')
+                                .toLowerCase()
+                                .includes(q.toLowerCase()),
+                        )
+                        .slice(0, 5)
+                        .forEach((t: any) =>
+                            flattened.push({
+                                name: t.typeName || t.name || String(t.id),
+                                category: 'Room Type',
+                            }),
+                        );
+                }
+
+                if (Array.isArray(servicesRes)) {
+                    servicesRes.slice(0, 5).forEach((s: any) =>
+                        flattened.push({ name: s.serviceName || s.name || String(s.serviceID || s.id), category: 'Service' }),
+                    );
+                }
+
+                setResults(flattened.length ? flattened : defaultSuggestions);
+            } catch (err) {
+                console.error('Search error', err);
+                setResults(defaultSuggestions);
+            }
+        },
+        [],
+    );
+
+    useEffect(() => {
+        // simple debounce
+        if (debounceRef.current) {
+            globalThis.clearTimeout(debounceRef.current);
+        }
+        // @ts-ignore
+        debounceRef.current = globalThis.setTimeout(() => runSearch(query), 300);
+
+        return () => {
+            if (debounceRef.current) globalThis.clearTimeout(debounceRef.current as number);
+        };
+    }, [query, runSearch]);
+
+    const navigate = useNavigate();
+
+    const handleSelect = (item: { name: string; category: string }) => {
+        // Close sidebar first
+        onClose();
+
+        if (item.category === 'Room Type') {
+            // Navigate to room list and pre-select room type via query param
+            navigate(`/room?type=${encodeURIComponent(item.name)}`);
+            return;
+        }
+
+        if (item.category === 'Room') {
+            // Try to open room detail (room id/number)
+            navigate(`/room/${encodeURIComponent(item.name)}`);
+            return;
+        }
+
+        if (item.category === 'Service') {
+            navigate(`/service?q=${encodeURIComponent(item.name)}`);
+            return;
+        }
+
+        // For other categories, open search results
+        navigate(`/search?q=${encodeURIComponent(item.name)}&category=${encodeURIComponent(item.category)}`);
+    };
+
+    const handleSearchEnter = () => {
+        const trimmedQuery = query.trim();
+
+        globalThis.dispatchEvent(
+            new CustomEvent('searchSidebarEnter', {
+                detail: {
+                    query: trimmedQuery,
+                    hasResults: results.length > 0,
+                },
+            }),
+        );
+
+        if (trimmedQuery) {
+            onClose();
+            navigate(`/search?q=${encodeURIComponent(trimmedQuery)}`);
+            return;
+        }
+
+        if (results.length > 0) {
+            handleSelect(results[0]);
+        }
+    };
+
     return (
         <>
             {/* Overlay */}
@@ -61,8 +198,16 @@ const SearchSidebar: React.FC<SearchSidebarProps> = ({ isOpen, onClose }) => {
                         />
 
                         <input
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleSearchEnter();
+                                }
+                            }}
                             type="text"
-                            placeholder="Bạn đang tìm kiếm gì?"
+                            placeholder="Tìm phòng, loại phòng hoặc dịch vụ..."
                             className="w-full px-10 py-2 border-b focus:outline-none font-serif text-sm"
                         />
 
@@ -73,13 +218,17 @@ const SearchSidebar: React.FC<SearchSidebarProps> = ({ isOpen, onClose }) => {
                     </div>
                 </div>
 
-                {/* Suggestions */}
+                {/* Suggestions / Results */}
                 <div className="px-4 py-4">
                     <h3 className="font-serif text-gray-700 mb-3">Gợi ý</h3>
 
-                    <div className="space-y-4">
-                        {suggestions.map((item, index) => (
-                            <div key={index} className="flex justify-between">
+                    <div className="space-y-3">
+                        {results.map((item) => (
+                            <button
+                                key={`${item.category}-${item.name}`}
+                                onClick={() => handleSelect(item)}
+                                className="w-full text-left flex justify-between py-2 px-2 rounded hover:bg-gray-50"
+                            >
                                 <span className="text-gray-900 font-serif">
                                     {item.name}
                                 </span>
@@ -87,7 +236,7 @@ const SearchSidebar: React.FC<SearchSidebarProps> = ({ isOpen, onClose }) => {
                                 <span className="text-gray-400 text-sm font-serif">
                                     {item.category}
                                 </span>
-                            </div>
+                            </button>
                         ))}
                     </div>
                 </div>

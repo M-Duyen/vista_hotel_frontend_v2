@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import ServiceCard from '../../components/ServiceCard';
 import type { Service } from '../../types/Service';
-import { getAll } from '../../services/serviceService';
+import { getAll, searchServices } from '../../services/serviceService';
 import HeaderHome from '../../components/HeaderHome';
 import Header from '../../components/Header';
 import ServiceDetailModal from '../../components/ServiceDetailModal';
@@ -12,30 +13,66 @@ const ServiceList = () => {
     const [error, setError] = useState<string | null>(null);
     const [showSolidHeader, setShowSolidHeader] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
+    const location = useLocation();
+
+    const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+    const query = searchParams.get('q')?.trim() || '';
+    const categoryQuery = searchParams.get('category')?.trim() || '';
+    const availabilityQuery = searchParams.get('availability');
 
     useEffect(() => {
         setLoading(true);
         setError(null);
 
-        getAll()
-            .then((data: Service[]) => {
-                setServices(Array.isArray(data) ? data : []);
-            })
+        const loadServices = async () => {
+            try {
+                if (query || categoryQuery || availabilityQuery !== null) {
+                    const data = await searchServices({
+                        q: query || undefined,
+                        serviceCategory: categoryQuery || undefined,
+                        availability:
+                            availabilityQuery === null
+                                ? undefined
+                                : availabilityQuery === 'true',
+                    });
+                    setServices(Array.isArray(data) ? data : []);
+                } else {
+                    const data = await getAll();
+                    setServices(Array.isArray(data) ? data : []);
+                }
+            } catch (err) {
+                const error = err as Error;
+                setError(error?.message || 'Error loading services');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadServices()
             .catch((err: Error) => {
                 setError(err?.message || 'Error loading services');
-            })
-            .finally(() => setLoading(false));
-    }, []);
+            });
+    }, [query, categoryQuery, availabilityQuery]);
 
-    const laundry = (services ?? []).filter((s) =>
+    const filteredServices = (services ?? []).filter((s) => {
+        if (!query) return true;
+        const qLower = query.toLowerCase();
+        return (
+            (s.serviceName ?? '').toLowerCase().includes(qLower) ||
+            (s.description ?? '').toLowerCase().includes(qLower) ||
+            (s.serviceCategory ?? '').toLowerCase().includes(qLower)
+        );
+    });
+
+    const laundry = filteredServices.filter((s) =>
         (s.serviceCategory ?? '').toUpperCase().includes('LAUNDRY'),
     );
-    const food = (services ?? []).filter(
+    const food = filteredServices.filter(
         (s) =>
             (s.serviceCategory ?? '').toUpperCase().includes('FOOD') ||
             (s.serviceCategory ?? '').toUpperCase().includes('BEVERAGE'),
     );
-    const others = (services ?? []).filter(
+    const others = filteredServices.filter(
         (s) => !laundry.includes(s) && !food.includes(s),
     );
 
@@ -57,21 +94,19 @@ const ServiceList = () => {
             {/* Header chuyển đổi */}
             <div className="fixed top-0 left-0 w-full z-[9999] transition-all duration-700">
                 <div
-                    className={`transition-opacity duration-700 ${
-                        showSolidHeader
+                    className={`transition-opacity duration-700 ${showSolidHeader
                             ? 'opacity-0 pointer-events-none'
                             : 'opacity-100'
-                    }`}
+                        }`}
                 >
                     <HeaderHome />
                 </div>
 
                 <div
-                    className={`absolute top-0 left-0 w-full transition-opacity duration-700 ${
-                        showSolidHeader
+                    className={`absolute top-0 left-0 w-full transition-opacity duration-700 ${showSolidHeader
                             ? 'opacity-100'
                             : 'opacity-0 pointer-events-none'
-                    }`}
+                        }`}
                 >
                     <Header />
                 </div>
@@ -128,19 +163,17 @@ const ServiceList = () => {
                         {!loading && !error && (
                             <>
                                 {/* Laundry Services */}
-                                <section className="mb-16">
-                                    <div className="flex gap-10">
-                                        <div className="w-64 flex-shrink-0">
-                                            <h3 className="text-2xl font-bold mb-4">Laundry</h3>
-                                            <p className="text-gray-700 text-sm leading-relaxed">
-                                                We offer professional laundry services, including washing, drying, and folding, to make your life easier.
-                                            </p>
-                                        </div>
+                                {laundry.length > 0 && (
+                                    <section className="mb-16">
+                                        <div className="flex gap-10">
+                                            <div className="w-64 flex-shrink-0">
+                                                <h3 className="text-2xl font-bold mb-4">Laundry</h3>
+                                                <p className="text-gray-700 text-sm leading-relaxed">
+                                                    We offer professional laundry services, including washing, drying, and folding, to make your life easier.
+                                                </p>
+                                            </div>
 
-                                        <div className="flex-1">
-                                            {laundry.length === 0 ? (
-                                                <div className="text-sm text-gray-600">No laundry services available.</div>
-                                            ) : (
+                                            <div className="flex-1">
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                                     {laundry.map((s) => (
                                                         <ServiceCard
@@ -150,25 +183,23 @@ const ServiceList = () => {
                                                         />
                                                     ))}
                                                 </div>
-                                            )}
+                                            </div>
                                         </div>
-                                    </div>
-                                </section>
+                                    </section>
+                                )}
 
                                 {/* Food and Beverage Services */}
-                                <section className="mb-16">
-                                    <div className="flex gap-8">
-                                        <div className="w-64 flex-shrink-0">
-                                            <h3 className="text-2xl font-bold mb-4">Food and Beverage</h3>
-                                            <p className="text-gray-700 text-sm leading-relaxed">
-                                                To awaken every sense, to elevate with exquisite flavors. Crafted with passion and mastery, indulge in our sumptuous coffees.
-                                            </p>
-                                        </div>
+                                {food.length > 0 && (
+                                    <section className="mb-16">
+                                        <div className="flex gap-8">
+                                            <div className="w-64 flex-shrink-0">
+                                                <h3 className="text-2xl font-bold mb-4">Food and Beverage</h3>
+                                                <p className="text-gray-700 text-sm leading-relaxed">
+                                                    To awaken every sense, to elevate with exquisite flavors. Crafted with passion and mastery, indulge in our sumptuous coffees.
+                                                </p>
+                                            </div>
 
-                                        <div className="flex-1">
-                                            {food.length === 0 ? (
-                                                <div className="text-sm text-gray-600">No food & beverage services available.</div>
-                                            ) : (
+                                            <div className="flex-1">
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                                     {food.map((s) => (
                                                         <ServiceCard
@@ -178,10 +209,10 @@ const ServiceList = () => {
                                                         />
                                                     ))}
                                                 </div>
-                                            )}
+                                            </div>
                                         </div>
-                                    </div>
-                                </section>
+                                    </section>
+                                )}
 
                                 {/* Other services */}
                                 {others.length > 0 && (
@@ -205,9 +236,9 @@ const ServiceList = () => {
             </div>
 
             {/* Service Detail Modal */}
-            <ServiceDetailModal 
-                service={selectedService} 
-                onClose={() => setSelectedService(null)} 
+            <ServiceDetailModal
+                service={selectedService}
+                onClose={() => setSelectedService(null)}
             />
         </div>
     );

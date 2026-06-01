@@ -1,15 +1,14 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import type { Service } from '../types/Service';
 
-const ServiceCard: React.FC<{ service: Service; onClick?: () => void }> = ({
+const ServiceCard: React.FC<{ service: Service; onClick?: () => void; to?: string }> = ({
     service,
     onClick,
+    to,
 }) => {
-    return (
-        <article
-            onClick={onClick}
-            className="service-card bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
-        >
+    const cardContent = (
+        <>
             <img
                 src={
                     service.images?.[0] ||
@@ -38,21 +37,29 @@ const ServiceCard: React.FC<{ service: Service; onClick?: () => void }> = ({
                 <p className="text-gray-600 text-xs mb-3 line-clamp-2">
                     {service.description ?? ''}
                 </p>
-
-                <div className="mt-4">
-                    <a
-                        // href={service.buttonHref ?? '#'}
-                        className="block w-full px-6 py-2 rounded-md text-sm font-medium font-serif
-                       bg-white text-black border border-gray-300
-                       hover:bg-[#CCBDA3] hover:text-black hover:border-transparent
-                       transition-all duration-300 text-center"
-                    >
-                        BOOK SERVICE
-                    </a>
-                </div>
             </div>
-        </article>
+        </>
     );
+
+    const cardClassName = "service-card bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer";
+
+    const card = onClick ? (
+        <button type="button" onClick={onClick} className={`${cardClassName} text-left w-full`}>
+            {cardContent}
+        </button>
+    ) : (
+        <article className={cardClassName}>{cardContent}</article>
+    );
+
+    if (to) {
+        return (
+            <Link to={to} className="block">
+                {card}
+            </Link>
+        );
+    }
+
+    return card;
 };
 
 export default ServiceCard;

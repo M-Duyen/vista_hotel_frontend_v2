@@ -58,7 +58,6 @@ const Sidebar: React.FC<SidebarProps> = ({ className, isExpanded, onToggle }) =>
     { icon: <FaUsers />, label: "Customers", path: "/admin/customers" },
     { icon: <MdRoomService />, label: "Services", path: "/admin/services" },
     { icon: <MdRateReview />, label: "Reviews", path: "/admin/reviews" },
-    { icon: <FaExclamationTriangle />, label: "Incidents", path: "/admin/incidents" },
     { icon: <RiDiscountPercentFill />, label: "Promotions", path: "/admin/promotion-management" },
     { icon: <MdDiscount />, label: "Promotion Types", path: "/admin/promotion-type-management" },
     { icon: <BiSolidDiscount />, label: "Vouchers", path: "/admin/voucher-management" },

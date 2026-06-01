@@ -144,7 +144,7 @@ const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({ service, onClos
                             </div>
                         </div>
 
-                        <div className="mt-12">
+                        {/* <div className="mt-12">
                             <button
                                 className="w-full py-5 bg-[#2563eb] text-white rounded-2xl font-bold text-lg shadow-xl shadow-blue-200 hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all"
                                 disabled={!service.availability}
@@ -154,7 +154,7 @@ const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({ service, onClos
                             <p className="text-center text-xs text-gray-400 mt-4">
                                 * Final price will be calculated at checkout based on your selections.
                             </p>
-                        </div>
+                        </div> */}
                     </div>
                 </motion.div>
             </div>

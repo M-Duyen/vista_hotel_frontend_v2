@@ -183,6 +183,23 @@ export const getAvailableRooms = async (
     }
 };
 
+// Search rooms with various query params (calls backend /search)
+export const searchRooms = async (params: {
+    q?: string;
+    roomNumber?: string;
+    floor?: number;
+    status?: RoomStatus;
+    roomTypeId?: string;
+}) => {
+    try {
+        const response = await roomsApi.get('/search', { params });
+        return response.data;
+    } catch (error) {
+        console.error('Error searching rooms:', error);
+        throw error;
+    }
+};
+
 export const roomService = {
     getAll,
     getAllRooms,
@@ -196,4 +213,5 @@ export const roomService = {
     getNextRoomNumber,
     updateRoomStatus,
     getAvailableRooms, // added
+    searchRooms,
 };
