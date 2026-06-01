@@ -84,6 +84,16 @@ export const useToast = () => {
         [showToast],
     );
 
+    const infor = useCallback(
+        (
+            message: string,
+            options?: Omit<ShowToastOptions, 'message' | 'type'>,
+        ) => {
+            return showToast({ message, type: 'infor', ...options });
+        },
+        [showToast],
+    );
+
     return {
         toasts,
         showToast,
@@ -93,5 +103,6 @@ export const useToast = () => {
         error,
         warning,
         info,
+        infor,
     };
 };

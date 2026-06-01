@@ -39,10 +39,13 @@ const ReplyReviewsPage: React.FC = () => {
       // Fetch reviews for all rooms and group by room number
       const reviewsByRoomData: Record<string, Review[]> = {};
       await Promise.all(
-        roomData.map(async (room) => {
+        roomData.map(async (room: Room) => {
+          if (!room.roomNumber) return;
+
+          const roomNumber = room.roomNumber;
           try {
             const response = await getReviewsWithCustomerByRoomNumber(
-              room.roomNumber
+              roomNumber
             );
             if (response && response.length > 0) {
               // Chuyển API response: { customer, review } -> Review nhúng customer
@@ -50,11 +53,11 @@ const ReplyReviewsPage: React.FC = () => {
                 ...item.review,
                 customer: item.customer,
               }));
-              reviewsByRoomData[room.roomNumber] = transformedReviews;
+              reviewsByRoomData[roomNumber] = transformedReviews;
             }
           } catch (err) {
             console.error(
-              `Error fetching reviews for room ${room.roomNumber}:`,
+              `Error fetching reviews for room ${roomNumber}:`,
               err
             );
           }

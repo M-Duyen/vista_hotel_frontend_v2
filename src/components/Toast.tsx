@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
-    FaBell,
+    FaCheckCircle,
+    FaExclamationTriangle,
+    FaInfoCircle,
     FaTimes,
+    FaTimesCircle,
 } from 'react-icons/fa';
 
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
+export type ToastType = 'success' | 'error' | 'warning' | 'info' | 'infor';
 export type ToastPosition =
     | 'top-left'
     | 'top-center'
@@ -26,18 +29,37 @@ export interface ToastProps {
     pauseOnHover?: boolean;
 }
 
-const BROWN = {
-    border: 'border-[#b9ad96]',
-    bar: 'bg-[#b9ad96]',
-    dot: 'bg-[#b9ad96]',
-    icon: <FaBell className="text-[#b9ad96]" size={15} />,
-};
-
 const TOAST_CONFIGS = {
-    info:    BROWN,
-    success: BROWN,
-    warning: BROWN,
-    error:   BROWN,
+    success: {
+        border: 'border-green-200',
+        bar: 'bg-green-500',
+        dot: 'bg-green-500',
+        icon: <FaCheckCircle className="text-green-600" size={15} />,
+    },
+    warning: {
+        border: 'border-yellow-200',
+        bar: 'bg-yellow-500',
+        dot: 'bg-yellow-500',
+        icon: <FaExclamationTriangle className="text-yellow-600" size={15} />,
+    },
+    error: {
+        border: 'border-red-200',
+        bar: 'bg-red-500',
+        dot: 'bg-red-500',
+        icon: <FaTimesCircle className="text-red-600" size={15} />,
+    },
+    info: {
+        border: 'border-blue-200',
+        bar: 'bg-blue-500',
+        dot: 'bg-blue-500',
+        icon: <FaInfoCircle className="text-blue-600" size={15} />,
+    },
+    infor: {
+        border: 'border-blue-200',
+        bar: 'bg-blue-500',
+        dot: 'bg-blue-500',
+        icon: <FaInfoCircle className="text-blue-600" size={15} />,
+    },
 };
 
 const Toast: React.FC<ToastProps> = ({
@@ -88,7 +110,15 @@ const Toast: React.FC<ToastProps> = ({
     }, [duration, paused, handleClose]);
 
     const c = TOAST_CONFIGS[type] || TOAST_CONFIGS.info;
-    const toastTitle = title || (type === 'success' ? 'Thành công' : type === 'error' ? 'Lỗi' : type === 'warning' ? 'Cảnh báo' : 'Thông báo');
+    const toastTitle =
+        title ||
+        (type === 'success'
+            ? 'Thành công'
+            : type === 'error'
+              ? 'Lỗi'
+              : type === 'warning'
+                ? 'Cảnh báo'
+                : 'Thông báo');
 
     return (
         <motion.div

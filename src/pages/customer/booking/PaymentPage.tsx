@@ -13,10 +13,12 @@ import Header from '../../../components/Header';
 import { sendEmail } from '../../../services/emailService';
 import { confirmBookingEmail } from '../../../utils/emailTemplates/authEmails';
 import { formatNumber } from '../../../utils/formatters';
+import { useToastContext } from '../../../hooks/useToastContext';
 
 const PaymentPage: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const toast = useToastContext();
     const booking: Booking | null = location.state?.booking || null;
 
     const [imageUrl, setImageUrl] = useState<string>('');
@@ -162,7 +164,7 @@ const PaymentPage: React.FC = () => {
             } catch (error) {
                 console.error('Error confirming booking:', error);
                 setLoading(false);
-                alert('Failed to confirm booking. Please try again.');
+                toast.error('Failed to confirm booking. Please try again.');
             }
             return;
         }
@@ -184,7 +186,7 @@ const PaymentPage: React.FC = () => {
             startPaymentPolling();
         } catch (error) {
             console.error('Error fetching payment image:', error);
-            alert('Failed to generate QR code. Please try again.');
+            toast.error('Failed to generate QR code. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -295,27 +297,27 @@ const PaymentPage: React.FC = () => {
             await cancelBookingPayment(booking.bookingID);
 
             setTimeout(() => {
-                alert(
+                toast.error(
                     'Payment time has expired. Your booking has been cancelled.',
                 );
                 navigate('/customer/bookingPage');
             }, 2000);
         } catch (error) {
             console.error('Error cancelling booking:', error);
-            alert('Payment time expired. Please try booking again.');
+            toast.error('Payment time expired. Please try booking again.');
             navigate('/customer/bookingPage');
         }
     };
 
     useEffect(() => {
         if (!booking) {
-            alert('No booking information found. Redirecting...');
+            toast.error('No booking information found. Redirecting...');
             navigate('/bookingPage');
             return;
         }
 
         if (!booking.bookingID) {
-            alert('Booking ID is missing. Please try booking again.');
+            toast.error('Booking ID is missing. Please try booking again.');
             navigate('/bookingPage');
             return;
         }

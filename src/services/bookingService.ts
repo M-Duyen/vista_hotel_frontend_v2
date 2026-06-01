@@ -1,5 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { api, bookingsApi, customerApi, roomsApi, usersApi, requestApi } from "./apiClient";
+import {
+  api,
+  bookingsApi,
+  customerApi,
+  roomsApi,
+  usersApi,
+  requestApi,
+  reviewsApi,
+} from "./apiClient";
 import type { Booking, RoomBooking } from "../types/Booking";
 import type { BookingDetail } from "../types/BookingDetail";
 
@@ -30,9 +38,7 @@ const mappingBookings = async (res: any) => {
       ? requestApi.get(`/late-checkouts/booking/${bookingId}`).catch(() => null)
       : Promise.resolve(null),
     res.cancellationID
-      ? bookingsApi
-        .get(`/${res.bookingID}/cancellation`)
-        .catch(() => null)
+      ? bookingsApi.get(`/${res.bookingID}/cancellation`).catch(() => null)
       : Promise.resolve(null),
     Promise.all(
       bookingDetailsSource.map((detail: any) =>
@@ -57,9 +63,7 @@ const mappingBookingDetails = async (res: any, parentBookingId?: string) => {
   const [roomRes, reviewRes] = await Promise.all([
     roomsApi.get(`/${res.roomNumber}`),
     bookingId
-      ? api
-        .get(`/api/reviews/booking/${bookingId}/room/${res.roomNumber}`)
-        .catch(() => null)
+      ? reviewsApi.get(`/bookings/${bookingId}/reviews`).catch(() => null)
       : Promise.resolve(null),
   ]);
 
@@ -174,7 +178,10 @@ export const getMyBookingsByCustomerId = async (
     );
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
-    console.error(`Error fetching my bookings for customer ${customerId}:`, error);
+    console.error(
+      `Error fetching my bookings for customer ${customerId}:`,
+      error,
+    );
     throw error;
   }
 };
@@ -561,7 +568,9 @@ export const cancelBooking = async (
 
 export const getBookingServicesByBookingId = async (bookingId: string) => {
   try {
-    const response = await api.get(`/api/booking-services/booking/${bookingId}`);
+    const response = await api.get(
+      `/api/booking-services/booking/${bookingId}`,
+    );
     return response.data;
   } catch (error) {
     console.error("Error fetching booking services:", error);
@@ -569,10 +578,7 @@ export const getBookingServicesByBookingId = async (bookingId: string) => {
   }
 };
 
-export const saveBookingService = async (
-  bookingId: string,
-  data: object,
-) => {
+export const saveBookingService = async (bookingId: string, data: object) => {
   try {
     const response = await api.post(
       `/api/booking-services/booking/${bookingId}`,
