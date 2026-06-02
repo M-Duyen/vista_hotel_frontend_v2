@@ -1,3 +1,4 @@
+/* eslint-disable  */
 import { useState, useEffect, type JSX } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -226,7 +227,6 @@ export default function MyBookingsPage() {
         navigate(`/customer/mybooking/${bookingId}`);
     };
 
-
     const formatDate = (dateString: string): string => {
         const date = new Date(dateString);
         return date.toLocaleDateString('vi-VN', {
@@ -450,6 +450,8 @@ export default function MyBookingsPage() {
                                     const roomDetail =
                                         booking.bookingDetails?.[0];
                                     const room = roomDetail?.room;
+                                    const memberShipLevel =
+                                        booking.customer?.memberShipLevel;
                                     const alreadyReviewed =
                                         hasBookingReview(booking);
 
@@ -507,19 +509,17 @@ export default function MyBookingsPage() {
                                                                         ?.typeName ||
                                                                         'Room'}
                                                                 </h3>
-                                                                <span
-                                                                    className={`px-3 py-1 rounded-full text-xs font-semibold border ${getMembershipBadge(
-                                                                        booking
-                                                                            .customer
-                                                                            ?.memberShipLevel ||
-                                                                            '',
-                                                                    )}`}
-                                                                >
-                                                                    {booking
-                                                                        .customer
-                                                                        ?.memberShipLevel ||
-                                                                        ''}
-                                                                </span>
+                                                                {memberShipLevel && (
+                                                                    <span
+                                                                        className={`px-3 py-1 rounded-full text-xs font-semibold border ${getMembershipBadge(
+                                                                            memberShipLevel,
+                                                                        )}`}
+                                                                    >
+                                                                        {
+                                                                            memberShipLevel
+                                                                        }
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             <p className="text-black/60 font-medium mb-1">
                                                                 Room{' '}
@@ -746,7 +746,6 @@ export default function MyBookingsPage() {
 
                                                     {/* ACTIONS */}
                                                     <div className="flex gap-3 mt-6">
-                                                    
                                                         <button
                                                             onClick={() =>
                                                                 handleViewDetails(

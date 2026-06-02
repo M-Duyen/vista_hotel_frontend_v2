@@ -1,5 +1,4 @@
 import { requestApi } from './apiClient';
-import { earlyCheckinNotificationService } from './earlyCheckinNotificationService';
 import type { LateCheckoutResponse } from '../types/LateCheckout';
 
 const ENDPOINT = '/late-checkout';
@@ -23,24 +22,6 @@ export const createLateCheckoutRequest = async (payload: {
             throw new Error(
                 res.data.message || 'Booking da gui yeu cau late check-out',
             );
-        }
-
-        if (res.data?.success && payload.customerId) {
-            try {
-                await earlyCheckinNotificationService.sendLateCheckoutRequest({
-                    customerId: payload.customerId,
-                    customerName: payload.customerName || 'Customer',
-                    roomNumber: payload.roomNumber || 'N/A',
-                    bookingId: payload.bookingId,
-                    requestedTime: payload.requestTime,
-                    standardCheckoutTime:
-                        payload.standardCheckoutTime || payload.requestTime,
-                    reason: payload.reason,
-                    userRole: 'CUSTOMER',
-                });
-            } catch (notifErr) {
-                console.warn('Notification error (non-blocking):', notifErr);
-            }
         }
 
         return res.data.data;
