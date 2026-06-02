@@ -23,7 +23,12 @@ export default function Calendar({
   };
 
   const getFirstDayOfMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+    const sundayFirstDay = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      1
+    ).getDay();
+    return (sundayFirstDay + 6) % 7;
   };
 
   const months = [
@@ -79,17 +84,16 @@ export default function Calendar({
   };
 
   const handleDateClick = (day: number) => {
+    if (isDateDisabled(day)) {
+      return;
+    }
+
     const newDate = new Date(
       currentMonth.getFullYear(),
       currentMonth.getMonth(),
       day
     );
     onDateSelect(newDate);
-
-    // Kiểm tra xem ngày có hợp lệ không
-    if (!isDateDisabled(day)) {
-      onDateSelect(newDate);
-    }
   };
 
   // Kiểm tra xem ngày có bị disabled không
@@ -201,7 +205,7 @@ export default function Calendar({
             <button
               key={index}
               onClick={() => day && handleDateClick(day)}
-              disabled={!day}
+              disabled={!day || disabled}
               className={`aspect-square flex items-center justify-center text-sm font-medium rounded transition ${
                 !day
                   ? "text-gray-300 cursor-default"

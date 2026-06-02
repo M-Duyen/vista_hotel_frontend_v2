@@ -28,7 +28,10 @@ const PaymentPage: React.FC = () => {
     const [paymentCompleted, setPaymentCompleted] = useState(false);
     const [paymentExpired, setPaymentExpired] = useState(false);
     const [showTimer, setShowTimer] = useState(false);
-    const [remainingMinutes, setRemainingMinutes] = useState<number>(15);
+    const [remainingMinutes, setRemainingMinutes] = useState<number | null>(
+        null,
+    );
+    // const [remainingMinutes, setRemainingMinutes] = useState<number>(15);
 
     const reputationPoint = booking?.customer?.reputationPoint || 0;
     const totalAmount = booking?.totalAmount || 0;
@@ -79,26 +82,39 @@ const PaymentPage: React.FC = () => {
             );
             console.log('Remaining time from API:', timeString);
 
+            if (!timeString || !timeString.trim()) {
+                setRemainingMinutes(null);
+                setShowTimer(false);
+                return;
+            }
+
             // Parse timeString (format có thể là "15 minutes", "14 minutes 30 seconds", etc.)
             const minutes = parseTimeString(timeString);
             setRemainingMinutes(minutes);
             console.log('Parsed remaining minutes:', minutes);
 
             // Hiển thị timer nếu không phải UNLIMITED
-            if (minutes !== -1) {
+            if (minutes !== null && minutes !== -1) {
                 setShowTimer(true);
             } else {
                 setShowTimer(false);
             }
         } catch (error) {
             console.error('Error fetching remaining time:', error);
+            setRemainingMinutes(null);
+            setShowTimer(false);
             // Giữ nguyên default 15 phút nếu lỗi và hiển thị timer
-            setShowTimer(true);
+            // setRemainingMinutes(15);
+            // setShowTimer(true);
         }
     };
 
     // Hàm parse chuỗi thời gian thành số phút
-    const parseTimeString = (timeString: string): number => {
+    const parseTimeString = (timeString: string): number | null => {
+        if (!timeString || !timeString.trim()) {
+            return null;
+        }
+
         // Kiểm tra nếu là UNLIMITED thì trả về -1 để biết không cần hiển thị timer
         if (timeString === 'UNLIMITED') {
             console.log('Payment time is unlimited - no timer needed');
@@ -135,9 +151,11 @@ const PaymentPage: React.FC = () => {
             return mins + secs / 60;
         }
 
-        // Nếu không parse được, trả về 15 phút
+        // Nếu không parse được thì không hiển thị countdown
         console.warn('Could not parse time string:', timeString);
-        return 15;
+        return null;
+        // Nếu không parse được, trả về 15 phút
+        // return 15;
     };
 
     const fetchQRCode = async (choice: number) => {
@@ -396,14 +414,17 @@ const PaymentPage: React.FC = () => {
                 </div>
 
                 {/* Countdown Timer */}
-                {showTimer && !paymentCompleted && !paymentExpired && (
-                    <div className="mb-6">
-                        <CountdownTimer
-                            durationInMinutes={remainingMinutes}
-                            onExpire={handlePaymentExpiry}
-                        />
-                    </div>
-                )}
+                {showTimer &&
+                    remainingMinutes !== null &&
+                    !paymentCompleted &&
+                    !paymentExpired && (
+                        <div className="mb-6">
+                            <CountdownTimer
+                                durationInMinutes={remainingMinutes}
+                                onExpire={handlePaymentExpiry}
+                            />
+                        </div>
+                    )}
 
                 {/* Payment Expired Message */}
                 {paymentExpired && (

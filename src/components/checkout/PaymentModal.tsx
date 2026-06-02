@@ -174,7 +174,7 @@ export default function PaymentModal({
 
   const generateVNPayQR = async () => {
     try {
-      const qrUrl = await generateQRPayment(paymentData.bookingId);
+      const qrUrl = await generateQRPayment(paymentData.bookingId, 4);
       setQrCodeUrl(qrUrl);
       startPaymentPolling();
     } catch (error) {
