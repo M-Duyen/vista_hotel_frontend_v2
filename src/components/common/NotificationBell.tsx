@@ -56,18 +56,23 @@ export default function NotificationBell({
         const diffMs = now.getTime() - date.getTime();
         const diffMins = Math.floor(diffMs / 60000);
 
-        if (diffMins < 1) return 'Vừa xong';
-        if (diffMins < 60) return `${diffMins} phút trước`;
-        if (diffMins < 1440) return `${Math.floor(diffMins / 60)} giờ trước`;
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) {
+            return `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
+        }
 
-        // Format: DD/MM/YYYY HH:mm
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffMins < 1440) {
+            return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+        }
 
-        return `${day}/${month}/${year} ${hours}:${minutes}`;
+        return date.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
     };
 
     const bellColorClass =
