@@ -1,4 +1,3 @@
-/* eslint-disable  */
 import { useState, useEffect, type JSX } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -11,7 +10,6 @@ import {
     AlertCircle,
     CheckCircle,
     XCircle,
-    AlertTriangle,
 } from 'lucide-react';
 import Header from '../../components/Header';
 import {
@@ -229,9 +227,9 @@ export default function MyBookingsPage() {
 
     const formatDate = (dateString: string): string => {
         const date = new Date(dateString);
-        return date.toLocaleDateString('vi-VN', {
+        return date.toLocaleDateString('en-US', {
             year: 'numeric',
-            month: 'short',
+            month: 'long',
             day: 'numeric',
         });
     };
@@ -441,7 +439,7 @@ export default function MyBookingsPage() {
                                     // Validate booking data to prevent runtime errors
                                     if (!booking || !booking.bookingID) {
                                         console.warn(
-                                            '⚠️ Skipping invalid booking:',
+                                            'Skipping invalid booking:',
                                             booking,
                                         );
                                         return null;
