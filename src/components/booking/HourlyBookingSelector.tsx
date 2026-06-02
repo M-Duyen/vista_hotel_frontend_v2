@@ -37,10 +37,10 @@ export default function HourlyBookingSelector({
 }: HourlyBookingSelectorProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [bookedTimeRanges, setBookedTimeRanges] = useState<BookingTimeRange[]>(
-    []
+    [],
   ); // Lưu các khoảng thời gian đã đặt
   const [unavailableTimeSlots, setUnavailableTimeSlots] = useState<string[]>(
-    []
+    [],
   ); // Giờ không khả dụng cho ngày đã chọn
 
   // Fetch bookings cho tất cả phòng đã chọn
@@ -59,7 +59,7 @@ export default function HourlyBookingSelector({
 
           // Chỉ lấy các booking PENDING hoặc CHECKED_IN (bỏ qua CANCELLED, CHECKED_OUT)
           const activeBookings = bookings.filter(
-            (b) => b.status === "PENDING" || b.status === "CHECKED_IN"
+            (b) => b.status === "PENDING" || b.status === "CHECKED_IN",
           );
 
           activeBookings.forEach((booking) => {
@@ -71,7 +71,7 @@ export default function HourlyBookingSelector({
         }
 
         setBookedTimeRanges(allTimeRanges);
-        console.log("Booked time ranges for hourly booking:", allTimeRanges);
+        //console.log("Booked time ranges for hourly booking:", allTimeRanges);
       } catch (error) {
         console.error("Failed to fetch bookings:", error);
       }
@@ -159,20 +159,20 @@ export default function HourlyBookingSelector({
     const newDate = new Date(
       currentMonth.getFullYear(),
       currentMonth.getMonth(),
-      day
+      day,
     );
     onCheckInDateSelect(newDate);
   };
 
   const previousMonth = () => {
     setCurrentMonth(
-      new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1)
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1),
     );
   };
 
   const nextMonth = () => {
     setCurrentMonth(
-      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1)
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1),
     );
   };
 
@@ -193,19 +193,24 @@ export default function HourlyBookingSelector({
     });
   };
 
-  const isTimeSlotAvailableForDate = (date: Date, timeSlot: string): boolean => {
+  const isTimeSlotAvailableForDate = (
+    date: Date,
+    timeSlot: string,
+  ): boolean => {
     const [hours, minutes] = timeSlot.split(":").map(Number);
     const proposedCheckIn = new Date(date);
     proposedCheckIn.setHours(hours, minutes, 0, 0);
 
     const proposedCheckOut = new Date(
-      proposedCheckIn.getTime() + duration * 60 * 60 * 1000
+      proposedCheckIn.getTime() + duration * 60 * 60 * 1000,
     );
 
     return !bookedTimeRanges.some(({ checkIn, checkOut }) => {
       const existingCheckIn = new Date(checkIn);
       const existingCheckOut = new Date(checkOut);
-      return proposedCheckIn < existingCheckOut && proposedCheckOut > existingCheckIn;
+      return (
+        proposedCheckIn < existingCheckOut && proposedCheckOut > existingCheckIn
+      );
     });
   };
 
@@ -226,7 +231,7 @@ export default function HourlyBookingSelector({
     checkInDateTime.setHours(hours, minutes, 0, 0);
 
     const checkOutDateTime = new Date(
-      checkInDateTime.getTime() + duration * 60 * 60 * 1000
+      checkInDateTime.getTime() + duration * 60 * 60 * 1000,
     );
 
     const outHours = checkOutDateTime.getHours().toString().padStart(2, "0");
@@ -236,7 +241,7 @@ export default function HourlyBookingSelector({
       .padStart(2, "0");
 
     return `${checkOutDateTime.toLocaleDateString(
-      "en-GB"
+      "en-GB",
     )} ${outHours}:${outMinutes}`;
   };
 
@@ -256,7 +261,7 @@ export default function HourlyBookingSelector({
     proposedCheckIn.setHours(hours, minutes, 0, 0);
 
     const proposedCheckOut = new Date(
-      proposedCheckIn.getTime() + duration * 60 * 60 * 1000
+      proposedCheckIn.getTime() + duration * 60 * 60 * 1000,
     );
 
     console.log("Checking availability for:", {
@@ -354,7 +359,7 @@ export default function HourlyBookingSelector({
               const date = new Date(
                 currentMonth.getFullYear(),
                 currentMonth.getMonth(),
-                day
+                day,
               );
               date.setHours(0, 0, 0, 0);
 
@@ -367,16 +372,18 @@ export default function HourlyBookingSelector({
               return (
                 <button
                   key={day}
-                  onClick={() => !isPast && !isFullyBooked && handleDateClick(day)}
+                  onClick={() =>
+                    !isPast && !isFullyBooked && handleDateClick(day)
+                  }
                   disabled={isPast || isFullyBooked}
                   className={`p-2 text-sm rounded-lg transition relative ${
                     isSelected
                       ? "bg-[#c9b8a8] text-white font-bold cursor-pointer"
                       : isPast || isFullyBooked
-                      ? "text-gray-300 cursor-not-allowed"
-                      : hasBooking
-                      ? "bg-yellow-100 text-gray-900 hover:bg-yellow-200 cursor-pointer"
-                      : "hover:bg-gray-100 text-gray-900 cursor-pointer"
+                        ? "text-gray-300 cursor-not-allowed"
+                        : hasBooking
+                          ? "bg-yellow-100 text-gray-900 hover:bg-yellow-200 cursor-pointer"
+                          : "hover:bg-gray-100 text-gray-900 cursor-pointer"
                   }`}
                 >
                   {day}

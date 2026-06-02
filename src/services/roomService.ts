@@ -32,6 +32,25 @@ export const getRoomById = async (id: string) => {
     return getById(id);
 };
 
+export const calculateRoomPrices = async (
+    roomIds: string[],
+    date: string,
+    includeWeekendSurcharge = true,
+): Promise<Record<string, number>> => {
+    try {
+        const params = new URLSearchParams();
+        roomIds.forEach((roomId) => params.append('roomIds', roomId));
+        params.append('date', date);
+        params.append('includeWeekendSurcharge', String(includeWeekendSurcharge));
+
+        const response = await roomsApi.get('/room-price', { params });
+        return response.data || {};
+    } catch (error) {
+        console.error('Error calculating room prices:', error);
+        throw error;
+    }
+};
+
 export const calculateStayRoomPrices = async (
     roomIds: string[],
     checkInDate: string,
@@ -224,6 +243,7 @@ export const roomService = {
     getAllRooms,
     getById,
     getRoomById,
+    calculateRoomPrices,
     calculateStayRoomPrices,
     createRoom,
     updateRoom,

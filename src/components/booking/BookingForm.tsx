@@ -24,6 +24,7 @@ import type { Service } from "../../types/Service";
 import type { CustomerVoucher } from "../../types/CustomerVoucher";
 import type { Room } from "../../types/Room";
 import {
+  calculateRoomPrices,
   calculateStayRoomPrices,
   getRoomById,
 } from "../../services/roomService";
@@ -149,6 +150,7 @@ export default function BookingForm({
   const [discount, setDiscount] = useState<number>(0);
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const [roomPrices, setRoomPrices] = useState<Record<string, number>>({});
+  const [hourlyBasePrices, setHourlyBasePrices] = useState<Record<string, number>>({});
 
   const getStoredCustomerId = (): string | null => {
     try {
@@ -305,6 +307,23 @@ export default function BookingForm({
         }
       }
       setRoomPrices(prices);
+
+      if (bookingType === "HOURLY") {
+        const roomNumbers = rooms
+          .map((room) => room.roomNumber)
+          .filter((roomNumber): roomNumber is string => !!roomNumber);
+
+        if (roomNumbers.length > 0) {
+          const basePrices = await calculateRoomPrices(
+            roomNumbers,
+            getPricingDate(),
+            false,
+          );
+          setHourlyBasePrices(basePrices);
+        }
+      } else {
+        setHourlyBasePrices({});
+      }
     };
 
     if (rooms.length > 0) {
@@ -526,6 +545,9 @@ export default function BookingForm({
 
     // Lấy phần trăm cơ bản từ baseRates
     let ratePercentage = 100; // default 100% nếu không tìm thấy
+    let selectedBaseRateKey = "default";
+    let selectedBaseRate = ratePercentage;
+    let appliedWeekendSurcharge = 0;
 
     if (policy.baseRates) {
       // Kiểm tra nếu baseRates là object (Map)
@@ -537,6 +559,7 @@ export default function BookingForm({
 
         // Lấy rate trực tiếp từ map theo duration
         // VD: duration = 2 => baseRatesMap["2"] = 25
+        let selectedDurationKey = duration.toString();
         let rate = baseRatesMap[duration.toString()];
 
         // Nếu không tìm thấy (VD: 12h không có trong map), lấy rate cao nhất (9h = 100%)
@@ -545,6 +568,7 @@ export default function BookingForm({
           const maxDuration = Math.max(
             ...Object.keys(baseRatesMap).map((k) => parseInt(k)),
           );
+          selectedDurationKey = maxDuration.toString();
           rate = baseRatesMap[maxDuration.toString()];
           console.log(
             `Duration ${duration}h not found, using max rate (${maxDuration}h): ${rate}%`,
@@ -553,6 +577,8 @@ export default function BookingForm({
 
         if (rate !== undefined) {
           ratePercentage = rate;
+          selectedBaseRateKey = selectedDurationKey;
+          selectedBaseRate = rate;
           console.log(`Base rate for ${duration}h: ${ratePercentage}%`);
         } else {
           console.warn(
@@ -570,6 +596,8 @@ export default function BookingForm({
 
         if (matchedRate) {
           ratePercentage = matchedRate.baseRate;
+          selectedBaseRateKey = matchedRate.baseHours.toString();
+          selectedBaseRate = matchedRate.baseRate;
           console.log(`Base rate for ${duration}h: ${ratePercentage}%`);
         }
       }
@@ -581,12 +609,26 @@ export default function BookingForm({
 
     if (isWeekend && policy.weekendSurcharge) {
       const beforeSurcharge = ratePercentage;
+      appliedWeekendSurcharge = policy.weekendSurcharge;
       ratePercentage += policy.weekendSurcharge; // Cộng thêm weekend surcharge %
       console.log(
-        `Weekend surcharge: ${beforeSurcharge}% → ${ratePercentage}% (+${policy.weekendSurcharge}%)`,
+        `Weekend surcharge: ${beforeSurcharge}% -> ${ratePercentage}% (+${policy.weekendSurcharge}%)`,
       );
     }
 
+    console.table([
+      {
+        policyId: policy.id ?? "N/A",
+        policyName: policy.policyName ?? "N/A",
+        checkInDate: checkInDate.toISOString(),
+        durationHours: duration,
+        selectedBaseRateKey,
+        baseRatePercent: selectedBaseRate,
+        isWeekend,
+        weekendSurchargePercent: appliedWeekendSurcharge,
+        finalHourlyRatePercent: ratePercentage,
+      },
+    ]);
     console.log(`Final hourly rate percentage: ${ratePercentage}%`);
 
     return ratePercentage;
@@ -616,13 +658,31 @@ export default function BookingForm({
   const calculateRoomUnitPrice = async (room: Room) => {
     if (bookingType === "HOURLY") {
       const basePrice = room.roomType?.basePrice || 0;
+      const pricingDate = getPricingDate();
+      const adjustedRoomPrices = room.roomNumber
+        ? await calculateRoomPrices([room.roomNumber], pricingDate, false)
+        : {};
+      const adjustedDailyPrice =
+        (room.roomNumber && adjustedRoomPrices[room.roomNumber]) || basePrice;
       const ratePercentage = calculateHourlyRate(duration, hourlyCheckInDate);
-      const totalPrice = (basePrice * ratePercentage) / 100;
+      const totalPrice = (adjustedDailyPrice * ratePercentage) / 100;
+
+      console.table([
+        {
+          roomNumber: room.roomNumber,
+          roomTypeId: room.roomType?.roomTypeID,
+          originalBasePrice: basePrice,
+          adjustedDailyPrice,
+          pricingDate,
+          hourlyRatePercent: ratePercentage,
+          finalHourlyPrice: totalPrice,
+        },
+      ]);
 
       console.log(
         `Room ${
           room.roomNumber
-        }: ${basePrice} × ${ratePercentage}% = ${totalPrice.toFixed(0)} VND`,
+        }: adjusted ${adjustedDailyPrice} × ${ratePercentage}% = ${totalPrice.toFixed(0)} VND`,
       );
 
       return totalPrice;
@@ -1616,8 +1676,11 @@ export default function BookingForm({
                     </span>
                     <span className="text-[#c9b8a8] font-semibold">
                       {(() => {
-                        const roomPrice = roomPrices[room.roomNumber!] || 0;
+                        const roomNumber = room.roomNumber || "";
+                        const roomPrice = roomPrices[roomNumber] || 0;
                         const basePrice = room.roomType?.basePrice || 0;
+                        const hourlyBasePrice =
+                          hourlyBasePrices[roomNumber] || basePrice;
                         return (
                           <>
                             {bookingType === "DAILY" &&
@@ -1628,9 +1691,9 @@ export default function BookingForm({
                               )}
                             {/* Theo giờ thì hiển thị giá gốc */}
                             {bookingType === "HOURLY" &&
-                              basePrice > roomPrice && (
+                              hourlyBasePrice > roomPrice && (
                                 <span className="line-through text-gray-500 mr-2">
-                                  {basePrice.toLocaleString()} VND
+                                  {hourlyBasePrice.toLocaleString()} VND
                                 </span>
                               )}
                             {roomPrice.toLocaleString()} VND{" "}
