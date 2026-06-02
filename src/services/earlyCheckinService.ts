@@ -1,6 +1,5 @@
 /* eslint-disable */
 import { api } from './apiClient';
-import { earlyCheckinNotificationService } from './earlyCheckinNotificationService';
 import type { EarlyCheckinResponse } from '../types/EarlyCheckin';
 
 const ENDPOINT = '/api/early-checkin';
@@ -32,23 +31,6 @@ export const createEarlyCheckinRequest = async (payload: any) => {
                 Authorization: `Bearer ${localStorage.getItem('token')}`,
             },
         });
-
-        if (res.data && res.data.success) {
-            try {
-                await earlyCheckinNotificationService.sendEarlyCheckinRequest({
-                    customerId: payload.customerId,
-                    customerName: payload.customerName || 'Customer',
-                    roomNumber: payload.roomNumber || 'N/A',
-                    bookingId: payload.bookingId,
-                    requestedTime: payload.requestTime,
-                    standardCheckInTime: payload.standardCheckInTime || payload.requestTime,
-                    reason: payload.reason,
-                    userRole: 'CUSTOMER',
-                });
-            } catch (notifErr) {
-                console.warn('Notification error (non-blocking):', notifErr);
-            }
-        }
 
         return res.data;
     } catch (error) {
