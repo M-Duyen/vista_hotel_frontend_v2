@@ -17,6 +17,19 @@ const InfoRow = ({ label, value }: { label: string; value?: unknown }) => (
     </div>
 );
 
+const formatDate = (value?: unknown) => {
+    if (value === null || value === undefined || value === '') {
+        return '-';
+    }
+
+    const date = new Date(String(value));
+    if (Number.isNaN(date.getTime())) {
+        return String(value);
+    }
+
+    return date.toLocaleDateString('vi-VN');
+};
+
 export default function CustomerDetailModal({ show, customer, onClose }: Props) {
     if (!show || !customer) return null;
 
@@ -48,10 +61,10 @@ export default function CustomerDetailModal({ show, customer, onClose }: Props) 
                     <InfoRow label="Username" value={customer.username || customer.userName} />
                     <InfoRow label="Email" value={customer.email} />
                     <InfoRow label="Phone Number" value={customer.phone} />
-                    <InfoRow label="Date of Birth" value={customer.birthDate} />
+                    <InfoRow label="Date of Birth" value={formatDate(customer.birthDate)} />
                     <InfoRow label="Gender" value={customer.gender} />
                     <InfoRow label="Address" value={customer.address} />
-                    <InfoRow label="Joined Date" value={customer.joinedDate} />
+                    <InfoRow label="Joined Date" value={formatDate(customer.joinedDate)} />
                     <InfoRow label="Loyalty Points" value={customer.loyaltyPoints} />
                     <InfoRow label="Membership Tier" value={customer.memberShipLevel} />
                     <InfoRow label="Reputation Point" value={customer.reputationPoint} />
