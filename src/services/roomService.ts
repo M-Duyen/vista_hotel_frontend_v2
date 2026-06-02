@@ -32,6 +32,25 @@ export const getRoomById = async (id: string) => {
     return getById(id);
 };
 
+export const calculateStayRoomPrices = async (
+    roomIds: string[],
+    checkInDate: string,
+    checkOutDate: string,
+): Promise<Record<string, number>> => {
+    try {
+        const params = new URLSearchParams();
+        roomIds.forEach((roomId) => params.append('roomIds', roomId));
+        params.append('checkInDate', checkInDate);
+        params.append('checkOutDate', checkOutDate);
+
+        const response = await roomsApi.get('/stay-price', { params });
+        return response.data || {};
+    } catch (error) {
+        console.error('Error calculating stay room prices:', error);
+        throw error;
+    }
+};
+
 // Tạo phòng mới
 export const createRoom = async (roomData: Partial<Room>) => {
     try {
@@ -205,6 +224,7 @@ export const roomService = {
     getAllRooms,
     getById,
     getRoomById,
+    calculateStayRoomPrices,
     createRoom,
     updateRoom,
     saveRoom,

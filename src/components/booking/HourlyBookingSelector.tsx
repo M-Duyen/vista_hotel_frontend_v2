@@ -182,12 +182,39 @@ export default function HourlyBookingSelector({
 
   // Kiểm tra xem một ngày có booking hay không
   const hasBookingOnDate = (date: Date): boolean => {
-    const dateStr = date.toDateString();
+    const startOfDate = new Date(date);
+    startOfDate.setHours(0, 0, 0, 0);
+
+    const endOfDate = new Date(date);
+    endOfDate.setHours(23, 59, 59, 999);
+
     return bookedTimeRanges.some(({ checkIn, checkOut }) => {
-      const checkInStr = new Date(checkIn).toDateString();
-      const checkOutStr = new Date(checkOut).toDateString();
-      return dateStr === checkInStr || dateStr === checkOutStr;
+      return checkIn < endOfDate && checkOut > startOfDate;
     });
+  };
+
+  const isTimeSlotAvailableForDate = (date: Date, timeSlot: string): boolean => {
+    const [hours, minutes] = timeSlot.split(":").map(Number);
+    const proposedCheckIn = new Date(date);
+    proposedCheckIn.setHours(hours, minutes, 0, 0);
+
+    const proposedCheckOut = new Date(
+      proposedCheckIn.getTime() + duration * 60 * 60 * 1000
+    );
+
+    return !bookedTimeRanges.some(({ checkIn, checkOut }) => {
+      const existingCheckIn = new Date(checkIn);
+      const existingCheckOut = new Date(checkOut);
+      return proposedCheckIn < existingCheckOut && proposedCheckOut > existingCheckIn;
+    });
+  };
+
+  const isDateFullyBooked = (date: Date): boolean => {
+    if (!hasBookingOnDate(date)) {
+      return false;
+    }
+
+    return timeSlots.every((slot) => !isTimeSlotAvailableForDate(date, slot));
   };
 
   // Calculate check-out time
@@ -335,16 +362,17 @@ export default function HourlyBookingSelector({
                 checkInDate && date.getTime() === checkInDate.getTime();
               const isPast = date < today;
               const hasBooking = hasBookingOnDate(date);
+              const isFullyBooked = isDateFullyBooked(date);
 
               return (
                 <button
                   key={day}
-                  onClick={() => !isPast && handleDateClick(day)}
-                  disabled={isPast}
+                  onClick={() => !isPast && !isFullyBooked && handleDateClick(day)}
+                  disabled={isPast || isFullyBooked}
                   className={`p-2 text-sm rounded-lg transition relative ${
                     isSelected
                       ? "bg-[#c9b8a8] text-white font-bold cursor-pointer"
-                      : isPast
+                      : isPast || isFullyBooked
                       ? "text-gray-300 cursor-not-allowed"
                       : hasBooking
                       ? "bg-yellow-100 text-gray-900 hover:bg-yellow-200 cursor-pointer"

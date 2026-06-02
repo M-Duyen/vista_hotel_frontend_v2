@@ -23,7 +23,10 @@ import type { Customer } from "../../types/Customer";
 import type { Service } from "../../types/Service";
 import type { CustomerVoucher } from "../../types/CustomerVoucher";
 import type { Room } from "../../types/Room";
-import { getRoomById } from "../../services/roomService";
+import {
+  calculateStayRoomPrices,
+  getRoomById,
+} from "../../services/roomService";
 import { getCartBeanByCustomerId } from "../../services/cartBeanService";
 import CustomerVoucherModal from "./CustomerVoucherModal";
 import { RiHotelLine } from "react-icons/ri";
@@ -111,6 +114,7 @@ export default function BookingForm({
   const [customer, setCustomer] = useState<Customer>();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // selected services (ids) and per-service targets (roomNumbers array or 'ALL')
   const [selectedServices, setSelectedServices] = useState<string[]>(
@@ -295,9 +299,8 @@ export default function BookingForm({
       // Tính giá từng phòng
       const prices: Record<string, number> = {};
       for (const room of rooms) {
-        const roomTypeId = room.roomType?.roomTypeID;
-        if (roomTypeId) {
-          const price = await calculateRoomPriceAfterApplyPromotion(roomTypeId);
+        if (room.roomNumber) {
+          const price = await calculateRoomBookingPrice(room);
           prices[room.roomNumber!] = price;
         }
       }
@@ -628,284 +631,306 @@ export default function BookingForm({
     const roomTypeId = room.roomType?.roomTypeID;
     if (!roomTypeId) return 0;
 
-    const price = (await calculateRoomPriceAfterApplyPromotion(roomTypeId)) || 0;
+    const price =
+      (await calculateRoomPriceAfterApplyPromotion(roomTypeId)) || 0;
     console.log("Price: " + price);
     return price;
   };
 
   const calculateRoomBookingPrice = async (room: Room) => {
-    const unitPrice = await calculateRoomUnitPrice(room);
-    return bookingType === "DAILY" ? unitPrice * calculateNights() : unitPrice;
+    if (bookingType === "HOURLY") {
+      return await calculateRoomUnitPrice(room);
+    }
+
+    if (!room.roomNumber || !checkInDate || !checkOutDate) {
+      return 0;
+    }
+
+    const prices = await calculateStayRoomPrices(
+      [room.roomNumber],
+      formatDateOnly(checkInDate),
+      formatDateOnly(checkOutDate),
+    );
+    return prices[room.roomNumber] || 0;
   };
 
   // Tính tổng chi phí phòng
   const calculateRoomCosts = async () => {
     return await rooms.reduce(async (sumPromise, room) => {
       const sum = await sumPromise;
-      const price = await calculateRoomUnitPrice(room);
+      const price = await calculateRoomBookingPrice(room);
       return sum + price;
     }, Promise.resolve(0));
   };
 
   const handleSaveBooking = async () => {
-    setError("");
-
-    let ci: Date;
-    let co: Date;
-
-    // Validation based on booking type
-    if (bookingType === "DAILY") {
-      if (!checkInDate) {
-        setError("Please select a check-in date.");
-        return;
-      }
-      if (!checkOutDate) {
-        setError("Please select a check-out date.");
-        return;
-      }
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      ci = new Date(checkInDate);
-      ci.setHours(0, 0, 0, 0);
-      co = new Date(checkOutDate);
-      co.setHours(0, 0, 0, 0);
-
-      //TODO: Chú thích tạm:))
-      // if (ci < today) {
-      //   setError("Check-in cannot be before today.");
-      //   return;
-      // }
-      if (co <= ci) {
-        setError("Check-out must be after check-in.");
-        return;
-      }
-
-      // Kiểm tra chồng lấn với các ngày đã được đặt (chỉ cho daily booking)
-      if (isDateRangeOverlapping(ci, co, bookedDates)) {
-        setError(
-          "The selected date range overlaps with already booked dates. Please choose different dates.",
-        );
-        return;
-      }
-    } else {
-      // Hourly booking validation
-      if (!hourlyCheckInDate) {
-        setError("Please select a check-in date.");
-        return;
-      }
-      if (!checkInTime) {
-        setError("Please select a check-in time.");
-        return;
-      }
-      if (duration < 1) {
-        setError("Minimum duration is 1 hour.");
-        return;
-      }
-
-      const [hours, minutes] = checkInTime.split(":").map(Number);
-      ci = new Date(hourlyCheckInDate);
-      ci.setHours(hours, minutes, 0, 0);
-      co = new Date(ci.getTime() + duration * 60 * 60 * 1000);
-
-      // Check if booking time is in the past
-      const now = new Date();
-      if (ci <= now) {
-        showErrorToast("Check-in time must be in the future.");
-        return;
-      }
-
-      // Check room availability for hourly bookings
-      try {
-        setLoading(true);
-        for (const room of rooms) {
-          const conflicts = await checkRoomAvailability(
-            room.roomNumber || "",
-            ci.toISOString(),
-            co.toISOString(),
-          );
-
-          if (conflicts && conflicts.length > 0) {
-            const conflictDetails = conflicts
-              .map((b) => {
-                const checkIn = new Date(b.checkInDate);
-                const checkOut = new Date(b.checkOutDate);
-                return `${checkIn.toLocaleString("vi-VN", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })} - ${checkOut.toLocaleString("vi-VN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}`;
-              })
-              .join("; ");
-
-            showErrorToast(
-              `Room ${room.roomNumber} is already booked during this time. Conflicting bookings: ${conflictDetails}`,
-            );
-            setLoading(false);
-            return;
-          }
-        }
-        setLoading(false);
-      } catch (err) {
-        console.error("Error checking room availability:", err);
-        showErrorToast("Cannot check room availability. Please try again.");
-        setLoading(false);
-        return;
-      }
-    }
-
-    let checkInWithTime = new Date(checkInDate);
-    checkInWithTime.setHours(14, 0, 0, 0);
-
-    let checkOutWithTime = new Date(checkOutDate);
-    checkOutWithTime.setHours(12, 0, 0, 0);
-
-    const formatLocalDateTime = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      const hours = String(date.getHours()).padStart(2, "0");
-      const minutes = String(date.getMinutes()).padStart(2, "0");
-      const seconds = String(date.getSeconds()).padStart(2, "0");
-      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-    };
-
-    // Daily booking
-    if (bookingType === "DAILY") {
-      checkInWithTime = new Date(checkInDate!);
-      checkInWithTime.setHours(14, 0, 0, 0);
-
-      checkOutWithTime = new Date(checkOutDate!);
-      checkOutWithTime.setHours(12, 0, 0, 0);
-    } else {
-      // Hourly booking
-      const [hours, minutes] = checkInTime.split(":").map(Number);
-      checkInWithTime = new Date(hourlyCheckInDate!);
-      checkInWithTime.setHours(hours, minutes, 0, 0);
-
-      checkOutWithTime = new Date(
-        checkInWithTime.getTime() + duration * 60 * 60 * 1000,
-      );
-    }
-
-    // Tính hourlyRate (%) cho booking
-    let calculatedHourlyRate = 0;
-    if (bookingType === "HOURLY") {
-      calculatedHourlyRate = calculateHourlyRate(duration, hourlyCheckInDate);
-      console.log(
-        `Calculated hourly rate: ${calculatedHourlyRate}% for ${duration} hours`,
-      );
-    }
-
-    const customerId = getCurrentCustomerId();
-    if (!customerId) {
-      setError("User not logged in. Please log in to continue.");
-      showErrorToast("User not logged in. Please log in to continue.");
-      return;
-    }
-
-    const bookingRoomTotal = await rooms.reduce(async (sumPromise, room) => {
-      const sum = await sumPromise;
-      return sum + (await calculateRoomBookingPrice(room));
-    }, Promise.resolve(0));
-    const bookingServiceTotal = calculateServiceCosts();
-    const bookingSubtotal = bookingRoomTotal + bookingServiceTotal;
-    const bookingTotalAmount = await calculatedTotalAmount();
-
-    const payload: any = {
-      checkInDate: formatLocalDateTime(checkInWithTime),
-      checkOutDate: formatLocalDateTime(checkOutWithTime),
-      numberOfGuests: booking.numberOfGuests || 1,
-      status: "WAITING",
-      specialRequests: specialRequests,
-      bookingDate: formatLocalDateTime(new Date()),
-      packageType: booking.packageType || "Standard",
-      totalAmount: bookingTotalAmount,
-      invoiceType: "ROOM_BOOKING",
-      paymentStatus: "PENDING",
-      type: bookingType,
-      duration: bookingType === "HOURLY" ? duration : 0,
-      hourlyRate: bookingType === "HOURLY" ? calculatedHourlyRate : null,
-      customerID: customerId,
-      totalCost: bookingSubtotal,
-    };
-
-    const bookingDetails = await Promise.all(rooms.map(async (r: Room) => ({
-      roomNumber: r.roomNumber,
-      roomPrice: await calculateRoomBookingPrice(r),
-      review: null,
-    })));
-
-    // Dựa trên selectedServices và selectedServiceTargets để tạo bookingServices với danh sách phòng áp dụng
-    const bookingServicesWithRooms: any[] = [];
-    getSelectedServiceObjects().forEach((s: Service) => {
-      const targets = selectedServiceTargets[s.serviceID];
-      const quantity = serviceQuantities[s.serviceID] || 1;
-
-      let roomNumbers: string[] = [];
-      if (!targets || targets === "ALL") {
-        roomNumbers = rooms.map((r: Room) => r.roomNumber!).filter(Boolean);
-      } else if (Array.isArray(targets)) {
-        roomNumbers = targets;
-      }
-
-      const roomCount = roomNumbers.length || 1;
-
-      bookingServicesWithRooms.push({
-        serviceId: s.serviceID,
-        servicePrice: s.price,
-        roomNumber: roomNumbers, // Gửi dưới dạng list
-        quantity: quantity * roomCount,
-        totalAmount: s.price * quantity * roomCount,
-        orderStatus: "PLACE",
-        paymentMethod: selectedPaymentMethod,
-      });
-    });
-
-    console.log("Booking payload:", payload);
-    console.log("Booking details: ", bookingDetails);
-    console.log("Booking services: ", bookingServicesWithRooms);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
     try {
-      setLoading(true);
-      const savedBooking = await saveBookingWithDetails(
-        payload,
-        bookingDetails,
-        bookingServicesWithRooms,
-      );
+      setError("");
 
-      if (!savedBooking?.bookingID) {
-        throw new Error("Failed to save booking");
+      let ci: Date;
+      let co: Date;
+
+      // Validation based on booking type
+      if (bookingType === "DAILY") {
+        if (!checkInDate) {
+          setError("Please select a check-in date.");
+          return;
+        }
+        if (!checkOutDate) {
+          setError("Please select a check-out date.");
+          return;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        ci = new Date(checkInDate);
+        ci.setHours(0, 0, 0, 0);
+        co = new Date(checkOutDate);
+        co.setHours(0, 0, 0, 0);
+
+        //TODO: Chú thích tạm:))
+        // if (ci < today) {
+        //   setError("Check-in cannot be before today.");
+        //   return;
+        // }
+        if (co <= ci) {
+          setError("Check-out must be after check-in.");
+          return;
+        }
+
+        // Kiểm tra chồng lấn với các ngày đã được đặt (chỉ cho daily booking)
+        if (isDateRangeOverlapping(ci, co, bookedDates)) {
+          setError(
+            "The selected date range overlaps with already booked dates. Please choose different dates.",
+          );
+          return;
+        }
+      } else {
+        // Hourly booking validation
+        if (!hourlyCheckInDate) {
+          setError("Please select a check-in date.");
+          return;
+        }
+        if (!checkInTime) {
+          setError("Please select a check-in time.");
+          return;
+        }
+        if (duration < 1) {
+          setError("Minimum duration is 1 hour.");
+          return;
+        }
+
+        const [hours, minutes] = checkInTime.split(":").map(Number);
+        ci = new Date(hourlyCheckInDate);
+        ci.setHours(hours, minutes, 0, 0);
+        co = new Date(ci.getTime() + duration * 60 * 60 * 1000);
+
+        // Check if booking time is in the past
+        const now = new Date();
+        if (ci <= now) {
+          showErrorToast("Check-in time must be in the future.");
+          return;
+        }
+
+        // Check room availability for hourly bookings
+        try {
+          setLoading(true);
+          for (const room of rooms) {
+            const conflicts = await checkRoomAvailability(
+              room.roomNumber || "",
+              ci.toISOString(),
+              co.toISOString(),
+            );
+
+            if (conflicts && conflicts.length > 0) {
+              const conflictDetails = conflicts
+                .map((b) => {
+                  const checkIn = new Date(b.checkInDate);
+                  const checkOut = new Date(b.checkOutDate);
+                  return `${checkIn.toLocaleString("vi-VN", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })} - ${checkOut.toLocaleString("vi-VN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}`;
+                })
+                .join("; ");
+
+              showErrorToast(
+                `Room ${room.roomNumber} is already booked during this time. Conflicting bookings: ${conflictDetails}`,
+              );
+              setLoading(false);
+              return;
+            }
+          }
+          setLoading(false);
+        } catch (err) {
+          console.error("Error checking room availability:", err);
+          showErrorToast("Cannot check room availability. Please try again.");
+          setLoading(false);
+          return;
+        }
       }
 
-      for (const cv of selectedVoucher) {
-        cv.state = false;
-        await saveCustomerVoucher(cv);
-      }
+      let checkInWithTime = new Date(checkInDate);
+      checkInWithTime.setHours(14, 0, 0, 0);
 
-      const bookingToPass = {
-        ...payload,
-        ...(savedBooking || {}),
-        bookingID: savedBooking.bookingID,
-        customer: savedBooking?.customer || customer,
+      let checkOutWithTime = new Date(checkOutDate);
+      checkOutWithTime.setHours(12, 0, 0, 0);
+
+      const formatLocalDateTime = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        const seconds = String(date.getSeconds()).padStart(2, "0");
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
       };
 
-      navigate("/customer/payment", {
-        state: {
-          booking: bookingToPass,
-        },
+      // Daily booking
+      if (bookingType === "DAILY") {
+        checkInWithTime = new Date(checkInDate!);
+        checkInWithTime.setHours(14, 0, 0, 0);
+
+        checkOutWithTime = new Date(checkOutDate!);
+        checkOutWithTime.setHours(12, 0, 0, 0);
+      } else {
+        // Hourly booking
+        const [hours, minutes] = checkInTime.split(":").map(Number);
+        checkInWithTime = new Date(hourlyCheckInDate!);
+        checkInWithTime.setHours(hours, minutes, 0, 0);
+
+        checkOutWithTime = new Date(
+          checkInWithTime.getTime() + duration * 60 * 60 * 1000,
+        );
+      }
+
+      // Tính hourlyRate (%) cho booking
+      let calculatedHourlyRate = 0;
+      if (bookingType === "HOURLY") {
+        calculatedHourlyRate = calculateHourlyRate(duration, hourlyCheckInDate);
+        console.log(
+          `Calculated hourly rate: ${calculatedHourlyRate}% for ${duration} hours`,
+        );
+      }
+
+      const customerId = getCurrentCustomerId();
+      if (!customerId) {
+        setError("User not logged in. Please log in to continue.");
+        showErrorToast("User not logged in. Please log in to continue.");
+        return;
+      }
+
+      const bookingRoomTotal = await rooms.reduce(async (sumPromise, room) => {
+        const sum = await sumPromise;
+        return sum + (await calculateRoomBookingPrice(room));
+      }, Promise.resolve(0));
+      const bookingServiceTotal = calculateServiceCosts();
+      const bookingSubtotal = bookingRoomTotal + bookingServiceTotal;
+      const bookingTotalAmount = await calculatedTotalAmount();
+
+      const payload: any = {
+        checkInDate: formatLocalDateTime(checkInWithTime),
+        checkOutDate: formatLocalDateTime(checkOutWithTime),
+        numberOfGuests: booking.numberOfGuests || 1,
+        status: "WAITING",
+        specialRequests: specialRequests,
+        bookingDate: formatLocalDateTime(new Date()),
+        packageType: booking.packageType || "Standard",
+        totalAmount: bookingTotalAmount,
+        invoiceType: "ROOM_BOOKING",
+        paymentStatus: "PENDING",
+        type: bookingType,
+        duration: bookingType === "HOURLY" ? duration : 0,
+        hourlyRate: bookingType === "HOURLY" ? calculatedHourlyRate : null,
+        customerID: customerId,
+        totalCost: bookingSubtotal,
+      };
+
+      const bookingDetails = await Promise.all(
+        rooms.map(async (r: Room) => ({
+          roomNumber: r.roomNumber,
+          roomPrice: await calculateRoomBookingPrice(r),
+          review: null,
+        })),
+      );
+
+      // Dựa trên selectedServices và selectedServiceTargets để tạo bookingServices với danh sách phòng áp dụng
+      const bookingServicesWithRooms: any[] = [];
+      getSelectedServiceObjects().forEach((s: Service) => {
+        const targets = selectedServiceTargets[s.serviceID];
+        const quantity = serviceQuantities[s.serviceID] || 1;
+
+        let roomNumbers: string[] = [];
+        if (!targets || targets === "ALL") {
+          roomNumbers = rooms.map((r: Room) => r.roomNumber!).filter(Boolean);
+        } else if (Array.isArray(targets)) {
+          roomNumbers = targets;
+        }
+
+        const roomCount = roomNumbers.length || 1;
+
+        bookingServicesWithRooms.push({
+          serviceId: s.serviceID,
+          servicePrice: s.price,
+          roomNumber: roomNumbers, // Gửi dưới dạng list
+          quantity: quantity * roomCount,
+          totalAmount: s.price * quantity * roomCount,
+          orderStatus: "PLACE",
+          paymentMethod: selectedPaymentMethod,
+        });
       });
-    } catch (err: any) {
-      console.error(err);
-      setError("Failed to save booking: " + (err?.message || err));
+
+      console.log("Booking payload:", payload);
+      console.log("Booking details: ", bookingDetails);
+      console.log("Booking services: ", bookingServicesWithRooms);
+
+      try {
+        setLoading(true);
+        const savedBooking = await saveBookingWithDetails(
+          payload,
+          bookingDetails,
+          bookingServicesWithRooms,
+        );
+
+        if (!savedBooking?.bookingID) {
+          throw new Error("Failed to save booking");
+        }
+
+        for (const cv of selectedVoucher) {
+          cv.state = false;
+          await saveCustomerVoucher(cv);
+        }
+
+        const bookingToPass = {
+          ...payload,
+          ...(savedBooking || {}),
+          bookingID: savedBooking.bookingID,
+          customer: savedBooking?.customer || customer,
+        };
+
+        navigate("/customer/payment", {
+          state: {
+            booking: bookingToPass,
+          },
+        });
+      } catch (err: any) {
+        console.error(err);
+        setError("Failed to save booking: " + (err?.message || err));
+      } finally {
+        setLoading(false);
+      }
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -920,10 +945,9 @@ export default function BookingForm({
 
   //Tính tổng tiền trước giảm giá (rooms + services)
   const calculateSubTotal = async () => {
-    const numberOfNights = calculateNights();
     const roomCost = await calculateRoomCosts();
 
-    const totalRoomCosts = roomCost * numberOfNights;
+    const totalRoomCosts = roomCost;
 
     // Không cần dòng này nữa vì đã có state discount
     // const discountValue = calculateDiscount();roomCost * numberOfNights;
@@ -1596,12 +1620,21 @@ export default function BookingForm({
                         const basePrice = room.roomType?.basePrice || 0;
                         return (
                           <>
-                            {basePrice > roomPrice && (
-                              <span className="line-through text-gray-500 mr-2">
-                                {basePrice.toLocaleString()} VND
-                              </span>
-                            )}
-                            {roomPrice.toLocaleString()} VND /night
+                            {bookingType === "DAILY" &&
+                              basePrice > roomPrice && (
+                                <span className="line-through text-gray-500 mr-2">
+                                  {basePrice.toLocaleString()} VND
+                                </span>
+                              )}
+                            {/* Theo giờ thì hiển thị giá gốc */}
+                            {bookingType === "HOURLY" &&
+                              basePrice > roomPrice && (
+                                <span className="line-through text-gray-500 mr-2">
+                                  {basePrice.toLocaleString()} VND
+                                </span>
+                              )}
+                            {roomPrice.toLocaleString()} VND{" "}
+                            {/* {bookingType === "DAILY" ? "/stay" : "/booking"} */}
                           </>
                         );
                       })()}
@@ -1841,14 +1874,14 @@ export default function BookingForm({
               )}
               <button
                 onClick={handleSaveBooking}
-                disabled={loading}
+                disabled={loading || isSubmitting}
                 className={`px-8 py-3 text-white font-semibold rounded-lg transition ${
-                  loading
+                  loading || isSubmitting
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-[#c9b8a8] hover:bg-[#b8a896]"
                 }`}
               >
-                {loading ? "Saving..." : "Reserve"}
+                {loading || isSubmitting ? "Saving..." : "Reserve"}
               </button>
             </div>
           </div>
